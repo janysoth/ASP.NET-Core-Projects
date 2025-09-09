@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "/ZeHG0ajNSE=",
+  "success": true,
+  "projectFilePath": "/Users/jonnyvornsoth/Documents/C#Projects/ASP.NET-Core-Projects/BlazorMovieReview/BlazorMovieReview.csproj",
+  "expectedPackageFiles": [
+    "/Users/jonnyvornsoth/.nuget/packages/microsoft.aspnetcore.app.internal.assets/10.0.0-preview.7.25380.108/microsoft.aspnetcore.app.internal.assets.10.0.0-preview.7.25380.108.nupkg.sha512"
+  ],
+  "logs": []
+}
