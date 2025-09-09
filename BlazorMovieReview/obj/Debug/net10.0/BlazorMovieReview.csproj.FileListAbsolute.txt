@@ -80,3 +80,4 @@
 /Users/jonnyvornsoth/Documents/C#Projects/ASP.NET-Core-Projects/BlazorMovieReview/obj/Debug/net10.0/BlazorMovieReview.pdb
 /Users/jonnyvornsoth/Documents/C#Projects/ASP.NET-Core-Projects/BlazorMovieReview/obj/Debug/net10.0/BlazorMovieReview.genruntimeconfig.cache
 /Users/jonnyvornsoth/Documents/C#Projects/ASP.NET-Core-Projects/BlazorMovieReview/obj/Debug/net10.0/ref/BlazorMovieReview.dll
+/Users/jonnyvornsoth/Documents/C#Projects/ASP.NET-Core-Projects/BlazorMovieReview/obj/Debug/net10.0/BlazorMovieReview.sourcelink.json
