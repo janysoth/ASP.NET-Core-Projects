@@ -48,18 +48,18 @@
           "lib/netstandard1.3/DotNetEnv.dll": {}
         }
       },
-      "Microsoft.AspNetCore.OpenApi/9.0.8": {
+      "Microsoft.AspNetCore.Authentication.JwtBearer/9.0.8": {
         "type": "package",
         "dependencies": {
-          "Microsoft.OpenApi": "1.6.17"
+          "Microsoft.IdentityModel.Protocols.OpenIdConnect": "8.0.1"
         },
         "compile": {
-          "lib/net9.0/Microsoft.AspNetCore.OpenApi.dll": {
+          "lib/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll": {
             "related": ".xml"
           }
         },
         "runtime": {
-          "lib/net9.0/Microsoft.AspNetCore.OpenApi.dll": {
+          "lib/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll": {
             "related": ".xml"
           }
         },
@@ -205,6 +205,39 @@
         },
         "runtime": {
           "lib/net9.0/Microsoft.IdentityModel.Logging.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Microsoft.IdentityModel.Protocols/8.0.1": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.IdentityModel.Tokens": "8.0.1"
+        },
+        "compile": {
+          "lib/net9.0/Microsoft.IdentityModel.Protocols.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/Microsoft.IdentityModel.Protocols.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Microsoft.IdentityModel.Protocols.OpenIdConnect/8.0.1": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.IdentityModel.Protocols": "8.0.1",
+          "System.IdentityModel.Tokens.Jwt": "8.0.1"
+        },
+        "compile": {
+          "lib/net9.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll": {
             "related": ".xml"
           }
         }
@@ -1877,20 +1910,20 @@
         "lib/netstandard1.3/DotNetEnv.dll"
       ]
     },
-    "Microsoft.AspNetCore.OpenApi/9.0.8": {
-      "sha512": "BwF9sQCKmvu93C/pmKxJjPhF5fFB23MEcgTsGL+7W3wKLYawS4lyFSL5/qh00IJzuADLf+1SmvxMaphbyZYqQQ==",
+    "Microsoft.AspNetCore.Authentication.JwtBearer/9.0.8": {
+      "sha512": "pEuE/xaXHk2Rr2YiTraS7i2MNoTXSnX79VlJcdKx9MczrhDfBO4tHdF4HWOo542WPbjSeZx2PFjmHygo0XnK3Q==",
       "type": "package",
-      "path": "microsoft.aspnetcore.openapi/9.0.8",
+      "path": "microsoft.aspnetcore.authentication.jwtbearer/9.0.8",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "Icon.png",
         "PACKAGE.md",
         "THIRD-PARTY-NOTICES.TXT",
-        "lib/net9.0/Microsoft.AspNetCore.OpenApi.dll",
-        "lib/net9.0/Microsoft.AspNetCore.OpenApi.xml",
-        "microsoft.aspnetcore.openapi.9.0.8.nupkg.sha512",
-        "microsoft.aspnetcore.openapi.nuspec"
+        "lib/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll",
+        "lib/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.xml",
+        "microsoft.aspnetcore.authentication.jwtbearer.9.0.8.nupkg.sha512",
+        "microsoft.aspnetcore.authentication.jwtbearer.nuspec"
       ]
     },
     "Microsoft.Extensions.ApiDescription.Server/9.0.0": {
@@ -2370,6 +2403,52 @@
         "lib/netstandard2.0/Microsoft.IdentityModel.Logging.xml",
         "microsoft.identitymodel.logging.8.15.0.nupkg.sha512",
         "microsoft.identitymodel.logging.nuspec"
+      ]
+    },
+    "Microsoft.IdentityModel.Protocols/8.0.1": {
+      "sha512": "uA2vpKqU3I2mBBEaeJAWPTjT9v1TZrGWKdgK6G5qJd03CLx83kdiqO9cmiK8/n1erkHzFBwU/RphP83aAe3i3g==",
+      "type": "package",
+      "path": "microsoft.identitymodel.protocols/8.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net462/Microsoft.IdentityModel.Protocols.dll",
+        "lib/net462/Microsoft.IdentityModel.Protocols.xml",
+        "lib/net472/Microsoft.IdentityModel.Protocols.dll",
+        "lib/net472/Microsoft.IdentityModel.Protocols.xml",
+        "lib/net6.0/Microsoft.IdentityModel.Protocols.dll",
+        "lib/net6.0/Microsoft.IdentityModel.Protocols.xml",
+        "lib/net8.0/Microsoft.IdentityModel.Protocols.dll",
+        "lib/net8.0/Microsoft.IdentityModel.Protocols.xml",
+        "lib/net9.0/Microsoft.IdentityModel.Protocols.dll",
+        "lib/net9.0/Microsoft.IdentityModel.Protocols.xml",
+        "lib/netstandard2.0/Microsoft.IdentityModel.Protocols.dll",
+        "lib/netstandard2.0/Microsoft.IdentityModel.Protocols.xml",
+        "microsoft.identitymodel.protocols.8.0.1.nupkg.sha512",
+        "microsoft.identitymodel.protocols.nuspec"
+      ]
+    },
+    "Microsoft.IdentityModel.Protocols.OpenIdConnect/8.0.1": {
+      "sha512": "AQDbfpL+yzuuGhO/mQhKNsp44pm5Jv8/BI4KiFXR7beVGZoSH35zMV3PrmcfvSTsyI6qrcR898NzUauD6SRigg==",
+      "type": "package",
+      "path": "microsoft.identitymodel.protocols.openidconnect/8.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net462/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
+        "lib/net462/Microsoft.IdentityModel.Protocols.OpenIdConnect.xml",
+        "lib/net472/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
+        "lib/net472/Microsoft.IdentityModel.Protocols.OpenIdConnect.xml",
+        "lib/net6.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
+        "lib/net6.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.xml",
+        "lib/net8.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
+        "lib/net8.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.xml",
+        "lib/net9.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
+        "lib/net9.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.xml",
+        "lib/netstandard2.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
+        "lib/netstandard2.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.xml",
+        "microsoft.identitymodel.protocols.openidconnect.8.0.1.nupkg.sha512",
+        "microsoft.identitymodel.protocols.openidconnect.nuspec"
       ]
     },
     "Microsoft.IdentityModel.Tokens/8.15.0": {
@@ -6177,7 +6256,7 @@
     "net9.0": [
       "BCrypt.Net-Next >= 4.0.3",
       "DotNetEnv >= 3.1.1",
-      "Microsoft.AspNetCore.OpenApi >= 9.0.8",
+      "Microsoft.AspNetCore.Authentication.JwtBearer >= 9.0.8",
       "MongoDB.Driver >= 3.5.2",
       "Swashbuckle.AspNetCore >= 10.1.0",
       "System.IdentityModel.Tokens.Jwt >= 8.15.0"
@@ -6235,7 +6314,7 @@
             "target": "Package",
             "version": "[3.1.1, )"
           },
-          "Microsoft.AspNetCore.OpenApi": {
+          "Microsoft.AspNetCore.Authentication.JwtBearer": {
             "target": "Package",
             "version": "[9.0.8, )"
           },
