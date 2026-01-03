@@ -11,9 +11,9 @@ public sealed class User
 
   public string FullName { get; set; } = "";
   public string Email { get; set; } = "";
-
-  // Store hashed password only
   public string PasswordHash { get; set; } = "";
 
   public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+  public List<RefreshTokenRecord> RefreshTokens { get; set; } = new();
 }
