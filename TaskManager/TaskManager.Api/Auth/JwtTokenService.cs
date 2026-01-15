@@ -1,23 +1,24 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using TaskManager.Api.Models;
+using TaskManager.Api.Settings;
 
 namespace TaskManager.Api.Auth;
 
 public sealed class JwtTokenService
 {
-  private readonly IConfiguration _config;
-  public JwtTokenService(IConfiguration config) => _config = config;
+  private readonly JwtSettings _settings;
+
+  public JwtTokenService(IOptions<JwtSettings> options)
+  {
+    _settings = options.Value;
+  }
 
   public string CreateAccessToken(User user)
   {
-    var issuer = _config["Jwt:Issuer"]!;
-    var audience = _config["Jwt:Audience"]!;
-    var key = _config["Jwt:Key"]!;
-    var minutes = int.Parse(_config["Jwt:AccessTokenMinutes"] ?? "15");
-
     var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id),
@@ -26,14 +27,14 @@ public sealed class JwtTokenService
             new(ClaimTypes.NameIdentifier, user.Id)
         };
 
-    var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
+    var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Key));
     var creds = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
 
     var token = new JwtSecurityToken(
-        issuer: issuer,
-        audience: audience,
+        issuer: _settings.Issuer,
+        audience: _settings.Audience,
         claims: claims,
-        expires: DateTime.UtcNow.AddMinutes(minutes),
+        expires: DateTime.UtcNow.AddMinutes(_settings.AccessTokenMinutes),
         signingCredentials: creds
     );
 
