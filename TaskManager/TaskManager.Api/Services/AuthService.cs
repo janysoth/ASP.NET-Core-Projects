@@ -11,138 +11,104 @@ public sealed class AuthService
   private readonly JwtTokenService _jwt;
   private readonly IConfiguration _config;
 
-  public AuthService(UserRepository users, JwtTokenService jwt, IConfiguration config)
+  public AuthService(
+    UserRepository users,
+    JwtTokenService jwt,
+    IConfiguration config)
   {
     _users = users;
     _jwt = jwt;
     _config = config;
   }
 
-  public async Task<(AuthResponse Response, string RefreshToken)> RegisterAsync(RegisterRequest req)
+  public async Task<(AuthResponse, string)> RegisterAsync(RegisterRequest req)
   {
-    var fullName = req.FullName.Trim();
     var email = req.Email.Trim().ToLower();
 
-    if (string.IsNullOrWhiteSpace(fullName)) throw new ArgumentException("FullName is required.");
-    if (string.IsNullOrWhiteSpace(email)) throw new ArgumentException("Email is required.");
-    if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 8)
-      throw new ArgumentException("Password must be at least 8 characters.");
-
-    var existing = await _users.GetByEmailAsync(email);
-    if (existing is not null) throw new InvalidOperationException("Email already registered.");
+    if (await _users.GetByEmailAsync(email) is not null)
+      throw new InvalidOperationException("Email already registered.");
 
     var user = new User
     {
-      FullName = fullName,
+      FullName = req.FullName.Trim(),
       Email = email,
       PasswordHash = PasswordHasher.Hash(req.Password),
       CreatedAtUtc = DateTime.UtcNow
     };
 
-    var refreshToken = IssueRefreshToken(user);
-    user.RefreshTokens.Add(refreshToken.Record);
+    var refresh = IssueRefreshToken();
+    user.RefreshTokens.Add(refresh.Record);
 
     await _users.CreateAsync(user);
 
-    var accessToken = _jwt.CreateAccessToken(user);
-    return (new AuthResponse(accessToken), refreshToken.RawToken);
+    return (
+      new AuthResponse(_jwt.CreateAccessToken(user)),
+      refresh.RawToken
+    );
   }
 
-  public async Task<(AuthResponse Response, string RefreshToken)> LoginAsync(LoginRequest req)
+  public async Task<(AuthResponse, string)> LoginAsync(LoginRequest req)
   {
-    var email = req.Email.Trim().ToLower();
-    var user = await _users.GetByEmailAsync(email);
+    var user = await _users.GetByEmailAsync(req.Email.Trim().ToLower())
+      ?? throw new InvalidOperationException("Invalid credentials.");
 
-    if (user is null) throw new InvalidOperationException("Invalid credentials.");
     if (!PasswordHasher.Verify(req.Password, user.PasswordHash))
       throw new InvalidOperationException("Invalid credentials.");
 
-    var refreshToken = IssueRefreshToken(user);
-    user.RefreshTokens.Add(refreshToken.Record);
+    var refresh = IssueRefreshToken();
+    user.RefreshTokens.Add(refresh.Record);
 
     await _users.UpdateAsync(user);
 
-    var accessToken = _jwt.CreateAccessToken(user);
-    return (new AuthResponse(accessToken), refreshToken.RawToken);
+    return (
+      new AuthResponse(_jwt.CreateAccessToken(user)),
+      refresh.RawToken
+    );
   }
 
-  public async Task<(RefreshResponse Response, string NewRefreshToken)> RefreshAsync(string rawRefreshToken)
+  public async Task<(RefreshResponse, string)> RefreshAsync(string rawToken)
   {
-    if (string.IsNullOrWhiteSpace(rawRefreshToken))
-      throw new InvalidOperationException("Missing refresh token.");
+    var hash = Crypto.Sha256(rawToken);
+    var user = await _users.GetByRefreshTokenHashAsync(hash)
+      ?? throw new InvalidOperationException("Invalid refresh token.");
 
-    var tokenHash = Crypto.Sha256(rawRefreshToken);
+    var token = user.RefreshTokens.Single(t => t.TokenHash == hash);
 
-    // Find user that has this refresh token hash
-    // (Simple approach: scan by querying refreshTokens.tokenHash)
-    // MongoDB supports querying array fields like this.
-    var user = await FindUserByRefreshTokenHash(tokenHash);
-    if (user is null) throw new InvalidOperationException("Invalid refresh token.");
+    if (!token.IsActive)
+      throw new InvalidOperationException("Token expired.");
 
-    var existing = user.RefreshTokens.FirstOrDefault(t => t.TokenHash == tokenHash);
-    if (existing is null || !existing.IsActive)
-      throw new InvalidOperationException("Refresh token expired or revoked.");
+    token.RevokedAtUtc = DateTime.UtcNow;
 
-    // Rotate token (best practice): revoke old, issue new
-    existing.RevokedAtUtc = DateTime.UtcNow;
+    var next = IssueRefreshToken();
+    token.ReplacedByTokenHash = next.Record.TokenHash;
+    user.RefreshTokens.Add(next.Record);
 
-    var newToken = IssueRefreshToken(user);
-    existing.ReplacedByTokenHash = newToken.Record.TokenHash;
-    user.RefreshTokens.Add(newToken.Record);
-
-    // Optional: keep refresh token list from growing forever
-    PruneOldRefreshTokens(user);
+    user.RefreshTokens = user.RefreshTokens
+      .OrderByDescending(t => t.CreatedAtUtc)
+      .Take(20)
+      .ToList();
 
     await _users.UpdateAsync(user);
 
-    var newAccessToken = _jwt.CreateAccessToken(user);
-    return (new RefreshResponse(newAccessToken), newToken.RawToken);
+    return (
+      new RefreshResponse(_jwt.CreateAccessToken(user)),
+      next.RawToken
+    );
   }
 
-  public async Task RevokeAsync(string rawRefreshToken)
-  {
-    if (string.IsNullOrWhiteSpace(rawRefreshToken)) return;
-
-    var tokenHash = Crypto.Sha256(rawRefreshToken);
-    var user = await FindUserByRefreshTokenHash(tokenHash);
-    if (user is null) return;
-
-    var existing = user.RefreshTokens.FirstOrDefault(t => t.TokenHash == tokenHash);
-    if (existing is null) return;
-
-    if (existing.RevokedAtUtc is null)
-      existing.RevokedAtUtc = DateTime.UtcNow;
-
-    await _users.UpdateAsync(user);
-  }
-
-  private (string RawToken, RefreshTokenRecord Record) IssueRefreshToken(User user)
+  private (string RawToken, RefreshTokenRecord Record) IssueRefreshToken()
   {
     var days = int.Parse(_config["RefreshToken:DaysToExpire"] ?? "7");
     var raw = Crypto.GenerateRefreshToken();
-    var hash = Crypto.Sha256(raw);
 
-    var record = new RefreshTokenRecord
-    {
-      TokenHash = hash,
-      CreatedAtUtc = DateTime.UtcNow,
-      ExpiresAtUtc = DateTime.UtcNow.AddDays(days)
-    };
-
-    return (raw, record);
+    return (
+      raw,
+      new RefreshTokenRecord
+      {
+        TokenHash = Crypto.Sha256(raw),
+        CreatedAtUtc = DateTime.UtcNow,
+        ExpiresAtUtc = DateTime.UtcNow.AddDays(days)
+      }
+    );
   }
-
-  private void PruneOldRefreshTokens(User user)
-  {
-    // Keep only last 20 tokens (example)
-    // In production, you might keep fewer or remove expired/revoked tokens older than X days
-    user.RefreshTokens = user.RefreshTokens
-        .OrderByDescending(t => t.CreatedAtUtc)
-        .Take(20)
-        .ToList();
-  }
-
-  private Task<User?> FindUserByRefreshTokenHash(string tokenHash)
-    => _users.GetByRefreshTokenHashAsync(tokenHash);
-
 }

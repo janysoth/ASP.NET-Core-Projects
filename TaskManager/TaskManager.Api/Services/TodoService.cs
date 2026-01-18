@@ -6,12 +6,13 @@ namespace TaskManager.Api.Services;
 
 public sealed class TodoService
 {
-  private readonly TodoRepository _todos;
-  public TodoService(TodoRepository todos) => _todos = todos;
+  private readonly TodoRepository _repo;
+
+  public TodoService(TodoRepository repo) => _repo = repo;
 
   public async Task<List<TodoResponse>> GetAllAsync(string userId)
   {
-    var items = await _todos.GetAllForUserAsync(userId);
+    var items = await _repo.GetAllForUserAsync(userId);
     return items.Select(Map).ToList();
   }
 
@@ -32,17 +33,15 @@ public sealed class TodoService
       UpdatedAtUtc = now
     };
 
-    await _todos.CreateAsync(todo);
+    await _repo.CreateAsync(todo);
     return Map(todo);
   }
 
   public async Task<TodoResponse> UpdateAsync(string userId, string id, TodoUpdateRequest req)
   {
-    if (string.IsNullOrWhiteSpace(req.Title))
-      throw new ArgumentException("Title is required.");
-
-    var existing = await _todos.GetByIdForUserAsync(id, userId);
-    if (existing is null) throw new KeyNotFoundException("Todo not found.");
+    var existing = await _repo.GetByIdForUserAsync(id, userId);
+    if (existing is null)
+      throw new KeyNotFoundException("Todo not found.");
 
     existing.Title = req.Title.Trim();
     existing.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
@@ -50,14 +49,12 @@ public sealed class TodoService
     existing.DueDateUtc = req.DueDateUtc;
     existing.UpdatedAtUtc = DateTime.UtcNow;
 
-    await _todos.UpdateAsync(existing);
+    await _repo.UpdateAsync(existing);
     return Map(existing);
   }
 
-  public async Task DeleteAsync(string userId, string id)
-  {
-    await _todos.DeleteAsync(id, userId);
-  }
+  public Task DeleteAsync(string userId, string id)
+      => _repo.DeleteAsync(id, userId);
 
   private static TodoResponse Map(TodoItem t) =>
       new(t.Id, t.Title, t.Description, t.IsCompleted, t.DueDateUtc, t.CreatedAtUtc, t.UpdatedAtUtc);
