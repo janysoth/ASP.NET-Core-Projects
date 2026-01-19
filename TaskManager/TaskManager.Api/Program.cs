@@ -1,5 +1,3 @@
-// Program.cs
-
 using System.Text;
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -14,42 +12,69 @@ using TaskManager.Api.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ----------------------------------------------------
-// 1) Load .env deterministically from project root
-//    - Keeps secrets (Mongo connection, JWT key) out of appsettings.json
-// ----------------------------------------------------
+//
+// =====================================================
+// 1️⃣ Load environment variables from .env (FAIL FAST)
+// =====================================================
+//
+// Purpose:
+// - Keeps secrets out of source control
+// - Ensures the app never boots without required secrets
+//
+
 var envPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
 
 if (!File.Exists(envPath))
 {
+    // Crash immediately if .env is missing
+    // Prevents accidentally running with empty secrets
     throw new InvalidOperationException($".env file not found at: {envPath}");
 }
 
+// Load variables from .env into process environment
 Env.Load(envPath);
 
-// Reload environment variables into configuration
+// Add environment variables to ASP.NET configuration system
 builder.Configuration.AddEnvironmentVariables();
 
-// ----------------------------------------------------
-// 2) Strongly-typed settings with validation
-//    MongoDbSettings and JwtSettings should match your appsettings.json structure
-// ----------------------------------------------------
+//
+// =====================================================
+// 2️⃣ Strongly-typed configuration with validation
+// =====================================================
+//
+// Purpose:
+// - Catch misconfiguration at startup (not at runtime)
+// - Avoid string-based configuration lookups everywhere
+//
+
 builder.Services.AddOptions<MongoDbSettings>()
     .Bind(builder.Configuration.GetSection("MongoDb"))
-    .Validate(s => !string.IsNullOrWhiteSpace(s.ConnectionString), "MongoDb:ConnectionString is missing")
-    .Validate(s => !string.IsNullOrWhiteSpace(s.DatabaseName), "MongoDb:DatabaseName is missing")
-    .ValidateOnStart();
+    .Validate(s => !string.IsNullOrWhiteSpace(s.ConnectionString),
+        "MongoDb:ConnectionString is missing")
+    .Validate(s => !string.IsNullOrWhiteSpace(s.DatabaseName),
+        "MongoDb:DatabaseName is missing")
+    .ValidateOnStart(); // App will NOT start if invalid
 
 builder.Services.AddOptions<JwtSettings>()
     .Bind(builder.Configuration.GetSection("Jwt"))
-    .Validate(s => !string.IsNullOrWhiteSpace(s.Issuer), "Jwt:Issuer is missing")
-    .Validate(s => !string.IsNullOrWhiteSpace(s.Audience), "Jwt:Audience is missing")
-    .Validate(s => !string.IsNullOrWhiteSpace(s.Key) && s.Key.Length >= 32, "Jwt:Key is missing or too short (>= 32 chars)")
+    .Validate(s => !string.IsNullOrWhiteSpace(s.Issuer),
+        "Jwt:Issuer is missing")
+    .Validate(s => !string.IsNullOrWhiteSpace(s.Audience),
+        "Jwt:Audience is missing")
+    .Validate(s => !string.IsNullOrWhiteSpace(s.Key) && s.Key.Length >= 32,
+        "Jwt:Key must be at least 32 characters")
     .ValidateOnStart();
 
-// ----------------------------------------------------
-// 3) MongoDB client + database (shared, injected as IMongoDatabase)
-// ----------------------------------------------------
+//
+// =====================================================
+// 3️⃣ MongoDB client + database (Singleton)
+// =====================================================
+//
+// Why Singleton?
+// - MongoClient is thread-safe
+// - Recommended by MongoDB official docs
+//
+
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
     var settings = sp.GetRequiredService<IOptions<MongoDbSettings>>().Value;
@@ -63,33 +88,46 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
     return client.GetDatabase(settings.DatabaseName);
 });
 
-// ----------------------------------------------------
-// 4) Application Repositories & Services DI
-//    (these types come from the refresh-token + todos structure we built)
-// ----------------------------------------------------
+//
+// =====================================================
+// 4️⃣ Dependency Injection: Repositories & Services
+// =====================================================
+//
+// Purpose:
+// - Enforces separation of concerns
+// - Keeps controllers thin
+//
 
-// Repositories (assume they take IMongoDatabase in ctor)
+// Data access layer
 builder.Services.AddSingleton<UserRepository>();
 builder.Services.AddSingleton<TodoRepository>();
 
-// Core auth + todo services
-builder.Services.AddSingleton<JwtTokenService>(); // uses JwtSettings via IOptions<JwtSettings>
-builder.Services.AddSingleton<AuthService>();
+// Business logic layer
+builder.Services.AddSingleton<JwtTokenService>(); // Access tokens only
+builder.Services.AddSingleton<AuthService>();     // Login, register, refresh
 builder.Services.AddSingleton<TodoService>();
 
-// ----------------------------------------------------
-// 5) Controllers + Swagger
-// ----------------------------------------------------
+//
+// =====================================================
+// 5️⃣ Controllers & Swagger
+// =====================================================
+//
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ----------------------------------------------------
-// 6) CORS for SPA (React) + cookies
-//    Frontend:Origin should be set in appsettings.json or .env
-//    Example: Frontend__Origin=http://localhost:5173
-// ----------------------------------------------------
-var frontendOrigin = builder.Configuration["Frontend:Origin"] ?? "http://localhost:5173";
+//
+// =====================================================
+// 6️⃣ CORS configuration (SPA + cookies)
+// =====================================================
+//
+// Critical for:
+// - React frontend
+// - HttpOnly refresh token cookies
+//
+
+var frontendOrigin =
+    builder.Configuration["Frontend:Origin"] ?? "http://localhost:5173";
 
 builder.Services.AddCors(opt =>
 {
@@ -97,22 +135,25 @@ builder.Services.AddCors(opt =>
         policy.WithOrigins(frontendOrigin)
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials()); // needed for refresh-token HttpOnly cookie
+              .AllowCredentials()); // REQUIRED for cookies
 });
 
-// ----------------------------------------------------
-// 7) JWT Authentication (Access Token)
-//    JwtSettings should include: Issuer, Audience, Key, AccessTokenMinutes
-// ----------------------------------------------------
+//
+// =====================================================
+// 7️⃣ JWT authentication (ACCESS TOKENS ONLY)
+// =====================================================
+//
+
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()
-          ?? throw new InvalidOperationException("Jwt section is missing.");
+    ?? throw new InvalidOperationException("Jwt section is missing.");
 
 if (string.IsNullOrWhiteSpace(jwt.Key))
 {
-    throw new InvalidOperationException("Jwt:Key is empty. Check Jwt__Key in .env.");
+    throw new InvalidOperationException("Jwt:Key is empty.");
 }
 
-var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key));
+var signingKey =
+    new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key));
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -120,16 +161,22 @@ builder.Services
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
+            // Validate token issuer
             ValidateIssuer = true,
             ValidIssuer = jwt.Issuer,
 
+            // Validate token audience
             ValidateAudience = true,
             ValidAudience = jwt.Audience,
 
+            // Validate token signature
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = signingKey,
 
+            // Validate expiration
             ValidateLifetime = true,
+
+            // Small clock drift allowance
             ClockSkew = TimeSpan.FromMinutes(1)
         };
     });
@@ -138,9 +185,15 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// ----------------------------------------------------
-// 8) 🔴 MongoDB startup ping (forces real connection at startup)
-// ----------------------------------------------------
+//
+// =====================================================
+// 8️⃣ MongoDB startup health check
+// =====================================================
+//
+// Forces MongoDB to be reachable at startup
+// Prevents app running in half-broken state
+//
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<IMongoDatabase>();
@@ -152,9 +205,12 @@ using (var scope = app.Services.CreateScope())
     Console.WriteLine("MongoDB connection OK: " + result.ToJson());
 }
 
-// ----------------------------------------------------
-// 9) Middleware pipeline
-// ----------------------------------------------------
+//
+// =====================================================
+// 9️⃣ Middleware pipeline (ORDER MATTERS)
+// =====================================================
+//
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -163,7 +219,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// CORS must be before auth for browser calls
+// CORS must come BEFORE authentication
 app.UseCors("DevCors");
 
 app.UseAuthentication();
