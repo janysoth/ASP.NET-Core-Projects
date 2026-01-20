@@ -1,3 +1,7 @@
+// =====================================================
+// Program.cs
+// =====================================================
+
 using System.Text;
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -17,34 +21,21 @@ var builder = WebApplication.CreateBuilder(args);
 // 1️⃣ Load environment variables from .env (FAIL FAST)
 // =====================================================
 //
-// Purpose:
-// - Keeps secrets out of source control
-// - Ensures the app never boots without required secrets
-//
 
 var envPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
 
 if (!File.Exists(envPath))
 {
-    // Crash immediately if .env is missing
-    // Prevents accidentally running with empty secrets
     throw new InvalidOperationException($".env file not found at: {envPath}");
 }
 
-// Load variables from .env into process environment
 Env.Load(envPath);
-
-// Add environment variables to ASP.NET configuration system
 builder.Configuration.AddEnvironmentVariables();
 
 //
 // =====================================================
 // 2️⃣ Strongly-typed configuration with validation
 // =====================================================
-//
-// Purpose:
-// - Catch misconfiguration at startup (not at runtime)
-// - Avoid string-based configuration lookups everywhere
 //
 
 builder.Services.AddOptions<MongoDbSettings>()
@@ -53,7 +44,7 @@ builder.Services.AddOptions<MongoDbSettings>()
         "MongoDb:ConnectionString is missing")
     .Validate(s => !string.IsNullOrWhiteSpace(s.DatabaseName),
         "MongoDb:DatabaseName is missing")
-    .ValidateOnStart(); // App will NOT start if invalid
+    .ValidateOnStart();
 
 builder.Services.AddOptions<JwtSettings>()
     .Bind(builder.Configuration.GetSection("Jwt"))
@@ -67,12 +58,8 @@ builder.Services.AddOptions<JwtSettings>()
 
 //
 // =====================================================
-// 3️⃣ MongoDB client + database (Singleton)
+// 3️⃣ MongoDB client + database
 // =====================================================
-//
-// Why Singleton?
-// - MongoClient is thread-safe
-// - Recommended by MongoDB official docs
 //
 
 builder.Services.AddSingleton<IMongoClient>(sp =>
@@ -90,21 +77,15 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
 
 //
 // =====================================================
-// 4️⃣ Dependency Injection: Repositories & Services
+// 4️⃣ Dependency Injection
 // =====================================================
 //
-// Purpose:
-// - Enforces separation of concerns
-// - Keeps controllers thin
-//
 
-// Data access layer
 builder.Services.AddSingleton<UserRepository>();
 builder.Services.AddSingleton<TodoRepository>();
 
-// Business logic layer
-builder.Services.AddSingleton<JwtTokenService>(); // Access tokens only
-builder.Services.AddSingleton<AuthService>();     // Login, register, refresh
+builder.Services.AddSingleton<JwtTokenService>();
+builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<TodoService>();
 
 //
@@ -112,18 +93,15 @@ builder.Services.AddSingleton<TodoService>();
 // 5️⃣ Controllers & Swagger
 // =====================================================
 //
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 //
 // =====================================================
-// 6️⃣ CORS configuration (SPA + cookies)
+// 6️⃣ CORS
 // =====================================================
-//
-// Critical for:
-// - React frontend
-// - HttpOnly refresh token cookies
 //
 
 var frontendOrigin =
@@ -135,22 +113,17 @@ builder.Services.AddCors(opt =>
         policy.WithOrigins(frontendOrigin)
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials()); // REQUIRED for cookies
+              .AllowCredentials());
 });
 
 //
 // =====================================================
-// 7️⃣ JWT authentication (ACCESS TOKENS ONLY)
+// 7️⃣ JWT authentication (Access tokens only)
 // =====================================================
 //
 
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()
     ?? throw new InvalidOperationException("Jwt section is missing.");
-
-if (string.IsNullOrWhiteSpace(jwt.Key))
-{
-    throw new InvalidOperationException("Jwt:Key is empty.");
-}
 
 var signingKey =
     new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key));
@@ -161,22 +134,16 @@ builder.Services
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            // Validate token issuer
             ValidateIssuer = true,
             ValidIssuer = jwt.Issuer,
 
-            // Validate token audience
             ValidateAudience = true,
             ValidAudience = jwt.Audience,
 
-            // Validate token signature
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = signingKey,
 
-            // Validate expiration
             ValidateLifetime = true,
-
-            // Small clock drift allowance
             ClockSkew = TimeSpan.FromMinutes(1)
         };
     });
@@ -190,24 +157,17 @@ var app = builder.Build();
 // 8️⃣ MongoDB startup health check
 // =====================================================
 //
-// Forces MongoDB to be reachable at startup
-// Prevents app running in half-broken state
-//
 
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<IMongoDatabase>();
-
-    var result = db.RunCommand<BsonDocument>(
-        new BsonDocument("ping", 1)
-    );
-
+    var result = db.RunCommand<BsonDocument>(new BsonDocument("ping", 1));
     Console.WriteLine("MongoDB connection OK: " + result.ToJson());
 }
 
 //
 // =====================================================
-// 9️⃣ Middleware pipeline (ORDER MATTERS)
+// 9️⃣ Middleware pipeline (CORRECT ORDER)
 // =====================================================
 //
 
@@ -217,14 +177,19 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// ❌ HTTPS disabled because you're using HTTP locally
+// app.UseHttpsRedirection();
 
-// CORS must come BEFORE authentication
+// ✅ REQUIRED: enables endpoint routing
+app.UseRouting();
+
+// CORS must run before auth for browser calls
 app.UseCors("DevCors");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+// ✅ Executes matched controller endpoints
 app.MapControllers();
 
 app.Run();

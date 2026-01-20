@@ -6,7 +6,7 @@ namespace TaskManager.Api.Controllers;
 
 [ApiController]
 // Enables automatic model validation and consistent API behavior
-[Route("api/auth")]
+[Route("api/[controller]")]
 // Base route: /api/auth
 public sealed class AuthController : ControllerBase
 {
