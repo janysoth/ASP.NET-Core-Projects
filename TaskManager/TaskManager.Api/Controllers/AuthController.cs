@@ -131,7 +131,11 @@ public sealed class AuthController : ControllerBase
     // Remove refresh token cookie from browser
     Response.Cookies.Delete(cookieName);
 
-    return NoContent();
+    // Return success message
+    return Ok(new
+    {
+      message = "You have been successfully logged out."
+    });
   }
 
   // =========================
