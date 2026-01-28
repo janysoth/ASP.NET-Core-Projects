@@ -1,19 +1,16 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using TaskManager.Api.Dtos;
 using TaskManager.Api.Services;
 
 namespace TaskManager.Api.Controllers;
 
 [ApiController]
-// Enables automatic model validation and consistent API behavior
 [Route("api/[controller]")]
-// Base route: /api/auth
 public sealed class AuthController : ControllerBase
 {
-  // Service containing all authentication business logic
   private readonly AuthService _auth;
-
-  // Used to read configuration values from appsettings.json
   private readonly IConfiguration _config;
 
   public AuthController(AuthService auth, IConfiguration config)
@@ -30,22 +27,12 @@ public sealed class AuthController : ControllerBase
   {
     try
     {
-      // Creates the user, generates an access token,
-      // and issues a refresh token
-      var (response, refreshToken) = await _auth.RegisterAsync(req);
-
-      // Store refresh token securely in an HttpOnly cookie
+      var (res, refreshToken) = await _auth.RegisterAsync(req);
       SetRefreshCookie(refreshToken);
-
-      // Return access token + SAFE user info
-      return Ok(response);
+      return Ok(res);
     }
-    catch (Exception ex) when (
-        ex is ArgumentException ||
-        ex is InvalidOperationException
-    )
+    catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
     {
-      // Validation errors or duplicate user registration
       return BadRequest(new { error = ex.Message });
     }
   }
@@ -58,51 +45,55 @@ public sealed class AuthController : ControllerBase
   {
     try
     {
-      // Validates credentials and generates tokens
-      var (response, refreshToken) = await _auth.LoginAsync(req);
-
-      // Save refresh token in HttpOnly cookie
+      var (res, refreshToken) = await _auth.LoginAsync(req);
       SetRefreshCookie(refreshToken);
-
-      // Return access token + SAFE user info
-      return Ok(response);
+      return Ok(res);
     }
     catch
     {
-      // Do not expose authentication failure details
       return Unauthorized(new { error = "Invalid credentials." });
     }
   }
 
   // =========================
-  // REFRESH ACCESS TOKEN
+  // GET USER INFO (JWT)
+  // =========================
+  [Authorize]
+  [HttpGet("get-user-info")]
+  public async Task<ActionResult<AuthUserDto>> GetUserInfo()
+  {
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    if (string.IsNullOrWhiteSpace(userId))
+      return Unauthorized();
+
+    var user = await _auth.GetUserByIdAsync(userId);
+    if (user is null)
+      return Unauthorized();
+
+    return Ok(new AuthUserDto(
+      user.Id!,
+      user.FullName,
+      user.Email,
+      user.CreatedAtUtc
+    ));
+  }
+
+  // =========================
+  // REFRESH TOKEN
   // =========================
   [HttpPost("refresh")]
   public async Task<ActionResult<RefreshResponse>> Refresh()
   {
     try
     {
-      // Cookie name from configuration or fallback
       var cookieName = _config["RefreshToken:CookieName"] ?? "tm_refresh";
-
-      // Extract refresh token from HttpOnly cookie
       var refreshToken = Request.Cookies[cookieName];
 
-      // Reject request if cookie is missing
-      if (string.IsNullOrWhiteSpace(refreshToken))
-      {
-        return Unauthorized(new { error = "Missing refresh token." });
-      }
-
-      // Validate refresh token and rotate it
-      var (response, newRefreshToken) =
-          await _auth.RefreshAsync(refreshToken);
-
-      // Replace old refresh token with the new one
+      var (res, newRefreshToken) = await _auth.RefreshAsync(refreshToken ?? "");
       SetRefreshCookie(newRefreshToken);
 
-      // Return new access token
-      return Ok(response);
+      return Ok(res);
     }
     catch
     {
@@ -116,26 +107,17 @@ public sealed class AuthController : ControllerBase
   [HttpPost("logout")]
   public async Task<IActionResult> Logout()
   {
-    // Cookie name from configuration or fallback
     var cookieName = _config["RefreshToken:CookieName"] ?? "tm_refresh";
-
-    // Retrieve refresh token from cookie
     var refreshToken = Request.Cookies[cookieName];
 
-    // Revoke refresh token server-side (if present)
     if (!string.IsNullOrWhiteSpace(refreshToken))
     {
       await _auth.RevokeAsync(refreshToken);
     }
 
-    // Remove refresh token cookie from browser
     Response.Cookies.Delete(cookieName);
 
-    // Return success message
-    return Ok(new
-    {
-      message = "You have been successfully logged out."
-    });
+    return Ok(new { message = "You have been successfully logged out." });
   }
 
   // =========================
@@ -145,25 +127,14 @@ public sealed class AuthController : ControllerBase
   {
     var cookieName = _config["RefreshToken:CookieName"] ?? "tm_refresh";
 
-    Response.Cookies.Append(
-        cookieName,
-        refreshToken,
-        new CookieOptions
-        {
-          // Prevent JavaScript access (XSS protection)
-          HttpOnly = true,
-
-          // MUST be true in production (HTTPS)
-          Secure = false,
-
-          // Lax allows same-site requests and mitigates CSRF
-          SameSite = SameSiteMode.Lax,
-
-          // Refresh token expiration
-          Expires = DateTimeOffset.UtcNow.AddDays(
-                int.Parse(_config["RefreshToken:DaysToExpire"] ?? "7")
-            )
-        }
-    );
+    Response.Cookies.Append(cookieName, refreshToken, new CookieOptions
+    {
+      HttpOnly = true,
+      Secure = false, // set true in production
+      SameSite = SameSiteMode.Lax,
+      Expires = DateTimeOffset.UtcNow.AddDays(
+        int.Parse(_config["RefreshToken:DaysToExpire"] ?? "7")
+      )
+    });
   }
 }
