@@ -3,12 +3,13 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace TaskManager.Api.Models;
 
-public sealed class TodoItem
+public sealed class Todo
 {
   [BsonId]
   [BsonRepresentation(BsonType.ObjectId)]
   public string Id { get; set; } = "";
 
+  // 🔐 Ownership
   [BsonRepresentation(BsonType.ObjectId)]
   public string UserId { get; set; } = "";
 
