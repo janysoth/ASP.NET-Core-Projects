@@ -8,54 +8,75 @@ public sealed class TodoService
 {
   private readonly TodoRepository _repo;
 
-  public TodoService(TodoRepository repo) => _repo = repo;
+  public TodoService(TodoRepository repo)
+  {
+    _repo = repo;
+  }
 
   public async Task<List<TodoResponse>> GetAllAsync(string userId)
   {
-    var items = await _repo.GetAllForUserAsync(userId);
-    return items.Select(Map).ToList();
+    var todos = await _repo.GetByUserAsync(userId);
+
+    return todos.Select(ToResponse).ToList();
   }
 
-  public async Task<TodoResponse> CreateAsync(string userId, TodoCreateRequest req)
+  public async Task<TodoResponse?> GetByIdAsync(string id, string userId)
   {
-    if (string.IsNullOrWhiteSpace(req.Title))
-      throw new ArgumentException("Title is required.");
+    var todo = await _repo.GetByIdAsync(id, userId);
+    return todo is null ? null : ToResponse(todo);
+  }
 
-    var now = DateTime.UtcNow;
-
-    var todo = new TodoItem
+  public async Task<TodoResponse> CreateAsync(
+      TodoCreateRequest request,
+      string userId
+  )
+  {
+    var todo = new Todo
     {
       UserId = userId,
-      Title = req.Title.Trim(),
-      Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim(),
-      DueDateUtc = req.DueDateUtc,
-      CreatedAtUtc = now,
-      UpdatedAtUtc = now
+      Title = request.Title,
+      Description = request.Description,
+      DueDateUtc = request.DueDateUtc,
+      CreatedAtUtc = DateTime.UtcNow,
+      UpdatedAtUtc = DateTime.UtcNow
     };
 
     await _repo.CreateAsync(todo);
-    return Map(todo);
+    return ToResponse(todo);
   }
 
-  public async Task<TodoResponse> UpdateAsync(string userId, string id, TodoUpdateRequest req)
+  public async Task<bool> UpdateAsync(
+      string id,
+      TodoUpdateRequest request,
+      string userId
+  )
   {
-    var existing = await _repo.GetByIdForUserAsync(id, userId);
-    if (existing is null)
-      throw new KeyNotFoundException("Todo not found.");
+    var todo = await _repo.GetByIdAsync(id, userId);
+    if (todo is null) return false;
 
-    existing.Title = req.Title.Trim();
-    existing.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
-    existing.IsCompleted = req.IsCompleted;
-    existing.DueDateUtc = req.DueDateUtc;
-    existing.UpdatedAtUtc = DateTime.UtcNow;
+    todo.Title = request.Title;
+    todo.Description = request.Description;
+    todo.IsCompleted = request.IsCompleted;
+    todo.DueDateUtc = request.DueDateUtc;
+    todo.UpdatedAtUtc = DateTime.UtcNow;
 
-    await _repo.UpdateAsync(existing);
-    return Map(existing);
+    await _repo.UpdateAsync(todo);
+    return true;
   }
 
-  public Task DeleteAsync(string userId, string id)
-      => _repo.DeleteAsync(id, userId);
+  public Task DeleteAsync(string id, string userId)
+  {
+    return _repo.DeleteAsync(id, userId);
+  }
 
-  private static TodoResponse Map(TodoItem t) =>
-      new(t.Id, t.Title, t.Description, t.IsCompleted, t.DueDateUtc, t.CreatedAtUtc, t.UpdatedAtUtc);
+  private static TodoResponse ToResponse(Todo todo) =>
+      new(
+          todo.Id,
+          todo.Title,
+          todo.Description,
+          todo.IsCompleted,
+          todo.DueDateUtc,
+          todo.CreatedAtUtc,
+          todo.UpdatedAtUtc
+      );
 }
