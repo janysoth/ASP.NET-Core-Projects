@@ -11,36 +11,53 @@ namespace TaskManager.Api.Controllers;
 [Authorize]
 public sealed class TodosController : ControllerBase
 {
-  private readonly TodoService _todos;
-  public TodosController(TodoService todos) => _todos = todos;
+  private readonly TodoService _service;
+
+  public TodosController(TodoService service)
+  {
+    _service = service;
+  }
 
   private string UserId =>
       User.FindFirstValue(ClaimTypes.NameIdentifier)
-      ?? throw new InvalidOperationException("Missing user id claim.");
+      ?? throw new UnauthorizedAccessException();
 
   [HttpGet]
-  public async Task<ActionResult<List<TodoResponse>>> GetAll()
-      => Ok(await _todos.GetAllAsync(UserId));
-
-  [HttpPost]
-  public async Task<ActionResult<TodoResponse>> Create(TodoCreateRequest req)
+  public async Task<IActionResult> GetAll()
   {
-    try { return Ok(await _todos.CreateAsync(UserId, req)); }
-    catch (ArgumentException ex) { return BadRequest(new { error = ex.Message }); }
+    var todos = await _service.GetAllAsync(UserId);
+    return Ok(todos);
+  }
+
+  [HttpGet("{id}")]
+  public async Task<IActionResult> GetById(string id)
+  {
+    var todo = await _service.GetByIdAsync(id, UserId);
+    return todo is null ? NotFound() : Ok(todo);
+  }
+
+  [Authorize]
+  [HttpPost("create-todo")]
+  public async Task<IActionResult> Create(TodoCreateRequest request)
+  {
+    var todo = await _service.CreateAsync(request, UserId);
+    return CreatedAtAction(nameof(GetById), new { id = todo.Id }, todo);
   }
 
   [HttpPut("{id}")]
-  public async Task<ActionResult<TodoResponse>> Update(string id, TodoUpdateRequest req)
+  public async Task<IActionResult> Update(
+      string id,
+      TodoUpdateRequest request
+  )
   {
-    try { return Ok(await _todos.UpdateAsync(UserId, id, req)); }
-    catch (ArgumentException ex) { return BadRequest(new { error = ex.Message }); }
-    catch (KeyNotFoundException) { return NotFound(new { error = "Todo not found." }); }
+    var updated = await _service.UpdateAsync(id, request, UserId);
+    return updated ? NoContent() : NotFound();
   }
 
   [HttpDelete("{id}")]
   public async Task<IActionResult> Delete(string id)
   {
-    await _todos.DeleteAsync(UserId, id);
+    await _service.DeleteAsync(id, UserId);
     return NoContent();
   }
 }

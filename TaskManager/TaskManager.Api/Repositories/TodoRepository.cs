@@ -20,9 +20,9 @@ public sealed class TodoRepository
             .ToListAsync();
     }
 
-    public Task<Todo?> GetByIdAsync(string id, string userId)
+    public async Task<Todo?> GetByIdAsync(string id, string userId)
     {
-        return _todos
+        return await _todos
             .Find(t => t.Id == id && t.UserId == userId)
             .FirstOrDefaultAsync();
     }

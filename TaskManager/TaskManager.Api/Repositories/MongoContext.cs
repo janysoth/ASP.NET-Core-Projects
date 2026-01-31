@@ -12,10 +12,18 @@ public sealed class MongoContext
   public MongoContext(IOptions<MongoDbSettings> options)
   {
     var s = options.Value;
+
+    // MongoClient is thread-safe; creating once per context is fine
     var client = new MongoClient(s.ConnectionString);
+
     _db = client.GetDatabase(s.DatabaseName);
   }
 
-  public IMongoCollection<User> Users => _db.GetCollection<User>("users");
-  public IMongoCollection<TodoItem> Todos => _db.GetCollection<TodoItem>("todos");
+  // users collection
+  public IMongoCollection<User> Users =>
+      _db.GetCollection<User>("users");
+
+  // todos collection (FIXED)
+  public IMongoCollection<Todo> Todos =>
+      _db.GetCollection<Todo>("todos");
 }
