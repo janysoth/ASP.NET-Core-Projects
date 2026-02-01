@@ -14,7 +14,6 @@ public sealed class UserRepository
     // Each document in this collection represents one user record.
     private readonly IMongoCollection<User> _users;
 
-    /// <summary>
     /// Constructor receives an IMongoDatabase via dependency injection.
     /// This allows the database connection and configuration to be
     /// managed centrally (typically in Program.cs).
@@ -26,10 +25,8 @@ public sealed class UserRepository
         _users = db.GetCollection<User>("users");
     }
 
-    /// <summary>
     /// Retrieves a user by email address.
     /// Returns null if no matching document exists.
-    /// </summary>
     public async Task<User?> GetByEmailAsync(string email)
     {
         // dbUser represents EACH document in the MongoDB "users" collection.
@@ -56,7 +53,6 @@ public sealed class UserRepository
             .FirstOrDefaultAsync();
     }
 
-    /// <summary>
     /// Retrieves a user that owns the specified refresh token hash.
     /// Used during refresh-token validation and rotation.
     /// Returns null if the token is invalid or revoked.
@@ -73,10 +69,8 @@ public sealed class UserRepository
             .FirstOrDefaultAsync();
     }
 
-    /// <summary>
     /// Inserts a new user document into the database.
     /// MongoDB will generate an _id value automatically if not provided.
-    /// </summary>
     public Task CreateAsync(User user)
     {
         // InsertOneAsync persists the entire User object as a new document.
@@ -84,15 +78,12 @@ public sealed class UserRepository
         return _users.InsertOneAsync(user);
     }
 
-    /// <summary>
     /// Replaces an existing user document with the provided user object.
     /// The document is identified by its Id.
-    /// </summary>
     public Task UpdateAsync(User user)
     {
         // dbUser represents the EXISTING document in MongoDB.
         // user represents the UPDATED object passed into the method.
-        //
         // The filter ensures only the document with the matching Id
         // is replaced. Without this filter, the wrong document
         // could be overwritten.
