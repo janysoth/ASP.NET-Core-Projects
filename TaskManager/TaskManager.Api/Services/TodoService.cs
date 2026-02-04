@@ -16,7 +16,6 @@ public sealed class TodoService
   public async Task<List<TodoResponse>> GetAllAsync(string userId)
   {
     var todos = await _repo.GetByUserAsync(userId);
-
     return todos.Select(ToResponse).ToList();
   }
 
@@ -28,8 +27,7 @@ public sealed class TodoService
 
   public async Task<TodoResponse> CreateAsync(
       TodoCreateRequest request,
-      string userId
-  )
+      string userId)
   {
     var todo = new Todo
     {
@@ -69,6 +67,7 @@ public sealed class TodoService
     return _repo.DeleteAsync(id, userId);
   }
 
+  // ---------------- DTO MAPPER ----------------
   private static TodoResponse ToResponse(Todo todo) =>
       new(
           todo.Id,
@@ -79,4 +78,5 @@ public sealed class TodoService
           todo.CreatedAtUtc,
           todo.UpdatedAtUtc
       );
+
 }

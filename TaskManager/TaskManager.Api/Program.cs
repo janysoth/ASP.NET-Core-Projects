@@ -13,6 +13,7 @@ using TaskManager.Api.Auth;
 using TaskManager.Api.Repositories;
 using TaskManager.Api.Services;
 using TaskManager.Api.Settings;
+using TaskManager.Api.Helpers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -94,7 +95,13 @@ builder.Services.AddSingleton<TodoService>();
 // =====================================================
 //
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters
+            .Add(new UsDateJsonConverter());
+    });
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
