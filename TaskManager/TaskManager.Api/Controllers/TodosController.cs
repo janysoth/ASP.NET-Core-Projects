@@ -60,4 +60,12 @@ public sealed class TodosController : ControllerBase
     await _service.DeleteAsync(id, UserId);
     return NoContent();
   }
+
+  [HttpDelete("delete-all")]
+  public async Task<IActionResult> DeleteAll()
+  {
+    await _service.DeleteAllAsync(UserId);
+    return NoContent();
+  }
+
 }

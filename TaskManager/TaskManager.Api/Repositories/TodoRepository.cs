@@ -46,4 +46,9 @@ public sealed class TodoRepository
             t => t.Id == id && t.UserId == userId
         );
     }
+
+    public Task DeleteAllByUserAsync(string userId)
+    {
+        return _todos.DeleteManyAsync(t => t.UserId == userId);
+    }
 }

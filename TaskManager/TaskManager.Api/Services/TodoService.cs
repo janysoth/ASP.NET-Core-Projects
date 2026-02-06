@@ -67,6 +67,11 @@ public sealed class TodoService
     return _repo.DeleteAsync(id, userId);
   }
 
+  public Task DeleteAllAsync(string userId)
+  {
+    return _repo.DeleteAllByUserAsync(userId);
+  }
+
   // ---------------- DTO MAPPER ----------------
   private static TodoResponse ToResponse(Todo todo) =>
       new(
