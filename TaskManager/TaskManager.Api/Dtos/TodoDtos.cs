@@ -22,3 +22,10 @@ public sealed record TodoResponse(
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc
 );
+
+public sealed record TodoPatchRequest(
+    string? Title,
+    string? Description,
+    bool? IsCompleted,
+    DateTime? DueDateUtc
+);

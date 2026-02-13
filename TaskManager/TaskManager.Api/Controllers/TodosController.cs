@@ -68,4 +68,47 @@ public sealed class TodosController : ControllerBase
     return NoContent();
   }
 
+  [HttpPatch("{id}")]
+  public async Task<IActionResult> PatchUpdate(string id, [FromBody] TodoPatchRequest request)
+  {
+    if (request == null)
+    {
+      return BadRequest("Patch request body cannot be null.");
+    }
+
+    // Initialize a dictionary to hold updated fields and their new values
+    var updatedFields = new Dictionary<string, object>();
+
+    // Update fields conditionally based on what is provided
+    if (request.Title != null)
+    {
+      await _service.PatchUpdateAsync(id, UserId, t => t.Title, request.Title);
+      updatedFields["Title"] = request.Title; // Track the updated field
+    }
+
+    if (request.Description != null)
+    {
+      await _service.PatchUpdateAsync(id, UserId, t => t.Description, request.Description);
+      updatedFields["Description"] = request.Description; // Track the updated field
+    }
+
+    if (request.IsCompleted.HasValue)
+    {
+      await _service.PatchUpdateAsync(id, UserId, t => t.IsCompleted, request.IsCompleted.Value);
+      updatedFields["IsCompleted"] = request.IsCompleted.Value; // Track the updated field
+    }
+
+    if (request.DueDateUtc.HasValue)
+    {
+      await _service.PatchUpdateAsync(id, UserId, t => t.DueDateUtc, request.DueDateUtc.Value);
+      updatedFields["DueDateUtc"] = request.DueDateUtc.Value; // Track the updated field
+    }
+
+    // Return a response with the updated fields
+    return Ok(new
+    {
+      Message = "Todo updated successfully.",
+      UpdatedFields = updatedFields
+    });
+  }
 }
