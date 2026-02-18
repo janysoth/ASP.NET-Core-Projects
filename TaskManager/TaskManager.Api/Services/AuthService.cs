@@ -144,7 +144,7 @@ public sealed class AuthService
   // ----------------------------------------------------
   // LOGOUT / REVOKE REFRESH TOKEN
   // ----------------------------------------------------
-  public async Task RevokeAsync(string rawRefreshToken)
+  public async Task RevokeAsync(string rawRefreshToken, string accessToken)
   {
     if (string.IsNullOrWhiteSpace(rawRefreshToken))
       return;
@@ -162,6 +162,12 @@ public sealed class AuthService
     if (token.RevokedAtUtc is null)
       token.RevokedAtUtc = DateTime.UtcNow;
 
+    // Revoke access token
+    if (!string.IsNullOrWhiteSpace(accessToken))
+    {
+      _jwt.RevokeToken(accessToken); // Assume this calls a method to track revoked tokens
+    }
+
     await _users.UpdateAsync(user);
   }
 
@@ -171,6 +177,14 @@ public sealed class AuthService
   public async Task<User?> GetUserByIdAsync(string userId)
   {
     return await _users.GetByIdAsync(userId);
+  }
+
+  // ----------------------------------------------------
+  // VALIDATE TOKEN
+  // ----------------------------------------------------
+  public bool ValidateToken(string token)
+  {
+    return _jwt.ValidateToken(token); // Call method from JwtTokenService
   }
 
   // ----------------------------------------------------

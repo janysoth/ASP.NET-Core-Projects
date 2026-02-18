@@ -153,6 +153,15 @@ builder.Services
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1)
         };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                // Custom logic on failed authentication can be placed here
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();

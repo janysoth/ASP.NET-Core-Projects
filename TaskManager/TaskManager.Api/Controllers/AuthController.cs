@@ -62,20 +62,33 @@ public sealed class AuthController : ControllerBase
   [HttpGet("get-user-info")]
   public async Task<ActionResult<AuthUserDto>> GetUserInfo()
   {
+    var authorizationHeader = Request.Headers["Authorization"].ToString();
+    var token = authorizationHeader?.Replace("Bearer ", string.Empty);
+
+    if (token == null || !_auth.ValidateToken(token))
+    {
+      return Unauthorized(new { error = "There's currently no user logged in." });
+    }
+
     var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+    // Ensure userId is not null or whitespace
     if (string.IsNullOrWhiteSpace(userId))
-      return Unauthorized();
+    {
+      return Unauthorized(new { error = "There's currently no user logged in." });
+    }
 
     var user = await _auth.GetUserByIdAsync(userId);
     if (user is null)
-      return Unauthorized();
+    {
+      return Unauthorized(new { error = "User not found." });
+    }
 
     return Ok(new AuthUserDto(
-      user.Id!,
-      user.FullName,
-      user.Email,
-      user.CreatedAtUtc
+        user.Id!,
+        user.FullName,
+        user.Email,
+        user.CreatedAtUtc
     ));
   }
 
@@ -110,13 +123,24 @@ public sealed class AuthController : ControllerBase
     var cookieName = _config["RefreshToken:CookieName"] ?? "tm_refresh";
     var refreshToken = Request.Cookies[cookieName];
 
-    if (!string.IsNullOrWhiteSpace(refreshToken))
+    var authorizationHeader = Request.Headers["Authorization"].ToString();
+    var accessToken = authorizationHeader.Replace("Bearer ", "").Trim();
+
+    // Log whether we found a token
+    Console.WriteLine($"Authorization header: {authorizationHeader}");
+    Console.WriteLine($"Extracted access token: '{accessToken}'");
+
+    if (!string.IsNullOrWhiteSpace(refreshToken) && !string.IsNullOrWhiteSpace(accessToken))
     {
-      await _auth.RevokeAsync(refreshToken);
+      await _auth.RevokeAsync(refreshToken, accessToken);
+      Console.WriteLine($"Revoking access token: {accessToken}");
+    }
+    else
+    {
+      Console.WriteLine("No access token found to revoke.");
     }
 
     Response.Cookies.Delete(cookieName);
-
     return Ok(new { message = "You have been successfully logged out." });
   }
 
@@ -130,11 +154,11 @@ public sealed class AuthController : ControllerBase
     Response.Cookies.Append(cookieName, refreshToken, new CookieOptions
     {
       HttpOnly = true,
-      Secure = false, // set true in production
+      Secure = false, // Set true in production
       SameSite = SameSiteMode.Lax,
       Expires = DateTimeOffset.UtcNow.AddDays(
-        int.Parse(_config["RefreshToken:DaysToExpire"] ?? "7")
-      )
+            int.Parse(_config["RefreshToken:DaysToExpire"] ?? "7")
+        )
     });
   }
 }
