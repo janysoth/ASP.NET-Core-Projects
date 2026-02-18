@@ -51,14 +51,31 @@ public sealed class TodosController : ControllerBase
   )
   {
     var updated = await _service.UpdateAsync(id, request, UserId);
-    return updated ? NoContent() : NotFound();
+    return updated ? Ok(new
+    {
+      Message = "Todo updated successfully."
+    }) : NotFound();
   }
 
   [HttpDelete("{id}")]
   public async Task<IActionResult> Delete(string id)
   {
+    // Retrieve the Todo before deleting to get its title
+    var todo = await _service.GetByIdAsync(id, UserId);
+
+    if (todo is null)
+    {
+      return BadRequest("Something is wrong. Please try again.");
+    }
+
+    // Delete the Todo
     await _service.DeleteAsync(id, UserId);
-    return NoContent();
+
+    // Return success message
+    return Ok(new
+    {
+      Message = $"The todo '{todo.Title}' has been successfully deleted."
+    });
   }
 
   [HttpDelete("delete-all")]
