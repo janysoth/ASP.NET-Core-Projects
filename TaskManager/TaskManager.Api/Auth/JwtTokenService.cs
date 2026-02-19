@@ -5,12 +5,14 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using TaskManager.Api.Models;
 using TaskManager.Api.Settings;
+using TaskManager.Api.Exceptions;
 
 namespace TaskManager.Api.Auth;
 
 public sealed class JwtTokenService
 {
   private readonly JwtSettings _settings;
+  // This should be replaced with a database or persistent store
   private readonly HashSet<string> _revokedTokens = new(); // In-memory revoked tokens
 
   public JwtTokenService(IOptions<JwtSettings> options)
@@ -46,10 +48,10 @@ public sealed class JwtTokenService
   // Validate a JWT access token
   public bool ValidateToken(string token)
   {
-    if (_revokedTokens.Contains(token))
+    // Implement token validation logic
+    if (IsTokenRevoked(token)) // Add this check
     {
-      Console.WriteLine($"Token {token} is revoked.");
-      throw new SecurityTokenExpiredException("Token is revoked.");
+      throw new TokenRevokedException("Token has been revoked.");
     }
 
     var tokenHandler = new JwtSecurityTokenHandler();
@@ -67,14 +69,18 @@ public sealed class JwtTokenService
 
     try
     {
-      // Check if the token is revoked
-      if (_revokedTokens.Contains(token))
+      // Check if the token is revoked using a persistent store
+      if (IsTokenRevoked(token))
       {
-        throw new SecurityTokenExpiredException("Token is revoked.");
+        throw new TokenRevokedException("Token has been revoked.");
       }
 
       tokenHandler.ValidateToken(token, validationParameters, out SecurityToken validatedToken);
       return true; // Token is valid
+    }
+    catch (TokenRevokedException)
+    {
+      throw; // Preserve stack trace
     }
     catch
     {
@@ -82,12 +88,26 @@ public sealed class JwtTokenService
     }
   }
 
+  // Check if the token is revoked (this should query a database in production)
+  private bool IsTokenRevoked(string token)
+  {
+    return _revokedTokens.Contains(token); // Replace with a lookup for persistent storage
+  }
+
   // Revocation logic for the Access token
   public void RevokeToken(string token)
   {
     if (!string.IsNullOrWhiteSpace(token))
     {
-      _revokedTokens.Add(token); // Store revoked token
+      // Store revoked token in the persistent store (e.g., database)
+      _revokedTokens.Add(token); // For demo purposes; replace with actual persistence
     }
+  }
+
+  // Example method for verifying a refresh token (should be implemented)
+  public bool ValidateRefreshToken(string refreshToken)
+  {
+    // Implement refresh token validation logic here
+    return true; // Placeholder
   }
 }
