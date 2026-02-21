@@ -1,11 +1,13 @@
 import React from 'react';
 
-const HomePage = () => {
+const RegisterPage = () => {
   return (
     <div className="flex items-center justify-center h-screen">
-      <h1 className="text-4xl font-bold">Welcome to the Task Manager</h1>
+      <h2 className="text-2xl">
+        Register Page
+      </h2>
     </div>
   );
 };
 
-export default HomePage;
+export default RegisterPage;
