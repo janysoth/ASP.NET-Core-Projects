@@ -21,7 +21,6 @@ var builder = WebApplication.CreateBuilder(args);
 // =====================================================
 // 1️⃣ Load environment variables from .env (FAIL FAST)
 // =====================================================
-//
 
 var envPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
 
@@ -37,7 +36,6 @@ builder.Configuration.AddEnvironmentVariables();
 // =====================================================
 // 2️⃣ Strongly-typed configuration with validation
 // =====================================================
-//
 
 builder.Services.AddOptions<MongoDbSettings>()
     .Bind(builder.Configuration.GetSection("MongoDb"))
@@ -61,7 +59,6 @@ builder.Services.AddOptions<JwtSettings>()
 // =====================================================
 // 3️⃣ MongoDB client + database
 // =====================================================
-//
 
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
@@ -80,7 +77,6 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
 // =====================================================
 // 4️⃣ Dependency Injection
 // =====================================================
-//
 
 builder.Services.AddSingleton<UserRepository>();
 builder.Services.AddSingleton<TodoRepository>();
@@ -93,7 +89,6 @@ builder.Services.AddSingleton<TodoService>();
 // =====================================================
 // 5️⃣ Controllers & Swagger
 // =====================================================
-//
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -109,15 +104,15 @@ builder.Services.AddSwaggerGen();
 // =====================================================
 // 6️⃣ CORS
 // =====================================================
-//
 
-var frontendOrigin =
-    builder.Configuration["Frontend:Origin"] ?? "http://localhost:5173";
+var frontendOrigin = builder.Configuration["Frontend:Origin"] ?? "http://localhost:3000"; // Make sure this matches your frontend
+
+Console.WriteLine($"Frontend Origin: {frontendOrigin}"); // Debugging output
 
 builder.Services.AddCors(opt =>
 {
     opt.AddPolicy("DevCors", policy =>
-        policy.WithOrigins(frontendOrigin)
+        policy.WithOrigins(frontendOrigin) // Allow requests from this origin
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials());
@@ -127,13 +122,11 @@ builder.Services.AddCors(opt =>
 // =====================================================
 // 7️⃣ JWT authentication (Access tokens only)
 // =====================================================
-//
 
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()
     ?? throw new InvalidOperationException("Jwt section is missing.");
 
-var signingKey =
-    new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key));
+var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key));
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -172,7 +165,6 @@ var app = builder.Build();
 // =====================================================
 // 8️⃣ MongoDB startup health check
 // =====================================================
-//
 
 using (var scope = app.Services.CreateScope())
 {
@@ -185,7 +177,6 @@ using (var scope = app.Services.CreateScope())
 // =====================================================
 // 9️⃣ Middleware pipeline (CORRECT ORDER)
 // =====================================================
-//
 
 if (app.Environment.IsDevelopment())
 {
@@ -199,9 +190,7 @@ if (app.Environment.IsDevelopment())
 // ✅ REQUIRED: enables endpoint routing
 app.UseRouting();
 
-// CORS must run before auth for browser calls
-app.UseCors("DevCors");
-
+app.UseCors("DevCors"); // CORS must run before auth for browser calls
 app.UseAuthentication();
 app.UseAuthorization();
 
