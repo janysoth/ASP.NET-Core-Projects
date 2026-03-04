@@ -11,7 +11,12 @@ import ProtectedRoute from './routes/ProtectedRoute';
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={
+        <ProtectedRoute>
+          <HomePage />
+        </ProtectedRoute>
+      }
+      />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
