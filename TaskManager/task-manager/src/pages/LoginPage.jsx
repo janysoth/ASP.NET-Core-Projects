@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import InputField from '../components/input/InputField';
 import { useAuth } from '../context/useAuth';
 import { login as loginApi } from '../services/api';
 
@@ -9,63 +10,67 @@ const LoginPage = () => {
   const [error, setError] = useState('');
 
   const navigate = useNavigate();
-  const { login } = useAuth(); // ✅ use context login
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
       const response = await loginApi({ email, password });
-
-      // Adjust based on your backend response shape
       const { accessToken, user } = response.data;
-
-      // ✅ Call AuthContext login
-      login({
-        token: accessToken,
-        user: user
-      });
-
+      login({ token: accessToken, user });
       navigate('/todos');
-
-    } catch (error) {
+    } catch (err) {
       setError('Invalid credentials. Please try again.');
-      console.error('Login failed:', error);
+      console.error('Login failed:', err);
     }
   };
 
   return (
-    <div className="flex items-center justify-center h-screen">
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow-md">
-        <h2 className="mb-6 text-2xl font-bold text-center">Login</h2>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-50 to-indigo-100">
+      <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300">
+        <h2 className="text-3xl font-bold text-center text-indigo-700 mb-6">Welcome Back</h2>
 
-        {error && <p className="text-red-500">{error}</p>}
+        {error && (
+          <div className="bg-red-100 text-red-700 p-2 mb-4 rounded text-sm text-center">
+            {error}
+          </div>
+        )}
 
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="w-full mb-4 p-2 border border-gray-300 rounded"
-        />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <InputField
+            label="Email"
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="w-full mb-4 p-2 border border-gray-300 rounded"
-        />
+          <InputField
+            label="Password"
+            type="password"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
-        <button
-          type="submit"
-          className="w-full p-2 bg-blue-600 text-white rounded"
-        >
-          Login
-        </button>
-      </form>
+          <button
+            type="submit"
+            className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition"
+          >
+            Login
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-gray-600">
+          Don't have an account?{' '}
+          <Link
+            to="/register"
+            className="text-indigo-600 font-medium hover:underline"
+          >
+            Register
+          </Link>
+        </p>
+      </div>
     </div>
   );
 };
