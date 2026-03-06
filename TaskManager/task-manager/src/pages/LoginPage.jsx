@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+
+import { EmailIcon, EyeIcon, EyeOffIcon, LockIcon } from '../components/icons/Icons';
 import InputField from '../components/input/InputField';
 import { useAuth } from '../context/useAuth';
 import { login as loginApi } from '../services/api';
 
 const LoginPage = () => {
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -14,21 +17,32 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     try {
       const response = await loginApi({ email, password });
+
       const { accessToken, user } = response.data;
-      login({ token: accessToken, user });
+
+      login({
+        token: accessToken,
+        user: user
+      });
+
       navigate('/todos');
-    } catch (err) {
+
+    } catch (error) {
       setError('Invalid credentials. Please try again.');
-      console.error('Login failed:', err);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-50 to-indigo-100">
-      <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300">
-        <h2 className="text-3xl font-bold text-center text-indigo-700 mb-6">Welcome Back</h2>
+
+      <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
+
+        <h2 className="text-3xl font-bold text-center text-indigo-700 mb-6">
+          Welcome Back
+        </h2>
 
         {error && (
           <div className="bg-red-100 text-red-700 p-2 mb-4 rounded text-sm text-center">
@@ -37,12 +51,14 @@ const LoginPage = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+
           <InputField
             label="Email"
             type="email"
             placeholder="Enter your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            icon={<EmailIcon />}
           />
 
           <InputField
@@ -51,6 +67,12 @@ const LoginPage = () => {
             placeholder="Enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            icon={<LockIcon />}
+            showIcon={<EyeIcon />}
+            hideIcon={
+              <EyeOffIcon />
+
+            }
           />
 
           <button
@@ -59,6 +81,7 @@ const LoginPage = () => {
           >
             Login
           </button>
+
         </form>
 
         <p className="mt-6 text-center text-gray-600">
@@ -70,6 +93,7 @@ const LoginPage = () => {
             Register
           </Link>
         </p>
+
       </div>
     </div>
   );
