@@ -3,59 +3,46 @@ import React, { useState } from 'react';
 const InputField = ({
   label,
   type = 'text',
-  value,
-  onChange,
   placeholder,
   icon,
   showIcon,
-  hideIcon
+  hideIcon,
+  validate,
+  value,
+  onChange,
+  showError = false,
 }) => {
-  const [showPassword, setShowPassword] = useState(false);
+  const [visible, setVisible] = useState(false);
 
-  const isPassword = type === 'password';
-  const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
+  const handleChange = (e) => {
+    onChange(e.target.value);
+  };
+
+  const toggleVisibility = () => setVisible(!visible);
+
+  const errorMessage = validate && showError ? validate(value) : '';
 
   return (
-    <div>
-      {label && (
-        <label className="block text-gray-700 font-medium mb-1">
-          {label}
-        </label>
-      )}
-
-      <div className="relative">
-
-        {/* Left icon */}
-        {icon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-            {icon}
-          </div>
-        )}
-
+    <div className="flex flex-col">
+      <label className="mb-1 font-medium">{label}</label>
+      <div className="flex items-center border border-gray-300 rounded px-3 py-2 focus-within:border-blue-500 transition">
+        {icon && <span className="mr-2">{icon}</span>}
         <input
-          type={inputType}
-          value={value}
-          onChange={onChange}
+          type={visible ? 'text' : type}
           placeholder={placeholder}
-          className={`w-full p-3 border border-gray-300 rounded-md
-            focus:outline-none focus:ring-2 focus:ring-indigo-400
-            focus:border-indigo-400 transition
-            ${icon ? 'pl-10' : ''}
-            ${isPassword ? 'pr-12' : ''}`}
+          value={value}
+          onChange={handleChange}
+          className="flex-1 outline-none"
         />
-
-        {/* Password Toggle */}
-        {isPassword && (
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 text-gray-500 hover:text-indigo-600"
-          >
-            {showPassword ? showIcon : hideIcon}
-          </button>
+        {type === 'password' && (showIcon || hideIcon) && (
+          <span onClick={toggleVisibility} className="ml-2 cursor-pointer">
+            {visible ? hideIcon : showIcon}
+          </span>
         )}
-
       </div>
+      {errorMessage && (
+        <p className="text-red-600 text-sm mt-1">{errorMessage}</p>
+      )}
     </div>
   );
 };
