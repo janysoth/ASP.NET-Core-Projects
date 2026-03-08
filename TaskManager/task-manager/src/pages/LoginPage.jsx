@@ -45,7 +45,9 @@ const LoginPage = () => {
     }
   };
 
-  const isDisabled = !email || !password;
+  const isDisabled =
+    validateEmail(email) !== '' ||
+    validatePassword(password) !== '';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-50 to-indigo-100">
