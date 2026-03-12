@@ -84,7 +84,7 @@ const LoginPage = () => {
       const { accessToken, user } = response.data;
 
       login({ token: accessToken, user });
-      navigate('/todos', { replace: true });
+      navigate('/', { replace: true });
     } catch (err) {
       const errorMessage = err.response?.data?.message
         || 'Invalid credentials. Please try again.';
