@@ -1,13 +1,14 @@
 // components/navigation/Navbar.jsx
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
-import { HomeIcon, LogoutIcon, UserIcon } from '../icons/Icons';
+import { ChecklistIcon, HomeIcon, LogoutIcon, UserIcon } from '../icons/Icons';
 
 const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
 
   // Close dropdown when clicking outside
@@ -29,19 +30,40 @@ const Navbar = () => {
 
   const toggleDropdown = () => setIsDropdownOpen(!isDropdownOpen);
 
+  // Helper to check if route is active
+  const isActive = (path) => location.pathname === path;
+
   return (
     <nav className="bg-indigo-600 text-white shadow-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
 
-          {/* Home Icon - Far Left */}
-          <Link
-            to="/"
-            className="flex items-center gap-2 hover:bg-indigo-700 p-2 rounded-lg transition-colors duration-200"
-          >
-            <HomeIcon className="w-6 h-6" />
-            <span className="font-semibold hidden sm:block">Home</span>
-          </Link>
+          {/* Left Side - Navigation Links */}
+          <div className="flex items-center gap-1">
+            {/* Home Link */}
+            <Link
+              to="/"
+              className={`flex items-center gap-2 p-2 rounded-lg transition-colors duration-200 ${isActive('/')
+                ? 'bg-indigo-800 text-red-500'
+                : 'hover:bg-indigo-700 text-indigo-100'
+                }`}
+            >
+              <HomeIcon className="w-6 h-6" />
+              <span className="font-semibold hidden sm:block">Home</span>
+            </Link>
+
+            {/* Todos Link */}
+            <Link
+              to="/todos"
+              className={`flex items-center gap-2 p-2 rounded-lg transition-colors duration-200 ${isActive('/todos')
+                ? 'bg-indigo-800 text-red-500'
+                : 'hover:bg-indigo-700 text-indigo-100'
+                }`}
+            >
+              <ChecklistIcon className="w-6 h-6" />
+              <span className="font-semibold hidden sm:block">Todos</span>
+            </Link>
+          </div>
 
           {/* Right Side - User Profile */}
           <div className="relative" ref={dropdownRef}>
