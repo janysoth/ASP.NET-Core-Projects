@@ -14,6 +14,8 @@ using TaskManager.Api.Repositories;
 using TaskManager.Api.Services;
 using TaskManager.Api.Settings;
 using TaskManager.Api.Helpers;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -93,8 +95,17 @@ builder.Services.AddSingleton<TodoService>();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.Converters
-            .Add(new UsDateJsonConverter());
+        // Allow camelCase from JavaScript
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+
+        // Ignore null values (don't send them to the server)
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+
+        // Allow case-insensitive property matching
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+
+        // Make fields nullable in records work properly
+        options.JsonSerializerOptions.IncludeFields = true;
     });
 
 builder.Services.AddEndpointsApiExplorer();

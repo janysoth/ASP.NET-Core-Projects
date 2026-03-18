@@ -16,6 +16,24 @@ const FILTER_OPTIONS = {
   COMPLETED: 'completed'
 };
 
+// Helper: Convert UTC ISO string to local date string (YYYY-MM-DD) for input
+const utcToLocalDateString = (utcIsoString) => {
+  if (!utcIsoString) return '';
+  const date = new Date(utcIsoString);
+  // Adjust for timezone offset to get correct local date
+  const offset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+  return localDate.toISOString().split('T')[0];
+};
+
+// Helper: Convert local date string (YYYY-MM-DD) to UTC ISO string
+const localDateToUtcString = (localDateString) => {
+  if (!localDateString) return null;
+  // Create date at midnight local time, then convert to UTC
+  const localDate = new Date(localDateString);
+  return localDate.toISOString();
+};
+
 const TodosPage = () => {
   // State
   const [todos, setTodos] = useState([]);
@@ -83,40 +101,51 @@ const TodosPage = () => {
 
     try {
       if (editingId) {
-        // PATCH - only send changed fields
         const existingTodo = todos.find(t => t.id === editingId);
         const patchPayload = {};
+        let hasChanges = false;
 
-        // Only include fields that changed
         const newTitle = formData.title.trim();
         if (newTitle !== existingTodo.title) {
           patchPayload.title = newTitle;
+          hasChanges = true;
         }
 
-        const newDesc = formData.description.trim() || null;
-        if (newDesc !== (existingTodo.description || null)) {
+        const newDesc = formData.description?.trim() || null;
+        const currentDesc = existingTodo.description || null;
+        if (newDesc !== currentDesc) {
           patchPayload.description = newDesc;
+          hasChanges = true;
         }
 
-        const newDueDate = formData.dueDate ? new Date(formData.dueDate).toISOString() : null;
-        if (newDueDate !== existingTodo.dueDateUtc) {
+        // Convert local date to UTC for backend
+        const newDueDate = formData.dueDate
+          ? localDateToUtcString(formData.dueDate)
+          : null;
+        const currentDueDate = existingTodo.dueDateUtc || null;
+
+        if (newDueDate !== currentDueDate) {
           patchPayload.dueDateUtc = newDueDate;
+          hasChanges = true;
         }
 
-        // Only call API if there are changes
-        if (Object.keys(patchPayload).length > 0) {
-          await patchTodo(editingId, patchPayload);
-          // Refresh todos to get updated data from server
-          await fetchTodos();
+        if (!hasChanges) {
+          setEditingId(null);
+          setFormData(INITIAL_FORM_STATE);
+          return;
         }
 
+        await patchTodo(editingId, patchPayload);
+        await fetchTodos();
         setEditingId(null);
       } else {
-        // POST - create new todo
+        // Create new todo
         const payload = {
           title: formData.title.trim(),
-          description: formData.description.trim() || null,
-          dueDateUtc: formData.dueDate ? new Date(formData.dueDate).toISOString() : null
+          description: formData.description?.trim() || null,
+          dueDateUtc: formData.dueDate
+            ? localDateToUtcString(formData.dueDate)
+            : null
         };
 
         const response = await createTodo(payload);
@@ -125,7 +154,8 @@ const TodosPage = () => {
 
       setFormData(INITIAL_FORM_STATE);
     } catch (err) {
-      const message = err.response?.data?.message || `Failed to ${editingId ? 'update' : 'create'} todo`;
+      const errorData = err.response?.data;
+      const message = errorData?.title || errorData?.message || `Failed to ${editingId ? 'update' : 'create'} todo`;
       setError(message);
       console.error('Save todo error:', err);
     } finally {
@@ -135,20 +165,17 @@ const TodosPage = () => {
 
   const handleToggleComplete = useCallback(async (todo) => {
     try {
-      // PATCH - only send isCompleted field
       const patchPayload = {
         isCompleted: !todo.isCompleted
       };
 
       await patchTodo(todo.id, patchPayload);
 
-      // Optimistic update for better UX
       setTodos(prev => prev.map(t =>
         t.id === todo.id ? { ...t, isCompleted: !t.isCompleted } : t
       ));
     } catch (err) {
       console.error('Toggle complete error:', err);
-      // Revert on error
       await fetchTodos();
     }
   }, [fetchTodos]);
@@ -158,7 +185,8 @@ const TodosPage = () => {
     setFormData({
       title: todo.title,
       description: todo.description || '',
-      dueDate: todo.dueDateUtc ? new Date(todo.dueDateUtc).toISOString().split('T')[0] : ''
+      // Convert UTC to local date string for input
+      dueDate: utcToLocalDateString(todo.dueDateUtc)
     });
   }, []);
 
@@ -186,10 +214,13 @@ const TodosPage = () => {
     const date = new Date(dateString);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const isOverdue = date < today;
+
+    // Create date object in local timezone for comparison
+    const localDate = new Date(date.getTime() + (date.getTimezoneOffset() * 60 * 1000));
+    const isOverdue = localDate < today && !date.isCompleted;
 
     return {
-      display: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      display: localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       isOverdue
     };
   };
@@ -221,7 +252,7 @@ const TodosPage = () => {
         className={`group flex items-start gap-3 p-4 bg-white rounded-lg border transition-all duration-200 ${todo.isCompleted
             ? 'border-gray-200 bg-gray-50'
             : 'border-gray-200 hover:border-indigo-300 hover:shadow-md'
-          } ${dueDate?.isOverdue && !todo.isCompleted ? 'border-l-4 border-l-red-500' : ''}`}
+          } ${dueDate?.isOverdue ? 'border-l-4 border-l-red-500' : ''}`}
       >
         {/* Checkbox */}
         <button
@@ -242,7 +273,7 @@ const TodosPage = () => {
               {todo.title}
             </h3>
             {dueDate && (
-              <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 flex-shrink-0 ${dueDate.isOverdue && !todo.isCompleted
+              <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 flex-shrink-0 ${dueDate.isOverdue
                   ? 'bg-red-100 text-red-700'
                   : 'bg-blue-100 text-blue-700'
                 }`}>
