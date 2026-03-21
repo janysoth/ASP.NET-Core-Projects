@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { EmailIcon, EyeIcon, EyeOffIcon, LockIcon } from '../components/icons/Icons';
 import InputField from '../components/input/InputField';
@@ -42,6 +42,9 @@ const LoginPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const [searchParams] = useSearchParams();
+  const sessionExpired = searchParams.get('reason') === 'session_expired';
 
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -109,6 +112,12 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-50 to-indigo-100 p-4">
       <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
+        {/* Show session expired message */}
+        {sessionExpired && (
+          <div className="mb-4 bg-yellow-100 text-yellow-800 p-3 rounded-lg text-sm text-center">
+            Your session expired due to inactivity. Please log in again.
+          </div>
+        )}
         <h2 className="text-3xl font-bold text-center text-indigo-700 mb-6">
           Welcome Back
         </h2>
