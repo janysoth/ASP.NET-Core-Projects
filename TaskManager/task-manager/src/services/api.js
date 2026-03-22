@@ -12,14 +12,15 @@ api.interceptors.request.use((config) => {
   // Your AuthContext uses 'token' as the key
   const token = localStorage.getItem('token');
 
-  // DEBUG: Check if token exists
-  console.log('Token from localStorage:', token ? 'Found' : 'NOT FOUND');
+  const isProtectedRoute = !config.url?.includes('auth/');
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-    console.log('Authorization header set:', `Bearer ${token.substring(0, 20)}...`);
-  } else {
-    console.warn('No token in localStorage! User might not be logged in.');
+    if (isProtectedRoute) {
+      console.log('✅ Token attached to:', config.url);
+    }
+  } else if (isProtectedRoute) {
+    console.warn('⚠️ No token for protected route:', config.url);
   }
 
   return config;

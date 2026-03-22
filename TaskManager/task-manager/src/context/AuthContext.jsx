@@ -1,7 +1,10 @@
 import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
 
 // Constants
-const SESSION_TIMEOUT = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+const second = 1000;
+const minute = 60 * second;
+const hour = 60 * minute;
+const SESSION_TIMEOUT = 30 * second; // 6 hours in milliseconds
 const INACTIVITY_CHECK_INTERVAL = 60 * 1000; // Check every minute
 const WARNING_BEFORE_TIMEOUT = 5 * 60 * 1000; // Warn 5 minutes before
 
