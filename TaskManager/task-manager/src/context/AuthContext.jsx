@@ -190,34 +190,6 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={value}>
       {!loading && children}
-      {/* Session Warning Modal */}
-      {showWarning && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md mx-4 animate-fade-in">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              Session Expiring Soon
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Your session will expire in 5 minutes due to inactivity.
-              Click below to stay logged in.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={extendSession}
-                className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
-              >
-                Stay Logged In
-              </button>
-              <button
-                onClick={logout}
-                className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
-              >
-                Logout Now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </AuthContext.Provider>
   );
 };
