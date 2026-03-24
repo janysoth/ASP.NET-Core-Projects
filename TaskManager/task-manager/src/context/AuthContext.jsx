@@ -1,12 +1,12 @@
 import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
 
 // Constants
-const second = 1000;
-const minute = 60 * second;
-const hour = 60 * minute;
-const SESSION_TIMEOUT = 30 * second; // 6 hours in milliseconds
-const INACTIVITY_CHECK_INTERVAL = 60 * 1000; // Check every minute
-const WARNING_BEFORE_TIMEOUT = 5 * 60 * 1000; // Warn 5 minutes before
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+const HOUR = 60 * MINUTE;
+const SESSION_TIMEOUT = 2 * HOUR; // 6 hours in milliseconds
+const INACTIVITY_CHECK_INTERVAL = MINUTE; // Check every minute
+const WARNING_BEFORE_TIMEOUT = 5 * MINUTE; // Warn 5 minutes before
 
 export const AuthContext = createContext(null);
 
