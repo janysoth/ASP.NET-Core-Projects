@@ -1,170 +1,214 @@
-import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
+// =========================
 // Constants
+// =========================
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
-const HOUR = 60 * MINUTE;
-const SESSION_TIMEOUT = 2 * HOUR; // 6 hours in milliseconds
-const INACTIVITY_CHECK_INTERVAL = MINUTE; // Check every minute
-const WARNING_BEFORE_TIMEOUT = 5 * MINUTE; // Warn 5 minutes before
 
+const SESSION_TIMEOUT = 1 * MINUTE; // 2 hours
+const WARNING_BEFORE_TIMEOUT = 5 * MINUTE;
+const CHECK_INTERVAL = SECOND; // 1 second (for live countdown)
+
+// =========================
+// Storage Helpers
+// =========================
+const storage = {
+  getToken: () => localStorage.getItem('token'),
+
+  getUser: () => {
+    try {
+      return JSON.parse(localStorage.getItem('user'));
+    } catch {
+      return null;
+    }
+  },
+
+  getLastActivity: () => {
+    const value = localStorage.getItem('lastActivity');
+    return value ? parseInt(value, 10) : null;
+  },
+
+  setSession: ({ token, user }) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+  },
+
+  setLastActivity: (time) => {
+    localStorage.setItem('lastActivity', time.toString());
+  },
+
+  clear: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('lastActivity');
+  },
+};
+
+// =========================
+// Context
+// =========================
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showWarning, setShowWarning] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(null);
 
-  // Use refs to track activity without causing re-renders
   const lastActivityRef = useRef(Date.now());
-  const warningTimerRef = useRef(null);
-  const logoutTimerRef = useRef(null);
-  const checkIntervalRef = useRef(null);
+  const intervalRef = useRef(null);
 
-  // Update last activity timestamp
-  const updateActivity = useCallback(() => {
-    lastActivityRef.current = Date.now();
-    localStorage.setItem('lastActivity', lastActivityRef.current.toString());
-
-    // Clear warning if user becomes active again
-    if (showWarning) {
-      setShowWarning(false);
-    }
-  }, [showWarning]);
-
-  // Clear all timers
+  // =========================
+  // Helpers
+  // =========================
   const clearTimers = useCallback(() => {
-    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
-    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
-    if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
   }, []);
 
-  // Perform logout
-  const performLogout = useCallback((reason = 'timeout') => {
-    clearTimers();
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('lastActivity');
-    setUser(null);
+  const updateActivity = useCallback(() => {
+    const now = Date.now();
+    lastActivityRef.current = now;
+    storage.setLastActivity(now);
+
     setShowWarning(false);
+    setTimeRemaining(null);
+  }, []);
 
-    if (reason === 'timeout') {
-      // Optional: Show alert or redirect with message
-      window.location.href = '/login?reason=session_expired';
-    }
-  }, [clearTimers]);
+  const performLogout = useCallback(
+    (reason = 'timeout') => {
+      clearTimers();
+      storage.clear();
 
-  // Setup activity listeners
-  useEffect(() => {
-    const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+      setUser(null);
+      setShowWarning(false);
+      setTimeRemaining(null);
 
-    const handleActivity = () => {
-      if (user) {
-        updateActivity();
+      if (reason === 'timeout') {
+        window.location.href = '/login?reason=session_expired';
       }
-    };
+    },
+    [clearTimers]
+  );
 
-    // Add listeners
-    activityEvents.forEach(event => {
-      window.addEventListener(event, handleActivity, true);
-    });
+  const getTimeRemaining = useCallback(() => {
+    const lastActivity =
+      storage.getLastActivity() || lastActivityRef.current;
 
-    return () => {
-      activityEvents.forEach(event => {
-        window.removeEventListener(event, handleActivity, true);
-      });
-    };
-  }, [user, updateActivity]);
+    return SESSION_TIMEOUT - (Date.now() - lastActivity);
+  }, []);
 
-  // Setup session timeout check
-  const setupSessionTimeout = useCallback(() => {
+  // =========================
+  // Session Timer (Core Logic)
+  // =========================
+  const startSessionWatcher = useCallback(() => {
     clearTimers();
 
     if (!user) return;
 
-    const now = Date.now();
-    const lastActivity = parseInt(localStorage.getItem('lastActivity') || now, 10);
-    const timeElapsed = now - lastActivity;
-    const timeRemaining = SESSION_TIMEOUT - timeElapsed;
+    intervalRef.current = setInterval(() => {
+      const remaining = getTimeRemaining();
 
-    // If already expired, logout immediately
-    if (timeRemaining <= 0) {
-      performLogout('timeout');
-      return;
-    }
-
-    // Set warning timer (5 minutes before expiration)
-    const warningTime = Math.max(0, timeRemaining - WARNING_BEFORE_TIMEOUT);
-    warningTimerRef.current = setTimeout(() => {
-      setShowWarning(true);
-    }, warningTime);
-
-    // Set logout timer
-    logoutTimerRef.current = setTimeout(() => {
-      performLogout('timeout');
-    }, timeRemaining);
-
-    // Periodic check (backup in case timers fail)
-    checkIntervalRef.current = setInterval(() => {
-      const currentLastActivity = parseInt(localStorage.getItem('lastActivity') || Date.now(), 10);
-      if (Date.now() - currentLastActivity >= SESSION_TIMEOUT) {
+      // Session expired
+      if (remaining <= 0) {
         performLogout('timeout');
+        return;
       }
-    }, INACTIVITY_CHECK_INTERVAL);
 
-  }, [user, performLogout, clearTimers]);
+      // Show warning window
+      if (remaining <= WARNING_BEFORE_TIMEOUT) {
+        setShowWarning(true);
+        setTimeRemaining(remaining);
+      }
+    }, CHECK_INTERVAL);
+  }, [user, getTimeRemaining, performLogout, clearTimers]);
 
-  // Restore session on app load
+  // =========================
+  // Activity Listeners
+  // =========================
+  useEffect(() => {
+    if (!user) return;
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+
+    const handleActivity = () => updateActivity();
+
+    events.forEach((event) =>
+      window.addEventListener(event, handleActivity, true)
+    );
+
+    return () => {
+      events.forEach((event) =>
+        window.removeEventListener(event, handleActivity, true)
+      );
+    };
+  }, [user, updateActivity]);
+
+  // =========================
+  // Restore Session
+  // =========================
   useEffect(() => {
     try {
-      const token = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-      const lastActivity = localStorage.getItem('lastActivity');
+      const token = storage.getToken();
+      const storedUser = storage.getUser();
+      const lastActivity = storage.getLastActivity();
 
       if (token && storedUser) {
-        // Check if session expired while app was closed
         if (lastActivity) {
-          const timeElapsed = Date.now() - parseInt(lastActivity, 10);
-          if (timeElapsed >= SESSION_TIMEOUT) {
-            // Session expired
+          const elapsed = Date.now() - lastActivity;
+
+          if (elapsed >= SESSION_TIMEOUT) {
             performLogout('timeout');
           } else {
-            // Valid session, restore
-            setUser(JSON.parse(storedUser));
-            lastActivityRef.current = parseInt(lastActivity, 10);
+            setUser(storedUser);
+            lastActivityRef.current = lastActivity;
           }
         } else {
-          // No last activity recorded, start fresh
-          setUser(JSON.parse(storedUser));
+          setUser(storedUser);
           updateActivity();
         }
       }
     } catch (error) {
-      console.error('Failed to restore auth state:', error);
+      console.error('Auth restore failed:', error);
       performLogout('error');
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [performLogout, updateActivity]);
 
-  // Setup timeout when user changes
+  // =========================
+  // Start / Stop watcher
+  // =========================
   useEffect(() => {
     if (user) {
-      setupSessionTimeout();
+      startSessionWatcher();
     } else {
       clearTimers();
     }
 
-    return () => clearTimers();
-  }, [user, setupSessionTimeout, clearTimers]);
+    return clearTimers;
+  }, [user, startSessionWatcher, clearTimers]);
 
-  const login = useCallback((data) => {
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    updateActivity(); // Set initial activity timestamp
-    setUser(data.user);
-  }, [updateActivity]);
+  // =========================
+  // Public API
+  // =========================
+  const login = useCallback(
+    ({ token, user }) => {
+      storage.setSession({ token, user });
+      updateActivity();
+      setUser(user);
+    },
+    [updateActivity]
+  );
 
   const logout = useCallback(() => {
     performLogout('manual');
@@ -172,9 +216,7 @@ export const AuthProvider = ({ children }) => {
 
   const extendSession = useCallback(() => {
     updateActivity();
-    setupSessionTimeout();
-    setShowWarning(false);
-  }, [updateActivity, setupSessionTimeout]);
+  }, [updateActivity]);
 
   const value = {
     user,
@@ -184,7 +226,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     extendSession,
     showWarning,
-    timeRemaining: showWarning ? WARNING_BEFORE_TIMEOUT : null,
+    timeRemaining, // ✅ real-time ms
   };
 
   return (
