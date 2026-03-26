@@ -12,7 +12,7 @@ import React, {
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 
-const SESSION_TIMEOUT = 1 * MINUTE; // 2 hours
+const SESSION_TIMEOUT = 5.5 * MINUTE; // 2 hours
 const WARNING_BEFORE_TIMEOUT = 5 * MINUTE;
 const CHECK_INTERVAL = SECOND; // 1 second (for live countdown)
 
@@ -93,9 +93,11 @@ export const AuthProvider = ({ children }) => {
       setShowWarning(false);
       setTimeRemaining(null);
 
-      if (reason === 'timeout') {
-        window.location.href = '/login?reason=session_expired';
-      }
+      // Always redirect
+      window.location.href =
+        reason === 'timeout'
+          ? '/login?reason=session_expired'
+          : '/login';
     },
     [clearTimers]
   );
