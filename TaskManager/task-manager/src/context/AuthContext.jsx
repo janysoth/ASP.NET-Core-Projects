@@ -12,9 +12,9 @@ import React, {
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 
-const SESSION_TIMEOUT = 5.5 * MINUTE; // 2 hours
+const SESSION_TIMEOUT = 120 * MINUTE; // 2 hours
 const WARNING_BEFORE_TIMEOUT = 5 * MINUTE;
-const CHECK_INTERVAL = SECOND; // 1 second (for live countdown)
+const CHECK_INTERVAL = 30 * SECOND; // 1 second (for live countdown)
 
 // =========================
 // Storage Helpers

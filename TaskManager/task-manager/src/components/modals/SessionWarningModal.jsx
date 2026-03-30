@@ -51,23 +51,9 @@ const SessionWarningModal = () => {
 
         <div className="flex gap-3">
           <button
-            onClick={() => {
-              console.log('Extend clicked');
-              extendSession();
-            }}
             className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
           >
-            Stay Logged In
-          </button>
-
-          <button
-            onClick={() => {
-              console.log('Logout clicked');
-              logout();
-            }}
-            className="flex-1 bg-gray-300 py-2 px-4 rounded-lg font-semibold hover:bg-gray-400 transition-colors"
-          >
-            Logout
+            OK
           </button>
         </div>
       </div>
