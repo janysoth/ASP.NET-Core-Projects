@@ -188,6 +188,51 @@ public sealed class AuthService
   }
 
   // ----------------------------------------------------
+  // CHANGE PASSWORD
+  // ----------------------------------------------------
+  public async Task ChangePasswordAsync(
+      string userId,
+      string currentPassword,
+      string newPassword)
+  {
+    if (string.IsNullOrWhiteSpace(currentPassword))
+      throw new ArgumentException("Current password is required.");
+
+    if (string.IsNullOrWhiteSpace(newPassword))
+      throw new ArgumentException("New password is required.");
+
+    if (newPassword.Length < 8)
+      throw new ArgumentException("New password must be at least 8 characters.");
+
+    var user = await _users.GetByIdAsync(userId);
+
+    if (user is null)
+      throw new InvalidOperationException("User not found.");
+
+    var isCurrentPasswordValid = PasswordHasher.Verify(
+        currentPassword,
+        user.PasswordHash
+    );
+
+    if (!isCurrentPasswordValid)
+      throw new UnauthorizedAccessException("Current password is incorrect.");
+
+    // Prevent reusing same password
+    if (PasswordHasher.Verify(newPassword, user.PasswordHash))
+      throw new ArgumentException("New password must be different from current password.");
+
+    user.PasswordHash = PasswordHasher.Hash(newPassword);
+
+    // Optional security improvement:
+    // revoke all refresh tokens after password change
+    foreach (var token in user.RefreshTokens.Where(t => t.IsActive))
+    {
+      token.RevokedAtUtc = DateTime.UtcNow;
+    }
+
+    await _users.UpdateAsync(user);
+  }
+  // ----------------------------------------------------
   // HELPERS
   // ----------------------------------------------------
   private (string RawToken, RefreshTokenRecord Record) IssueRefreshToken()

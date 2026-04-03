@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { AuthContext } from '../../context/AuthContext';
 
 const SessionWarningModal = () => {
-  const { showWarning, timeRemaining, extendSession, logout } =
+  const { showWarning, timeRemaining } =
     useContext(AuthContext);
 
   const [displayTime, setDisplayTime] = useState('00:00');

@@ -4,7 +4,8 @@ using System.Security.Claims;
 using TaskManager.Api.Dtos;
 using TaskManager.Api.Services;
 using TaskManager.Api.Auth;
-using TaskManager.Api.Exceptions; // Add this using directive
+using TaskManager.Api.Exceptions;
+using System.Reflection.Metadata; // Add this using directive
 
 namespace TaskManager.Api.Controllers;
 
@@ -147,6 +148,43 @@ public sealed class AuthController : ControllerBase
     // Clear the refresh token cookie
     Response.Cookies.Delete(cookieName); // This removes the cookie from the client's browser
     return Ok(new { message = "You have been successfully logged out." });
+  }
+
+  // =========================
+  // CHANGE PASSWORD
+  // =========================
+  [Authorize]
+  [HttpPost("change-password")]
+  public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+  {
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    if (string.IsNullOrWhiteSpace(userId))
+    {
+      return Unauthorized(new { error = "User not found." });
+    }
+
+    try
+    {
+      await _auth.ChangePasswordAsync(
+          userId,
+          request.CurrentPassword,
+          request.NewPassword
+      );
+
+      return Ok(new
+      {
+        message = "Password changed successfully. Please log in again."
+      });
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+      return BadRequest(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+      return BadRequest(new { error = ex.Message });
+    }
   }
 
   // =========================
