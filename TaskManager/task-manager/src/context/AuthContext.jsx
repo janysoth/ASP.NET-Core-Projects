@@ -226,6 +226,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     login,
     logout,
+    token: storage.getToken(),
     extendSession,
     showWarning,
     timeRemaining, // ✅ real-time ms

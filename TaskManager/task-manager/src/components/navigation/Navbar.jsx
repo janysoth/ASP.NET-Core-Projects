@@ -9,7 +9,7 @@ const Navbar = () => {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -90,21 +90,25 @@ const Navbar = () => {
               <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden animate-fade-in">
 
                 {/* User Info Section */}
-                <div className="p-4 bg-gray-50 border-b border-gray-200">
+                <Link
+                  to="/user-info"
+                  className="block p-4 bg-gray-50 border-b border-gray-200 hover:bg-gray-100"
+                  onClick={() => setIsDropdownOpen(false)}
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
                       <UserIcon className="w-6 h-6 text-indigo-600" />
                     </div>
                     <div className="min-w-0">
                       <p className="font-semibold text-gray-900 truncate">
-                        {user?.fullName || 'User'}
+                        {loading ? 'Loading...' : user?.fullName ?? 'User'}
                       </p>
                       <p className="text-sm text-gray-500 truncate">
-                        {user?.email || 'No email'}
+                        {loading ? '' : user?.email ?? 'No email'}
                       </p>
                     </div>
                   </div>
-                </div>
+                </Link>
 
                 {/* Logout Button */}
                 <button

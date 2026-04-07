@@ -68,3 +68,9 @@ export const deleteTodo = (id) => api.delete(`todos/${id}`);
 
 // DELETE ALL /api/todos/delete-all
 export const deleteAllTodos = () => api.delete('todos/delete-all');
+
+export const changePassword = async (data, token) => {
+  return await api.post('auth/change-password', data, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
