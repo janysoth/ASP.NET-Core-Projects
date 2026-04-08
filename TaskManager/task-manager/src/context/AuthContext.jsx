@@ -1,49 +1,32 @@
-import React, {
-  createContext,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
+import { MINUTE, SECOND } from '../utils/helpers';
 
 // =========================
 // Constants
 // =========================
-const SECOND = 1000;
-const MINUTE = 60 * SECOND;
-
 const SESSION_TIMEOUT = 120 * MINUTE; // 2 hours
-const WARNING_BEFORE_TIMEOUT = 5 * MINUTE;
-const CHECK_INTERVAL = 30 * SECOND; // 1 second (for live countdown)
+const WARNING_BEFORE_TIMEOUT = 1 * MINUTE;
+const CHECK_INTERVAL = 30 * SECOND;
 
 // =========================
 // Storage Helpers
 // =========================
 const storage = {
   getToken: () => localStorage.getItem('token'),
-
   getUser: () => {
-    try {
-      return JSON.parse(localStorage.getItem('user'));
-    } catch {
-      return null;
-    }
+    try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
   },
-
   getLastActivity: () => {
     const value = localStorage.getItem('lastActivity');
     return value ? parseInt(value, 10) : null;
   },
-
   setSession: ({ token, user }) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
   },
-
   setLastActivity: (time) => {
     localStorage.setItem('lastActivity', time.toString());
   },
-
   clear: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -79,129 +62,32 @@ export const AuthProvider = ({ children }) => {
     const now = Date.now();
     lastActivityRef.current = now;
     storage.setLastActivity(now);
-
     setShowWarning(false);
     setTimeRemaining(null);
   }, []);
 
-  const performLogout = useCallback(
-    (reason = 'timeout') => {
-      clearTimers();
-      storage.clear();
-
-      setUser(null);
-      setShowWarning(false);
-      setTimeRemaining(null);
-
-      // Always redirect
-      window.location.href =
-        reason === 'timeout'
-          ? '/login?reason=session_expired'
-          : '/login';
-    },
-    [clearTimers]
-  );
-
   const getTimeRemaining = useCallback(() => {
-    const lastActivity =
-      storage.getLastActivity() || lastActivityRef.current;
-
+    const lastActivity = storage.getLastActivity() || lastActivityRef.current;
     return SESSION_TIMEOUT - (Date.now() - lastActivity);
   }, []);
 
   // =========================
-  // Session Timer (Core Logic)
+  // Logout
   // =========================
-  const startSessionWatcher = useCallback(() => {
+  const performLogout = useCallback(() => {
     clearTimers();
+    storage.clear();
+    setUser(null);
+    setShowWarning(false);
+    setTimeRemaining(null);
+  }, [clearTimers]);
 
-    if (!user) return;
-
-    intervalRef.current = setInterval(() => {
-      const remaining = getTimeRemaining();
-
-      // Session expired
-      if (remaining <= 0) {
-        performLogout('timeout');
-        return;
-      }
-
-      // Show warning window
-      if (remaining <= WARNING_BEFORE_TIMEOUT) {
-        setShowWarning(true);
-        setTimeRemaining(remaining);
-      }
-    }, CHECK_INTERVAL);
-  }, [user, getTimeRemaining, performLogout, clearTimers]);
+  const logout = useCallback(() => {
+    performLogout(); // SPA-style logout
+  }, [performLogout]);
 
   // =========================
-  // Activity Listeners
-  // =========================
-  useEffect(() => {
-    if (!user) return;
-
-    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-
-    const handleActivity = () => updateActivity();
-
-    events.forEach((event) =>
-      window.addEventListener(event, handleActivity, true)
-    );
-
-    return () => {
-      events.forEach((event) =>
-        window.removeEventListener(event, handleActivity, true)
-      );
-    };
-  }, [user, updateActivity]);
-
-  // =========================
-  // Restore Session
-  // =========================
-  useEffect(() => {
-    try {
-      const token = storage.getToken();
-      const storedUser = storage.getUser();
-      const lastActivity = storage.getLastActivity();
-
-      if (token && storedUser) {
-        if (lastActivity) {
-          const elapsed = Date.now() - lastActivity;
-
-          if (elapsed >= SESSION_TIMEOUT) {
-            performLogout('timeout');
-          } else {
-            setUser(storedUser);
-            lastActivityRef.current = lastActivity;
-          }
-        } else {
-          setUser(storedUser);
-          updateActivity();
-        }
-      }
-    } catch (error) {
-      console.error('Auth restore failed:', error);
-      performLogout('error');
-    } finally {
-      setLoading(false);
-    }
-  }, [performLogout, updateActivity]);
-
-  // =========================
-  // Start / Stop watcher
-  // =========================
-  useEffect(() => {
-    if (user) {
-      startSessionWatcher();
-    } else {
-      clearTimers();
-    }
-
-    return clearTimers;
-  }, [user, startSessionWatcher, clearTimers]);
-
-  // =========================
-  // Public API
+  // Login
   // =========================
   const login = useCallback(
     ({ token, user }) => {
@@ -212,14 +98,70 @@ export const AuthProvider = ({ children }) => {
     [updateActivity]
   );
 
-  const logout = useCallback(() => {
-    performLogout('manual');
+  // =========================
+  // Session watcher
+  // =========================
+  const startSessionWatcher = useCallback(() => {
+    clearTimers();
+    if (!user) return;
+
+    intervalRef.current = setInterval(() => {
+      const remaining = getTimeRemaining();
+
+      if (remaining <= 0) {
+        performLogout();
+        return;
+      }
+
+      if (remaining <= WARNING_BEFORE_TIMEOUT) {
+        setShowWarning(true);
+        setTimeRemaining(remaining);
+      }
+    }, CHECK_INTERVAL);
+  }, [user, getTimeRemaining, performLogout, clearTimers]);
+
+  useEffect(() => {
+    if (user) {
+      startSessionWatcher();
+    } else {
+      clearTimers();
+    }
+    return clearTimers;
+  }, [user, startSessionWatcher, clearTimers]);
+
+  // =========================
+  // Activity listeners
+  // =========================
+  useEffect(() => {
+    if (!user) return;
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    const handleActivity = () => updateActivity();
+    events.forEach((e) => window.addEventListener(e, handleActivity, true));
+    return () => events.forEach((e) => window.removeEventListener(e, handleActivity, true));
+  }, [user, updateActivity]);
+
+  // =========================
+  // Restore session on mount
+  // =========================
+  useEffect(() => {
+    const token = storage.getToken();
+    const storedUser = storage.getUser();
+    const lastActivity = storage.getLastActivity();
+
+    if (token && storedUser) {
+      if (lastActivity && Date.now() - lastActivity >= SESSION_TIMEOUT) {
+        performLogout();
+      } else {
+        setUser(storedUser);
+        lastActivityRef.current = lastActivity || Date.now();
+      }
+    }
+    setLoading(false);
   }, [performLogout]);
 
-  const extendSession = useCallback(() => {
-    updateActivity();
-  }, [updateActivity]);
-
+  // =========================
+  // Context value
+  // =========================
   const value = {
     user,
     loading,
@@ -227,14 +169,10 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     token: storage.getToken(),
-    extendSession,
+    extendSession: updateActivity,
     showWarning,
-    timeRemaining, // ✅ real-time ms
+    timeRemaining,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 };

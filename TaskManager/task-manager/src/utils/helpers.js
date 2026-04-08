@@ -1,5 +1,3 @@
-// utils/todoHelpers.js
-
 // Constants
 export const INITIAL_FORM_STATE = {
   title: '',
@@ -13,16 +11,56 @@ export const FILTER_OPTIONS = {
   COMPLETED: 'completed'
 };
 
-// Date Helpers
+export const SECOND = 1000;
+export const MINUTE = 60 * SECOND;
+
+// =========================
+// UNIVERSAL DATE HELPERS
+// =========================
+export const formatDate = (
+  utcIsoString,
+  options = { month: '2-digit', day: '2-digit', year: 'numeric' }
+) => {
+  if (!utcIsoString) return '';
+
+  const date = new Date(utcIsoString);
+
+  if (Number.isNaN(date.getTime())) return '';
+
+  return date.toLocaleDateString('en-US', options);
+};
+
+export const getDueDateInfo = (utcIsoString, isCompleted = false) => {
+  if (!utcIsoString) return null;
+
+  const date = new Date(utcIsoString);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const localDate = new Date(
+    date.getTime() + date.getTimezoneOffset() * 60 * 1000
+  );
+
+  const isOverdue = localDate < today && !isCompleted;
+
+  return {
+    display: formatDate(localDate.toISOString(), {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }),
+    isOverdue,
+  };
+};
+
+// Existing helpers
 export const utcToLocalDateString = (utcIsoString) => {
   if (!utcIsoString) return '';
-  // Extract YYYY-MM-DD directly from the ISO string without timezone conversion
   return utcIsoString.split('T')[0];
 };
 
 export const localDateToUtcString = (localDateString) => {
   if (!localDateString) return null;
-  // Parse as UTC by appending 'T00:00:00Z'
   return `${localDateString}T00:00:00.000Z`;
 };
 
@@ -43,22 +81,4 @@ export const filterTodos = (todos, filter) => {
     default:
       return todos;
   }
-};
-
-// utils/todoHelpers.js
-
-/**
- * Formats a UTC ISO string to MM/DD/YYYY with two digits for month and day.
- * @param {string} utcIsoString - ISO date string in UTC
- * @returns {string} Formatted date like '03/12/2026'
- */
-export const formatDate = (utcIsoString) => {
-  if (!utcIsoString) return '';
-  const date = new Date(utcIsoString);
-
-  const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
-  const day = String(date.getDate()).padStart(2, '0');
-  const year = date.getFullYear();
-
-  return `${month}/${day}/${year}`;
 };
