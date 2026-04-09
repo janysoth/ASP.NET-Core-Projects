@@ -12,6 +12,8 @@ public sealed class User
   public string FullName { get; set; } = "";
   public string Email { get; set; } = "";
   public string PasswordHash { get; set; } = "";
+  public string? PasswordResetTokenHash { get; set; } = "";
+  public DateTime? PasswordResetExpiresAtUtc { get; set; }
 
   public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 

@@ -188,6 +188,39 @@ public sealed class AuthController : ControllerBase
   }
 
   // =========================
+  // FORGOT PASSWORD
+  // =========================
+  [HttpPost("forgot-password")]
+  public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
+  {
+    await _auth.ForgotPasswordAsync(request);
+    return Ok(new
+    {
+      message = "If the email exists, a reset link has been sent."
+    });
+  }
+
+  // =========================
+  // RESET PASSWORD
+  // =========================
+  [HttpPost("reset-password")]
+  public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
+  {
+    try
+    {
+      await _auth.ResetPasswordAsync(request);
+      return Ok(new
+      {
+        message = "Password reset successfully."
+      });
+    }
+    catch (Exception ex)
+    {
+      return BadRequest(new { error = ex.Message });
+    }
+  }
+
+  // =========================
   // COOKIE HELPER
   // =========================
   private void SetRefreshCookie(string refreshToken)

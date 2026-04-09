@@ -232,6 +232,63 @@ public sealed class AuthService
 
     await _users.UpdateAsync(user);
   }
+
+  // ----------------------------------------------------
+  // FORGOT PASSWORD
+  // ----------------------------------------------------
+  public async Task ForgotPasswordAsync(ForgotPasswordRequest req)
+  {
+    var email = req.Email.Trim().ToLowerInvariant();
+    var user = await _users.GetByEmailAsync(email);
+
+    // security best practice: don't reveal user existence
+    if (user is null) return;
+
+    var rawToken = Guid.NewGuid().ToString("N");
+    var tokenHash = Crypto.Sha256(rawToken);
+
+    user.PasswordResetTokenHash = tokenHash;
+    user.PasswordResetExpiresAtUtc = DateTime.UtcNow.AddMinutes(30);
+
+    await _users.UpdateAsync(user);
+
+    // TODO: send email service here
+    var resetLink = $"http://localhost:5173/reset-password?email={email}&token={Uri.EscapeDataString(rawToken)}";
+
+    Console.WriteLine($"RESET LINK: {resetLink}");
+  }
+
+  // ----------------------------------------------------
+  // RESET PASSWORD
+  // ----------------------------------------------------
+  public async Task ResetPasswordAsync(ResetPasswordRequest req)
+  {
+    var email = req.Email.Trim().ToLowerInvariant();
+    var user = await _users.GetByEmailAsync(email);
+
+    if (user is null)
+      throw new InvalidOperationException("Invalid reset request.");
+
+    if (string.IsNullOrWhiteSpace(user.PasswordResetTokenHash))
+      throw new InvalidOperationException("Reset token is invalid.");
+
+    if (user.PasswordResetExpiresAtUtc is null ||
+        user.PasswordResetExpiresAtUtc < DateTime.UtcNow)
+      throw new InvalidOperationException("Reset token expired.");
+
+    var incomingHash = Crypto.Sha256(req.Token);
+
+    if (incomingHash != user.PasswordResetTokenHash)
+      throw new InvalidOperationException("Reset token is invalid.");
+
+    user.PasswordHash = PasswordHasher.Hash(req.NewPassword);
+
+    user.PasswordResetTokenHash = null;
+    user.PasswordResetExpiresAtUtc = null;
+
+    await _users.UpdateAsync(user);
+  }
+
   // ----------------------------------------------------
   // HELPERS
   // ----------------------------------------------------
