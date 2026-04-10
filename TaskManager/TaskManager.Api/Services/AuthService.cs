@@ -13,15 +13,18 @@ public sealed class AuthService
   private readonly UserRepository _users;
   private readonly JwtTokenService _jwt;
   private readonly IConfiguration _config;
+  private readonly EmailService _emailService;
 
   public AuthService(
       UserRepository users,
       JwtTokenService jwt,
-      IConfiguration config)
+      IConfiguration config,
+      EmailService emailService)
   {
     _users = users;
     _jwt = jwt;
     _config = config;
+    _emailService = emailService;
   }
 
   // ----------------------------------------------------
@@ -241,9 +244,10 @@ public sealed class AuthService
     var email = req.Email.Trim().ToLowerInvariant();
     var user = await _users.GetByEmailAsync(email);
 
-    // security best practice: don't reveal user existence
+    // Security: don't reveal if user exists
     if (user is null) return;
 
+    // Generate token
     var rawToken = Guid.NewGuid().ToString("N");
     var tokenHash = Crypto.Sha256(rawToken);
 
@@ -252,10 +256,22 @@ public sealed class AuthService
 
     await _users.UpdateAsync(user);
 
-    // TODO: send email service here
-    var resetLink = $"http://localhost:5173/reset-password?email={email}&token={Uri.EscapeDataString(rawToken)}";
+    // Create reset link pointing to frontend page
+    var resetLink = $"{_config["Frontend:Origin"]}/reset-password?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(rawToken)}";
 
-    Console.WriteLine($"RESET LINK: {resetLink}");
+    var subject = "TaskManager Password Reset";
+    var body = $@"
+        <p>Hello {user.FullName},</p>
+        <p>You requested a password reset. Click the link below to reset your password:</p>
+        <p><a href='{resetLink}'>Reset Password</a></p>
+        <p>If you did not request this, ignore this email.</p>
+    ";
+
+    // Send the email
+    var emailService = new EmailService(_config);
+    await emailService.SendEmailAsync(email, subject, body);
+
+    Console.WriteLine($"[EMAIL SENT] Reset link: {resetLink}");
   }
 
   // ----------------------------------------------------
