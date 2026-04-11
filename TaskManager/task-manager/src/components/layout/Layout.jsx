@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import Navbar from '../navigation/Navbar';
 
 // Routes where navbar should be hidden
-const HIDDEN_ROUTES = ['/login', '/register'];
+const HIDDEN_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password'];
 
 const Layout = ({ children }) => {
   const location = useLocation();

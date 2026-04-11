@@ -279,11 +279,17 @@ public sealed class AuthService
   // ----------------------------------------------------
   public async Task ResetPasswordAsync(ResetPasswordRequest req)
   {
+    if (string.IsNullOrWhiteSpace(req.Email))
+      throw new ArgumentException("Email is required.");
+
+    if (string.IsNullOrWhiteSpace(req.NewPassword) || req.NewPassword.Length < 8)
+      throw new ArgumentException("New password must be at least 8 characters.");
+
     var email = req.Email.Trim().ToLowerInvariant();
     var user = await _users.GetByEmailAsync(email);
 
     if (user is null)
-      throw new InvalidOperationException("Invalid reset request.");
+      throw new InvalidOperationException("The email doesn't exist.");
 
     if (string.IsNullOrWhiteSpace(user.PasswordResetTokenHash))
       throw new InvalidOperationException("Reset token is invalid.");
@@ -297,10 +303,20 @@ public sealed class AuthService
     if (incomingHash != user.PasswordResetTokenHash)
       throw new InvalidOperationException("Reset token is invalid.");
 
+    // Prevent using the same password
+    if (PasswordHasher.Verify(req.NewPassword, user.PasswordHash))
+      throw new ArgumentException("New password must be different from current password.");
+
+    // Update Password
     user.PasswordHash = PasswordHasher.Hash(req.NewPassword);
 
+    // Clear reset token
     user.PasswordResetTokenHash = null;
     user.PasswordResetExpiresAtUtc = null;
+
+    // Optional: revoke all existing refresh tokens for security
+    foreach (var token in user.RefreshTokens.Where(t => t.IsActive))
+      token.RevokedAtUtc = DateTime.UtcNow;
 
     await _users.UpdateAsync(user);
   }

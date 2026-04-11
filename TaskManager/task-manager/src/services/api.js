@@ -74,3 +74,11 @@ export const changePassword = async (data, token) => {
     headers: { Authorization: `Bearer ${token}` },
   });
 };
+
+export const forgotPassword = async (data) => {
+  return await api.post('auth/forgot-password', data);
+};
+
+export const resetPassword = async (data) => {
+  return await api.post('auth/reset-password', data);
+};

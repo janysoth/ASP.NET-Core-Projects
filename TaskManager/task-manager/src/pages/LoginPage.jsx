@@ -131,6 +131,15 @@ const LoginPage = () => {
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           {FIELD_CONFIG.map(renderField)}
 
+          <div className="flex justify-end">
+            <Link
+              to="/forgot-password"
+              className="text-sm text-indigo-600 hover:underline focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
+            >
+              Forgot Password?
+            </Link>
+          </div>
+
           <button
             type="submit"
             disabled={isSubmitDisabled}
