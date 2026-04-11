@@ -1,11 +1,11 @@
 // pages/UserInfoPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { EyeIcon, EyeOffIcon } from '../components/icons/Icons';
-import InputField from '../components/input/InputField';
-import { useAuth } from '../context/useAuth';
-import { changePassword } from '../services/api';
-import { formatDate } from '../utils/helpers';
+import { EyeIcon, EyeOffIcon } from '../../components/icons/Icons';
+import InputField from '../../components/input/InputField';
+import { useAuth } from '../../context/useAuth';
+import { changePassword } from '../../services/api';
+import { formatDate } from '../../utils/helpers';
 
 const UserInfoPage = () => {
   const { user, token, logout } = useAuth();

@@ -1,9 +1,9 @@
-import React from 'react';
+import { Outlet } from 'react-router-dom';
 
-const AuthLayout = ({ children }) => {
+const AuthLayout = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-tr from-blue-50 to-indigo-100 flex items-center justify-center">
-      {children}
+    <div className="min-h-screen bg-gradient-to-tr from-blue-50 to-indigo-100">
+      <Outlet />
     </div>
   );
 };

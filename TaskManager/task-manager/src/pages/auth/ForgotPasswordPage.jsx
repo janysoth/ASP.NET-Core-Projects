@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { EmailIcon } from '../components/icons/Icons';
-import InputField from '../components/input/InputField';
-import { forgotPassword } from '../services/api';
+import { EmailIcon } from '../../components/icons/Icons';
+import InputField from '../../components/input/InputField';
+import { forgotPassword } from '../../services/api';
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
@@ -75,8 +75,8 @@ const ForgotPasswordPage = () => {
             type="submit"
             disabled={isSubmitDisabled}
             className={`w-full py-3 font-semibold rounded-md transition-all duration-200 ${isSubmitDisabled
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-md text-white active:scale-[0.98]'
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-md text-white active:scale-[0.98]'
               }`}
           >
             {loading ? 'Sending...' : 'Send Reset Link'}

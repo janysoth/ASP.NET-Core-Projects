@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { CalendarIcon, CheckIcon, PlusIcon, XIcon } from '../components/icons/Icons';
-import TodoCard from '../components/todos/TodoCard';
-import { createTodo, deleteTodo, getTodos, patchTodo } from '../services/api';
+import { CalendarIcon, CheckIcon, PlusIcon, XIcon } from '../../components/icons/Icons';
+import TodoCard from '../../components/todos/TodoCard';
+import { createTodo, deleteTodo, getTodos, patchTodo } from '../../services/api';
 import {
   calculateStats,
   FILTER_OPTIONS,
@@ -10,7 +10,7 @@ import {
   INITIAL_FORM_STATE,
   localDateToUtcString,
   utcToLocalDateString
-} from '../utils/helpers';
+} from '../../utils/helpers';
 
 const TodosPage = () => {
   const [todos, setTodos] = useState([]);

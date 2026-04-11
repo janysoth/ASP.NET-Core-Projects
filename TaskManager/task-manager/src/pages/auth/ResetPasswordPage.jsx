@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { EyeIcon, EyeOffIcon } from '../components/icons/Icons';
-import InputField from '../components/input/InputField';
-import { resetPassword } from '../services/api';
+import { EyeIcon, EyeOffIcon } from '../../components/icons/Icons';
+import InputField from '../../components/input/InputField';
+import { resetPassword } from '../../services/api';
 
 const ResetPasswordPage = () => {
   const [searchParams] = useSearchParams();
@@ -109,8 +109,8 @@ const ResetPasswordPage = () => {
             type="submit"
             disabled={isSubmitDisabled}
             className={`w-full py-3 font-semibold rounded-md transition-all duration-200 ${isSubmitDisabled
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-md text-white active:scale-[0.98]'
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-md text-white active:scale-[0.98]'
               }`}
           >
             {loading ? 'Resetting...' : 'Reset Password'}
