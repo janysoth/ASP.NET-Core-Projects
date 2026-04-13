@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
-import { MINUTE, SECOND } from '../utils/helpers';
+import { MINUTE, SECOND } from '../utils/constants';
 
 // =========================
 // Constants

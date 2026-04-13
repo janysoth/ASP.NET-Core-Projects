@@ -3,18 +3,17 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarIcon, CheckIcon, PlusIcon, XIcon } from '../../components/icons/Icons';
 import TodoCard from '../../components/todos/TodoCard';
 import { createTodo, deleteTodo, getTodos, patchTodo } from '../../services/api';
+import { FILTER_OPTIONS, TODO_INITIAL_FORM_STATE } from '../../utils/constants';
 import {
   calculateStats,
-  FILTER_OPTIONS,
   filterTodos,
-  INITIAL_FORM_STATE,
   localDateToUtcString,
   utcToLocalDateString
 } from '../../utils/helpers';
 
 const TodosPage = () => {
   const [todos, setTodos] = useState([]);
-  const [formData, setFormData] = useState(INITIAL_FORM_STATE);
+  const [formData, setFormData] = useState(TODO_INITIAL_FORM_STATE);
   const [filter, setFilter] = useState(FILTER_OPTIONS.ALL);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,7 +89,7 @@ const TodosPage = () => {
 
         if (!hasChanges) {
           setEditingId(null);
-          setFormData(INITIAL_FORM_STATE);
+          setFormData(TODO_INITIAL_FORM_STATE);
           return;
         }
 
@@ -110,7 +109,7 @@ const TodosPage = () => {
         setTodos(prev => [response.data, ...prev]);
       }
 
-      setFormData(INITIAL_FORM_STATE);
+      setFormData(TODO_INITIAL_FORM_STATE);
     } catch (err) {
       const errorData = err.response?.data;
       const message = errorData?.title || errorData?.message || `Failed to ${editingId ? 'update' : 'create'} todo`;
@@ -144,7 +143,7 @@ const TodosPage = () => {
 
   const handleCancelEdit = useCallback(() => {
     setEditingId(null);
-    setFormData(INITIAL_FORM_STATE);
+    setFormData(TODO_INITIAL_FORM_STATE);
   }, []);
 
   const handleDelete = useCallback(async (id) => {

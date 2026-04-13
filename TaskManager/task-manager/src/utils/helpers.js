@@ -1,18 +1,11 @@
 // Constants
-export const INITIAL_FORM_STATE = {
-  title: '',
-  description: '',
-  dueDate: ''
-};
+// export const FILTER_OPTIONS = {
+//   ALL: 'all',
+//   ACTIVE: 'active',
+//   COMPLETED: 'completed'
+// };
 
-export const FILTER_OPTIONS = {
-  ALL: 'all',
-  ACTIVE: 'active',
-  COMPLETED: 'completed'
-};
-
-export const SECOND = 1000;
-export const MINUTE = 60 * SECOND;
+import { FILTER_OPTIONS } from "./constants";
 
 // =========================
 // UNIVERSAL DATE HELPERS
