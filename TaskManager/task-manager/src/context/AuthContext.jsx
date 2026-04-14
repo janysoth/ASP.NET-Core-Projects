@@ -1,4 +1,15 @@
-import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
+import {
+  authStorage,
+  calculateSessionRemaining,
+} from '../utils/authHelpers';
 import { MINUTE, SECOND } from '../utils/constants';
 
 // =========================
@@ -7,32 +18,6 @@ import { MINUTE, SECOND } from '../utils/constants';
 const SESSION_TIMEOUT = 120 * MINUTE; // 2 hours
 const WARNING_BEFORE_TIMEOUT = 1 * MINUTE;
 const CHECK_INTERVAL = 30 * SECOND;
-
-// =========================
-// Storage Helpers
-// =========================
-const storage = {
-  getToken: () => localStorage.getItem('token'),
-  getUser: () => {
-    try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
-  },
-  getLastActivity: () => {
-    const value = localStorage.getItem('lastActivity');
-    return value ? parseInt(value, 10) : null;
-  },
-  setSession: ({ token, user }) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-  },
-  setLastActivity: (time) => {
-    localStorage.setItem('lastActivity', time.toString());
-  },
-  clear: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('lastActivity');
-  },
-};
 
 // =========================
 // Context
@@ -60,15 +45,22 @@ export const AuthProvider = ({ children }) => {
 
   const updateActivity = useCallback(() => {
     const now = Date.now();
+
     lastActivityRef.current = now;
-    storage.setLastActivity(now);
+    authStorage.setLastActivity(now);
+
     setShowWarning(false);
     setTimeRemaining(null);
   }, []);
 
   const getTimeRemaining = useCallback(() => {
-    const lastActivity = storage.getLastActivity() || lastActivityRef.current;
-    return SESSION_TIMEOUT - (Date.now() - lastActivity);
+    const lastActivity =
+      authStorage.getLastActivity() || lastActivityRef.current;
+
+    return calculateSessionRemaining(
+      lastActivity,
+      SESSION_TIMEOUT
+    );
   }, []);
 
   // =========================
@@ -76,14 +68,15 @@ export const AuthProvider = ({ children }) => {
   // =========================
   const performLogout = useCallback(() => {
     clearTimers();
-    storage.clear();
+    authStorage.clear();
+
     setUser(null);
     setShowWarning(false);
     setTimeRemaining(null);
   }, [clearTimers]);
 
   const logout = useCallback(() => {
-    performLogout(); // SPA-style logout
+    performLogout();
   }, [performLogout]);
 
   // =========================
@@ -91,7 +84,7 @@ export const AuthProvider = ({ children }) => {
   // =========================
   const login = useCallback(
     ({ token, user }) => {
-      storage.setSession({ token, user });
+      authStorage.setSession({ token, user });
       updateActivity();
       setUser(user);
     },
@@ -103,6 +96,7 @@ export const AuthProvider = ({ children }) => {
   // =========================
   const startSessionWatcher = useCallback(() => {
     clearTimers();
+
     if (!user) return;
 
     intervalRef.current = setInterval(() => {
@@ -126,6 +120,7 @@ export const AuthProvider = ({ children }) => {
     } else {
       clearTimers();
     }
+
     return clearTimers;
   }, [user, startSessionWatcher, clearTimers]);
 
@@ -134,28 +129,49 @@ export const AuthProvider = ({ children }) => {
   // =========================
   useEffect(() => {
     if (!user) return;
-    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+
+    const events = [
+      'mousedown',
+      'keydown',
+      'scroll',
+      'touchstart',
+      'click',
+    ];
+
     const handleActivity = () => updateActivity();
-    events.forEach((e) => window.addEventListener(e, handleActivity, true));
-    return () => events.forEach((e) => window.removeEventListener(e, handleActivity, true));
+
+    events.forEach((event) =>
+      window.addEventListener(event, handleActivity, true)
+    );
+
+    return () =>
+      events.forEach((event) =>
+        window.removeEventListener(event, handleActivity, true)
+      );
   }, [user, updateActivity]);
 
   // =========================
   // Restore session on mount
   // =========================
   useEffect(() => {
-    const token = storage.getToken();
-    const storedUser = storage.getUser();
-    const lastActivity = storage.getLastActivity();
+    const token = authStorage.getToken();
+    const storedUser = authStorage.getUser();
+    const lastActivity = authStorage.getLastActivity();
 
     if (token && storedUser) {
-      if (lastActivity && Date.now() - lastActivity >= SESSION_TIMEOUT) {
+      const remaining = calculateSessionRemaining(
+        lastActivity || Date.now(),
+        SESSION_TIMEOUT
+      );
+
+      if (remaining <= 0) {
         performLogout();
       } else {
         setUser(storedUser);
         lastActivityRef.current = lastActivity || Date.now();
       }
     }
+
     setLoading(false);
   }, [performLogout]);
 
@@ -166,13 +182,17 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     isAuthenticated: !!user,
+    token: authStorage.getToken(),
     login,
     logout,
-    token: storage.getToken(),
     extendSession: updateActivity,
     showWarning,
     timeRemaining,
   };
 
-  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {!loading && children}
+    </AuthContext.Provider>
+  );
 };

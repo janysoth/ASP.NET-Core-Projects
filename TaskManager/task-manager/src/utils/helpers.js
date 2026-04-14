@@ -1,10 +1,3 @@
-// Constants
-// export const FILTER_OPTIONS = {
-//   ALL: 'all',
-//   ACTIVE: 'active',
-//   COMPLETED: 'completed'
-// };
-
 import { FILTER_OPTIONS } from "./constants";
 
 // =========================
