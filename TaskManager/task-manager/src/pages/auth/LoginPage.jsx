@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { EmailIcon, EyeIcon, EyeOffIcon, LockIcon } from '../../components/icons/Icons';
 import InputField from '../../components/input/InputField';
 
-import { useAuth } from '../../context/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { login as loginApi } from '../../services/api';
 
 import { validateEmail, validatePassword } from '../../utils/validation';

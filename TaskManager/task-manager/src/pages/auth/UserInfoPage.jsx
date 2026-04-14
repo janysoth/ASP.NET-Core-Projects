@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EyeIcon, EyeOffIcon } from '../../components/icons/Icons';
 import InputField from '../../components/input/InputField';
-import { useAuth } from '../../context/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { changePassword } from '../../services/api';
 import { formatDate } from '../../utils/helpers';
 

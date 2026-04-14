@@ -1,7 +1,7 @@
 // components/navigation/Navbar.jsx
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { ChecklistIcon, HomeIcon, LogoutIcon, UserIcon } from '../icons/Icons';
 
 const Navbar = () => {
