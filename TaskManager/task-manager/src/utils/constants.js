@@ -1,3 +1,5 @@
+import { getTodayLocalDateString } from './helpers';
+
 export const APP_CARDS = [
   {
     title: 'Task Manager',
@@ -10,7 +12,7 @@ export const APP_CARDS = [
 export const TODO_INITIAL_FORM_STATE = {
   title: '',
   description: '',
-  dueDate: ''
+  dueDate: getTodayLocalDateString(),
 };
 
 export const FILTER_OPTIONS = {

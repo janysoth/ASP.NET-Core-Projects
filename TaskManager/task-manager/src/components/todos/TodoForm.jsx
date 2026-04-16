@@ -39,7 +39,7 @@ const TodoForm = ({
           <div className="flex flex-col">
             <label className="text-sm text-gray-600 mb-1 flex items-center gap-1">
               <CalendarIcon className="w-4 h-4" />
-              Due Date (optional)
+              Due Date
             </label>
 
             <input

@@ -86,3 +86,7 @@ export const sortTodosByDueDate = (todos) => {
     return bCreated - aCreated;
   });
 };
+
+export const getTodayLocalDateString = () => {
+  return new Date().toISOString().split('T')[0];
+};
