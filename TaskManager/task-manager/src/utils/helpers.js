@@ -68,3 +68,21 @@ export const filterTodos = (todos, filter) => {
       return todos;
   }
 };
+
+// Sort Todos by Due Date
+export const sortTodosByDueDate = (todos) => {
+  return [...todos].sort((a, b) => {
+    const aDate = a.dueDateUtc ? new Date(a.dueDateUtc).getTime() : Infinity;
+    const bDate = b.dueDateUtc ? new Date(b.dueDateUtc).getTime() : Infinity;
+
+    if (aDate !== bDate) {
+      return aDate - bDate; // earliest due date first
+    }
+
+    // fallback: newest created first if same due date
+    const aCreated = a.createdAtUtc ? new Date(a.createdAtUtc).getTime() : 0;
+    const bCreated = b.createdAtUtc ? new Date(b.createdAtUtc).getTime() : 0;
+
+    return bCreated - aCreated;
+  });
+};

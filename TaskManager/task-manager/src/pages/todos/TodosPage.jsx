@@ -8,6 +8,7 @@ import {
   calculateStats,
   filterTodos,
   localDateToUtcString,
+  sortTodosByDueDate,
   utcToLocalDateString
 } from '../../utils/helpers';
 
@@ -25,7 +26,9 @@ const TodosPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Intentionally empty - only run on mount
 
-  const filteredTodos = useMemo(() => filterTodos(todos, filter), [todos, filter]);
+  const filteredTodos = useMemo(() => {
+    return sortTodosByDueDate(filterTodos(todos, filter));
+  }, [todos, filter]);
 
   const stats = useMemo(() => calculateStats(todos), [todos]);
 
