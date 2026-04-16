@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { CalendarIcon, CheckIcon, PlusIcon, XIcon } from '../../components/icons/Icons';
+import { CheckIcon, XIcon } from '../../components/icons/Icons';
 import TodoCard from '../../components/todos/TodoCard';
+import TodoForm from '../../components/todos/TodoForm';
 import { createTodo, deleteTodo, getTodos, patchTodo } from '../../services/api';
 import { FILTER_OPTIONS, TODO_INITIAL_FORM_STATE } from '../../utils/constants';
 import {
@@ -205,79 +206,15 @@ const TodosPage = () => {
         )}
 
         {/* Add/Edit Form */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <input
-                type="text"
-                placeholder="What needs to be done?"
-                value={formData.title}
-                onChange={handleChange('title')}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all duration-200 text-lg"
-                disabled={isSubmitting}
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <textarea
-                placeholder="Add a description (optional)"
-                value={formData.description}
-                onChange={handleChange('description')}
-                rows={2}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all duration-200 resize-none"
-                disabled={isSubmitting}
-              />
-              <div className="flex flex-col">
-                <label className="text-sm text-gray-600 mb-1 flex items-center gap-1">
-                  <CalendarIcon className="w-4 h-4" />
-                  Due Date (optional)
-                </label>
-                <input
-                  type="date"
-                  value={formData.dueDate}
-                  onChange={handleChange('dueDate')}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all duration-200"
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="submit"
-                disabled={!formData.title.trim() || isSubmitting}
-                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${!formData.title.trim() || isSubmitting
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]'
-                  }`}
-              >
-                {isSubmitting ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    {editingId ? 'Updating...' : 'Adding...'}
-                  </>
-                ) : (
-                  <>
-                    <PlusIcon className="w-5 h-5" />
-                    {editingId ? 'Update Todo' : 'Add Todo'}
-                  </>
-                )}
-              </button>
+        <TodoForm
+          formData={formData}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+          onCancel={handleCancelEdit}
+          isSubmitting={isSubmitting}
+          editingId={editingId}
+        />
 
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  className="flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-gray-600 hover:bg-gray-100 transition-colors duration-200"
-                >
-                  <XIcon className="w-5 h-5" />
-                  Cancel
-                </button>
-              )}
-            </div>
-          </form>
-        </div>
 
         {/* Filter Tabs */}
         <div className="flex flex-wrap gap-2 mb-6">
