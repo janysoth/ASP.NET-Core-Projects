@@ -1,5 +1,6 @@
 import { Routes } from 'react-router-dom';
 
+import { Toaster } from 'react-hot-toast';
 import SessionWarningModal from './components/modals/SessionWarningModal';
 import AppRoutes from './routes/AppRoutes';
 import AuthRoutes from './routes/AuthRoutes';
@@ -13,6 +14,20 @@ function App() {
       </Routes>
 
       <SessionWarningModal />
+
+      {/* ✅ GLOBAL TOAST */}
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 4000,
+          style: {
+            borderRadius: '10px',
+            background: '#333',
+            color: '#fff',
+          },
+        }}
+      />
     </>
   );
 }

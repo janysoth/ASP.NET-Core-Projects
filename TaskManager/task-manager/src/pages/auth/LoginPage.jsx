@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import toast from 'react-hot-toast';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import AuthForm from '../../components/forms/AuthForm';
@@ -11,6 +12,9 @@ import { login as loginApi } from '../../services/api';
 import { getLoginFormState } from '../../utils/formStates';
 import { validateEmail, validatePassword } from '../../utils/validation';
 
+// =========================
+// Field Config
+// =========================
 const FIELD_CONFIG = [
   {
     name: 'email',
@@ -33,7 +37,6 @@ const FIELD_CONFIG = [
 ];
 
 const LoginPage = () => {
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const [searchParams] = useSearchParams();
@@ -44,18 +47,52 @@ const LoginPage = () => {
 
   const form = useForm(FIELD_CONFIG, getLoginFormState);
 
+  // =========================
+  // Submit Handler
+  // =========================
   const handleLogin = useCallback(async (data) => {
-    setError('');
     setIsLoading(true);
+
+    // 🔄 Loading toast
+    const toastId = toast.loading('Logging in...', {
+      style: {
+        background: '#334155',
+        color: '#fff',
+      },
+    });
 
     try {
       const response = await loginApi(data);
       const { accessToken, user } = response.data;
 
       login({ token: accessToken, user });
+
+      // ✅ Success toast
+      toast.success('Welcome back! 🎉', {
+        id: toastId,
+        icon: '✅',
+        style: {
+          background: '#10b981',
+          color: '#fff',
+        },
+      });
+
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid credentials.');
+      const message =
+        err.response?.data?.message || 'Invalid credentials.';
+
+      // ❌ Error toast
+      toast.error(message, {
+        id: toastId,
+        icon: '❌',
+        style: {
+          background: '#ef4444',
+          color: '#fff',
+        },
+      });
+
+      console.error('Login error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -67,10 +104,14 @@ const LoginPage = () => {
       fields={FIELD_CONFIG}
       form={form}
       onSubmit={handleLogin}
-      error={error}
       isLoading={isLoading}
       submitText="Login"
       loadingText="Logging in..."
+
+      // ✅ Removed inline error completely
+      error={null}
+
+      // ✅ Keep contextual message inline (correct UX)
       extraContent={
         sessionExpired && (
           <div className="mb-4 bg-yellow-100 text-yellow-800 p-3 rounded-lg text-sm text-center">
@@ -78,16 +119,23 @@ const LoginPage = () => {
           </div>
         )
       }
+
       footer={
         <>
           <div className="flex justify-end mb-2">
-            <Link to="/forgot-password" className="text-sm text-indigo-600 hover:underline">
+            <Link
+              to="/forgot-password"
+              className="text-sm text-indigo-600 hover:underline"
+            >
               Forgot Password?
             </Link>
           </div>
 
           Don’t have an account?{' '}
-          <Link to="/register" className="text-indigo-600 font-medium hover:underline">
+          <Link
+            to="/register"
+            className="text-indigo-600 font-medium hover:underline"
+          >
             Register
           </Link>
         </>
