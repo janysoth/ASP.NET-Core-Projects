@@ -21,6 +21,7 @@ const AuthForm = ({
     submitted,
     setSubmitted,
     handleChange,
+    getNormalizedData, // ✅ NEW
   } = form;
 
   const handleSubmit = useCallback((e) => {
@@ -29,8 +30,10 @@ const AuthForm = ({
 
     if (hasErrors) return;
 
-    onSubmit(formData);
-  }, [formData, hasErrors, onSubmit, setSubmitted]);
+    const normalizedData = getNormalizedData(); // ✅ normalize HERE
+
+    onSubmit(normalizedData);
+  }, [hasErrors, onSubmit, setSubmitted, getNormalizedData]);
 
   const renderField = useCallback((field) => (
     <InputField

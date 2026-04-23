@@ -3,38 +3,14 @@ import toast from 'react-hot-toast';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import AuthForm from '../../components/forms/AuthForm';
-import { EmailIcon, EyeIcon, EyeOffIcon, LockIcon } from '../../components/icons/Icons';
 
 import { useAuth } from '../../hooks/useAuth';
 import { useForm } from '../../hooks/useForm';
 import { login as loginApi } from '../../services/api';
 
+import { LOGIN_FIELDS } from '../../features/auth/authFields';
 import { getLoginFormState } from '../../utils/formStates';
-import { validateEmail, validatePassword } from '../../utils/validation';
 
-// =========================
-// Field Config
-// =========================
-const FIELD_CONFIG = [
-  {
-    name: 'email',
-    label: 'Email',
-    type: 'email',
-    placeholder: 'Enter your email',
-    icon: <EmailIcon />,
-    validate: validateEmail
-  },
-  {
-    name: 'password',
-    label: 'Password',
-    type: 'password',
-    placeholder: 'Enter your password',
-    icon: <LockIcon />,
-    showIcon: <EyeIcon />,
-    hideIcon: <EyeOffIcon />,
-    validate: validatePassword
-  }
-];
 
 const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +21,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const form = useForm(FIELD_CONFIG, getLoginFormState);
+  const form = useForm(LOGIN_FIELDS, getLoginFormState);
 
   // =========================
   // Submit Handler
@@ -101,7 +77,7 @@ const LoginPage = () => {
   return (
     <AuthForm
       title="Welcome Back"
-      fields={FIELD_CONFIG}
+      fields={LOGIN_FIELDS}
       form={form}
       onSubmit={handleLogin}
       isLoading={isLoading}

@@ -3,51 +3,18 @@ import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
 
 import AuthForm from '../../components/forms/AuthForm';
-import { EmailIcon, EyeIcon, EyeOffIcon, LockIcon, UserIcon } from '../../components/icons/Icons';
 
 import { useForm } from '../../hooks/useForm';
 import { register as registerApi } from '../../services/api';
 
+import { REGISTER_FIELDS } from '../../features/auth/authFields';
 import { getRegisterFormState } from '../../utils/formStates';
-import { validateEmail, validateFullName, validatePassword } from '../../utils/validation';
-
-// =========================
-// Field Config
-// =========================
-const FIELD_CONFIG = [
-  {
-    name: 'fullName',
-    label: 'Full Name',
-    type: 'text',
-    placeholder: 'Enter your full name',
-    icon: <UserIcon />,
-    validate: validateFullName
-  },
-  {
-    name: 'email',
-    label: 'Email',
-    type: 'email',
-    placeholder: 'Enter your email',
-    icon: <EmailIcon />,
-    validate: validateEmail
-  },
-  {
-    name: 'password',
-    label: 'Password',
-    type: 'password',
-    placeholder: 'Create a password',
-    icon: <LockIcon />,
-    showIcon: <EyeIcon />,
-    hideIcon: <EyeOffIcon />,
-    validate: validatePassword
-  }
-];
 
 const RegisterPage = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
-  const form = useForm(FIELD_CONFIG, getRegisterFormState);
+  const form = useForm(REGISTER_FIELDS, getRegisterFormState);
 
   // =========================
   // Submit Handler
@@ -100,7 +67,7 @@ const RegisterPage = () => {
   return (
     <AuthForm
       title="Create Account"
-      fields={FIELD_CONFIG}
+      fields={REGISTER_FIELDS}
       form={form}
       onSubmit={handleRegister}
       isLoading={isLoading}
