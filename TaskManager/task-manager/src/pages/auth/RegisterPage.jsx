@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
 
 import AuthForm from '../../components/forms/AuthForm';
@@ -10,6 +11,9 @@ import { register as registerApi } from '../../services/api';
 import { getRegisterFormState } from '../../utils/formStates';
 import { validateEmail, validateFullName, validatePassword } from '../../utils/validation';
 
+// =========================
+// Field Config
+// =========================
 const FIELD_CONFIG = [
   {
     name: 'fullName',
@@ -40,21 +44,54 @@ const FIELD_CONFIG = [
 ];
 
 const RegisterPage = () => {
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
   const form = useForm(FIELD_CONFIG, getRegisterFormState);
 
+  // =========================
+  // Submit Handler
+  // =========================
   const handleRegister = useCallback(async (data) => {
-    setError('');
     setIsLoading(true);
+
+    // 🔄 Loading toast
+    const toastId = toast.loading('Creating account...', {
+      style: {
+        background: '#334155',
+        color: '#fff',
+      },
+    });
 
     try {
       await registerApi(data);
+
+      // ✅ Success toast
+      toast.success('Account created successfully! 🎉', {
+        id: toastId,
+        icon: '✅',
+        style: {
+          background: '#10b981',
+          color: '#fff',
+        },
+      });
+
       navigate('/login', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed.');
+      const message =
+        err.response?.data?.message || 'Registration failed.';
+
+      // ❌ Error toast
+      toast.error(message, {
+        id: toastId,
+        icon: '❌',
+        style: {
+          background: '#ef4444',
+          color: '#fff',
+        },
+      });
+
+      console.error('Registration error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -66,14 +103,20 @@ const RegisterPage = () => {
       fields={FIELD_CONFIG}
       form={form}
       onSubmit={handleRegister}
-      error={error}
       isLoading={isLoading}
       submitText="Register"
       loadingText="Creating account..."
+
+      // ❌ Remove inline error
+      error={null}
+
       footer={
         <>
           Already have an account?{' '}
-          <Link to="/login" className="text-indigo-600 font-medium hover:underline">
+          <Link
+            to="/login"
+            className="text-indigo-600 font-medium hover:underline"
+          >
             Login
           </Link>
         </>
