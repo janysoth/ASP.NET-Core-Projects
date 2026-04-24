@@ -82,3 +82,9 @@ export const forgotPassword = async (data) => {
 export const resetPassword = async (data) => {
   return await api.post('auth/reset-password', data);
 };
+
+export const checkEmailExists = (email) => {
+  return api.get('auth/check-email', {
+    params: { email },
+  });
+};

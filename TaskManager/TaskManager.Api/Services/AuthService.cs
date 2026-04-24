@@ -322,6 +322,17 @@ public sealed class AuthService
   }
 
   // ----------------------------------------------------
+  // CHECK EMAIL EXISTS
+  // ----------------------------------------------------
+  public async Task<bool> EmailExistsAsync(string email)
+  {
+    if (string.IsNullOrWhiteSpace(email))
+      return false;
+
+    return await _users.EmailExistsAsync(email.Trim().ToLowerInvariant());
+  }
+
+  // ----------------------------------------------------
   // HELPERS
   // ----------------------------------------------------
   private (string RawToken, RefreshTokenRecord Record) IssueRefreshToken()

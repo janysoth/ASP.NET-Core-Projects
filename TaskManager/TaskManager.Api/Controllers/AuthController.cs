@@ -221,6 +221,20 @@ public sealed class AuthController : ControllerBase
   }
 
   // =========================
+  // CHECK EMAIL EXIST
+  // =========================
+  [HttpGet("check-email")]
+  public async Task<IActionResult> CheckEmail([FromQuery] string email)
+  {
+    if (string.IsNullOrWhiteSpace(email))
+      return BadRequest(new { message = "Email is required." });
+
+    var emailExists = await _auth.EmailExistsAsync(email);
+
+    return Ok(new { emailExists });
+  }
+
+  // =========================
   // COOKIE HELPER
   // =========================
   private void SetRefreshCookie(string refreshToken)

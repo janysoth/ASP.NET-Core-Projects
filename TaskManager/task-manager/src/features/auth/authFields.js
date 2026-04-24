@@ -5,6 +5,7 @@ import {
   LockIcon,
   UserIcon,
 } from '../../components/icons/Icons';
+import { checkEmailExists } from '../../services/api';
 
 import {
   validateEmail,
@@ -60,12 +61,19 @@ export const REGISTER_FIELDS = [
     name: 'email',
     label: 'Email',
     type: 'email',
-    placeholder: 'Enter your email',
+    placeholder: "Enter your email",
     icon: <EmailIcon />,
     required: true,
+    normalize: (v) => v.trim(),
     pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     validate: validateEmail,
-    normalize: (v) => v.trim(),
+
+    asyncValidate: async (value) => {
+      if (!value) return '';
+
+      const res = await checkEmailExists(value);
+      return res.data.exists ? 'Email already in use' : '';
+    }
   },
   {
     name: 'password',

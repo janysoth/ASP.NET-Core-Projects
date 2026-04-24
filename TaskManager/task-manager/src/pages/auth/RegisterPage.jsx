@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import AuthForm from '../../components/forms/AuthForm';
 
 import { useForm } from '../../hooks/useForm';
-import { register as registerApi } from '../../services/api';
+import { checkEmailExists, register as registerApi } from '../../services/api';
 
 import { REGISTER_FIELDS } from '../../features/auth/authFields';
 import { getRegisterFormState } from '../../utils/formStates';
@@ -22,43 +22,47 @@ const RegisterPage = () => {
   const handleRegister = useCallback(async (data) => {
     setIsLoading(true);
 
-    // 🔄 Loading toast
     const toastId = toast.loading('Creating account...', {
-      style: {
-        background: '#334155',
-        color: '#fff',
-      },
+      style: { background: '#334155', color: '#fff' },
     });
 
     try {
+      // 🔍 check email first (optional UX layer)
+      const res = await checkEmailExists(data.email);
+
+      if (res.data.emailExists) {
+        toast.error('Email already exists', {
+          id: toastId,
+          icon: '❌',
+          style: { background: '#ef4444', color: '#fff' },
+        });
+        setTimeout(() => {
+          navigate('/login', {
+            replace: true,
+          });
+        }, 800);
+      }
+
       await registerApi(data);
 
-      // ✅ Success toast
       toast.success('Account created successfully! 🎉', {
         id: toastId,
         icon: '✅',
-        style: {
-          background: '#10b981',
-          color: '#fff',
-        },
+        style: { background: '#10b981', color: '#fff' },
       });
 
       navigate('/login', { replace: true });
     } catch (err) {
       const message =
-        err.response?.data?.message || 'Registration failed.';
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        'Registration failed.';
 
-      // ❌ Error toast
       toast.error(message, {
         id: toastId,
         icon: '❌',
-        style: {
-          background: '#ef4444',
-          color: '#fff',
-        },
+        style: { background: '#ef4444', color: '#fff' },
       });
-
-      console.error('Registration error:', err);
     } finally {
       setIsLoading(false);
     }

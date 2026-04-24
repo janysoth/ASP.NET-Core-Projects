@@ -1,59 +1,38 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-// =========================
-// Validation Engine
-// =========================
-const runValidation = (field, value) => {
-  const val = value ?? '';
-
-  // Required
-  if (field.required && !val.toString().trim()) {
-    return `${field.label || field.name} is required`;
-  }
-
-  // Min length
-  if (field.minLength && val.length < field.minLength) {
-    return `${field.label || field.name} must be at least ${field.minLength} characters`;
-  }
-
-  // Pattern (regex)
-  if (field.pattern && !field.pattern.test(val)) {
-    return `${field.label || field.name} is invalid`;
-  }
-
-  // Custom validator
-  if (field.validate) {
-    return field.validate(val);
-  }
-
-  return '';
-};
+const DEBOUNCE_DELAY = 500;
 
 export const useForm = (fieldConfig, getInitialState) => {
   const [formData, setFormData] = useState(getInitialState);
   const [submitted, setSubmitted] = useState(false);
 
+  const [asyncErrors, setAsyncErrors] = useState({});
+  const [asyncLoading, setAsyncLoading] = useState({});
+
+  const requestIdRef = useRef({}); // track latest request per field
+
   // =========================
-  // Validation
+  // Sync validation (existing)
   // =========================
   const errors = useMemo(() => {
     const result = {};
 
     fieldConfig.forEach((field) => {
-      const value = formData[field.name];
-      result[field.name] = runValidation(field, value);
+      if (field.validate) {
+        result[field.name] = field.validate(formData[field.name]);
+      }
     });
 
     return result;
   }, [formData, fieldConfig]);
 
-  const hasErrors = useMemo(
-    () => Object.values(errors).some(Boolean),
-    [errors]
-  );
+  const hasErrors = useMemo(() => {
+    return Object.values(errors).some(Boolean)
+      || Object.values(asyncErrors).some(Boolean);
+  }, [errors, asyncErrors]);
 
   // =========================
-  // ✅ FIXED: Change handler (NO normalize here)
+  // Handle change
   // =========================
   const handleChange = useCallback(
     (fieldName) => (value) => {
@@ -66,18 +45,50 @@ export const useForm = (fieldConfig, getInitialState) => {
   );
 
   // =========================
-  // ✅ NEW: Normalize on demand
+  // Async validation effect
   // =========================
-  const getNormalizedData = useCallback(() => {
-    return fieldConfig.reduce((acc, field) => {
+  useEffect(() => {
+    fieldConfig.forEach((field) => {
+      if (!field.asyncValidate) return;
+
       const value = formData[field.name];
 
-      acc[field.name] = field.normalize
-        ? field.normalize(value)
-        : value;
+      if (!value) {
+        setAsyncErrors(prev => ({ ...prev, [field.name]: '' }));
+        return;
+      }
 
-      return acc;
-    }, {});
+      const requestId = Date.now();
+      requestIdRef.current[field.name] = requestId;
+
+      setAsyncLoading(prev => ({ ...prev, [field.name]: true }));
+
+      const timer = setTimeout(async () => {
+        try {
+          const error = await field.asyncValidate(value);
+
+          // 🚫 Ignore outdated response
+          if (requestIdRef.current[field.name] !== requestId) return;
+
+          setAsyncErrors(prev => ({
+            ...prev,
+            [field.name]: error,
+          }));
+        } catch {
+          setAsyncErrors(prev => ({
+            ...prev,
+            [field.name]: 'Validation failed',
+          }));
+        } finally {
+          setAsyncLoading(prev => ({
+            ...prev,
+            [field.name]: false,
+          }));
+        }
+      }, DEBOUNCE_DELAY);
+
+      return () => clearTimeout(timer);
+    });
   }, [formData, fieldConfig]);
 
   // =========================
@@ -86,17 +97,19 @@ export const useForm = (fieldConfig, getInitialState) => {
   const resetForm = useCallback(() => {
     setFormData(getInitialState());
     setSubmitted(false);
+    setAsyncErrors({});
+    setAsyncLoading({});
   }, [getInitialState]);
 
   return {
     formData,
-    setFormData,
     errors,
+    asyncErrors,
+    asyncLoading,
     hasErrors,
     submitted,
     setSubmitted,
     handleChange,
     resetForm,
-    getNormalizedData, // ✅ expose this
   };
 };

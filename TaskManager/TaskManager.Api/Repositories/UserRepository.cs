@@ -40,6 +40,20 @@ public sealed class UserRepository
             .FirstOrDefaultAsync();
     }
 
+    public async Task<bool> EmailExistsAsync(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+
+        email = email.Trim().ToLowerInvariant();
+
+        var user = await _users
+            .Find(u => u.Email == email)
+            .FirstOrDefaultAsync();
+
+        return user is not null;
+    }
+
     /// <summary>
     /// Retrieves a user by unique identifier.
     /// Returns null if the user does not exist.
