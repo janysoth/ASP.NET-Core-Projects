@@ -1,10 +1,22 @@
-export const validateEmail = (email) => {
-  if (!email) return 'Email is required';
+export const validateEmail = (email = '') => {
+  const value = email.trim();
 
-  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!value) return 'Email is required';
 
-  if (!regex.test(email)) {
+  // basic format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(value)) {
     return 'Invalid email format';
+  }
+
+  // extra safety rules
+  if (value.includes('..')) {
+    return 'Email cannot contain consecutive dots';
+  }
+
+  if (value.startsWith('.') || value.endsWith('.')) {
+    return 'Email cannot start or end with a dot';
   }
 
   return '';
