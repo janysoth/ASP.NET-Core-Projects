@@ -34,9 +34,21 @@ public sealed class AuthController : ControllerBase
       SetRefreshCookie(refreshToken);
       return Ok(res);
     }
-    catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+    catch (ArgumentException ex)
     {
-      return BadRequest(new { error = ex.Message });
+      return BadRequest(new
+      {
+        code = "VALIDATION_ERROR",
+        message = ex.Message
+      });
+    }
+    catch (InvalidOperationException ex)
+    {
+      return BadRequest(new
+      {
+        code = "BUSINESS_ERROR",
+        message = ex.Message
+      });
     }
   }
 

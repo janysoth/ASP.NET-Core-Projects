@@ -5,9 +5,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import AuthForm from '../../components/forms/AuthForm';
 
 import { useForm } from '../../hooks/useForm';
-import { checkEmailExists, register as registerApi } from '../../services/api';
+import { register as registerApi } from '../../services/api';
 
 import { REGISTER_FIELDS } from '../../features/auth/authFields';
+import { getApiError } from '../../utils/apiError';
 import { getRegisterFormState } from '../../utils/formStates';
 
 const RegisterPage = () => {
@@ -16,53 +17,62 @@ const RegisterPage = () => {
   const navigate = useNavigate();
   const form = useForm(REGISTER_FIELDS, getRegisterFormState);
 
-  // =========================
-  // Submit Handler
-  // =========================
   const handleRegister = useCallback(async (data) => {
     setIsLoading(true);
 
     const toastId = toast.loading('Creating account...', {
-      style: { background: '#334155', color: '#fff' },
+      style: {
+        background: '#334155',
+        color: '#fff',
+      },
     });
 
     try {
-      // 🔍 check email first (optional UX layer)
-      const res = await checkEmailExists(data.email);
-
-      if (res.data.emailExists) {
-        toast.error('Email already exists', {
-          id: toastId,
-          icon: '❌',
-          style: { background: '#ef4444', color: '#fff' },
-        });
-        setTimeout(() => {
-          navigate('/login', {
-            replace: true,
-          });
-        }, 800);
-      }
-
       await registerApi(data);
 
       toast.success('Account created successfully! 🎉', {
         id: toastId,
         icon: '✅',
-        style: { background: '#10b981', color: '#fff' },
+        style: {
+          background: '#10b981',
+          color: '#fff',
+        },
       });
 
       navigate('/login', { replace: true });
+
     } catch (err) {
-      const message =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        'Registration failed.';
+      const { message } = getApiError(err);
+
+      // 👉 Email exists → redirect to login
+      if (message.toLowerCase().includes('email already')) {
+        toast.error('Email already exists. Redirecting to login...', {
+          id: toastId,
+          icon: '⚠️',
+          style: {
+            background: '#f59e0b',
+            color: '#fff',
+          },
+        });
+
+        setTimeout(() => {
+          navigate('/login', { replace: true });
+        }, 1500);
+
+        return;
+      }
 
       toast.error(message, {
         id: toastId,
         icon: '❌',
-        style: { background: '#ef4444', color: '#fff' },
+        style: {
+          background: '#ef4444',
+          color: '#fff',
+        },
       });
+
+      console.error('Registration error:', err);
+
     } finally {
       setIsLoading(false);
     }
@@ -77,10 +87,7 @@ const RegisterPage = () => {
       isLoading={isLoading}
       submitText="Register"
       loadingText="Creating account..."
-
-      // ❌ Remove inline error
       error={null}
-
       footer={
         <>
           Already have an account?{' '}

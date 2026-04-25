@@ -1,27 +1,9 @@
 export const validateEmail = (email) => {
   if (!email) return 'Email is required';
 
-  const value = email.trim();
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  // Basic structure: something@something.something
-  const basicRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!basicRegex.test(value)) {
-    return 'Invalid email format';
-  }
-
-  // Prevent consecutive dots (your current bug)
-  if (value.includes('..')) {
-    return 'Email cannot contain consecutive dots';
-  }
-
-  const [local, domain] = value.split('@');
-
-  // Prevent leading/trailing dots
-  if (local.startsWith('.') || local.endsWith('.')) {
-    return 'Invalid email format';
-  }
-
-  if (domain.startsWith('.') || domain.endsWith('.')) {
+  if (!regex.test(email)) {
     return 'Invalid email format';
   }
 

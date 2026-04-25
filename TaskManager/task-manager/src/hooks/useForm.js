@@ -101,6 +101,19 @@ export const useForm = (fieldConfig, getInitialState) => {
     setAsyncLoading({});
   }, [getInitialState]);
 
+  const getNormalizedData = useCallback(() => {
+    const normalized = {};
+
+    Object.keys(formData).forEach((key) => {
+      const value = formData[key];
+
+      normalized[key] =
+        typeof value === 'string' ? value.trim() : value;
+    });
+
+    return normalized;
+  }, [formData]);
+
   return {
     formData,
     errors,
@@ -111,5 +124,6 @@ export const useForm = (fieldConfig, getInitialState) => {
     setSubmitted,
     handleChange,
     resetForm,
+    getNormalizedData
   };
 };

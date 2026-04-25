@@ -44,7 +44,7 @@ public sealed class AuthService
       throw new ArgumentException("Email is required.");
 
     if (!IsValidEmail(email))
-      throw new ArgumentException("Invalid Email.");
+      throw new ArgumentException("Invalid Email format.");
 
     if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 8)
       throw new ArgumentException("Password must be at least 8 characters.");
@@ -342,17 +342,29 @@ public sealed class AuthService
   // ----------------------------------------------------
   private static bool IsValidEmail(string email)
   {
-    try
-    {
-      var addr = new MailAddress(email);
-
-      // Ensures no normalization tricks bypass validation
-      return addr.Address == email;
-    }
-    catch
-    {
+    if (string.IsNullOrWhiteSpace(email))
       return false;
-    }
+
+    // Basic structure check
+    var regex = new System.Text.RegularExpressions.Regex(
+      @"^[^\s@]+@[^\s@]+\.[^\s@]+$",
+      System.Text.RegularExpressions.RegexOptions.IgnoreCase
+    );
+
+    if (!regex.IsMatch(email))
+      return false;
+
+    // Additional strict rules
+    if (email.Contains(".."))
+      return false;
+
+    if (email.StartsWith(".") || email.EndsWith("."))
+      return false;
+
+    if (email.Contains("@.") || email.Contains(".@"))
+      return false;
+
+    return true;
   }
 
   // ----------------------------------------------------
