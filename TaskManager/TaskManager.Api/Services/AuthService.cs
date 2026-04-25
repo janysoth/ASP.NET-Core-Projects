@@ -1,3 +1,5 @@
+using System.Net.Mail;
+
 using TaskManager.Api.Auth;
 using TaskManager.Api.Dtos;
 using TaskManager.Api.Models;
@@ -40,6 +42,9 @@ public sealed class AuthService
 
     if (string.IsNullOrWhiteSpace(email))
       throw new ArgumentException("Email is required.");
+
+    if (!IsValidEmail(email))
+      throw new ArgumentException("Invalid Email.");
 
     if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 8)
       throw new ArgumentException("Password must be at least 8 characters.");
@@ -330,6 +335,24 @@ public sealed class AuthService
       return false;
 
     return await _users.EmailExistsAsync(email.Trim().ToLowerInvariant());
+  }
+
+  // ----------------------------------------------------
+  // CHECK EMAIL IS VALID
+  // ----------------------------------------------------
+  private static bool IsValidEmail(string email)
+  {
+    try
+    {
+      var addr = new MailAddress(email);
+
+      // Ensures no normalization tricks bypass validation
+      return addr.Address == email;
+    }
+    catch
+    {
+      return false;
+    }
   }
 
   // ----------------------------------------------------
