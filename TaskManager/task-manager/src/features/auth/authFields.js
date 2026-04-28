@@ -80,6 +80,7 @@ export const REGISTER_FIELDS = [
     label: 'Password',
     type: 'password',
     placeholder: 'Create a password',
+    showStrength: true,
     icon: <LockIcon />,
     showIcon: <EyeIcon />,
     hideIcon: <EyeOffIcon />,

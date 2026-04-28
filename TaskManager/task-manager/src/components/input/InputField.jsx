@@ -1,26 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
-const getPasswordStrength = (password = '') => {
-  let score = 0;
-
-  if (password.length >= 8) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
-
-  return score;
-};
-
-const strengthMeta = [
-  { label: '', color: '' },
-  { label: 'Weak', color: 'bg-red-500' },
-  { label: 'Fair', color: 'bg-orange-400' },
-  { label: 'Good', color: 'bg-yellow-400' },
-  { label: 'Strong', color: 'bg-green-500' },
-];
+const DEBOUNCE_DELAY = 500;
 
 const InputField = ({
-  name,
   label,
   type = 'text',
   placeholder,
@@ -30,60 +12,53 @@ const InputField = ({
   validate,
   value,
   onChange,
-  inputRef,
 }) => {
   const [visible, setVisible] = useState(false);
-  const [error, setError] = useState('');
-  const [dirty, setDirty] = useState(false);
-  const [strength, setStrength] = useState(0);
 
-  const internalRef = useRef(null);
-  const timerRef = useRef(null);
+  const [dirty, setDirty] = useState(false);        // user has typed
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
-  const toggleVisibility = () => setVisible(v => !v);
+  // =========================
+  // Debounce input
+  // =========================
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, DEBOUNCE_DELAY);
 
-  const handleChange = (val) => {
+    return () => clearTimeout(timer);
+  }, [value]);
+
+  // =========================
+  // Mark field as touched
+  // =========================
+  const handleChange = (e) => {
     if (!dirty) setDirty(true);
-    onChange(val);
+    onChange(e.target.value);
   };
 
-  // =========================
-  // Debounced validation
-  // =========================
-  useEffect(() => {
-    if (!dirty || !validate) return;
-
-    clearTimeout(timerRef.current);
-
-    timerRef.current = setTimeout(() => {
-      setError(validate(value) || '');
-    }, 500);
-
-    return () => clearTimeout(timerRef.current);
-  }, [value, validate, dirty]);
+  const toggleVisibility = () => setVisible(!visible);
 
   // =========================
-  // Password strength
+  // Validation (AFTER pause)
   // =========================
-  useEffect(() => {
-    if (type !== 'password') return;
-
-    setStrength(getPasswordStrength(value));
-  }, [value, type]);
+  const errorMessage = useMemo(() => {
+    if (!validate || !dirty) return '';
+    return validate(debouncedValue);
+  }, [validate, debouncedValue, dirty]);
 
   // =========================
-  // States
+  // Border logic
   // =========================
-  const isInvalid = dirty && Boolean(error);
-  const isValid = dirty && !error && value;
+  const borderClass = useMemo(() => {
+    if (!dirty) return 'border-gray-300';
 
-  const strengthInfo = strengthMeta[strength];
+    if (errorMessage) return 'border-red-500';
 
-  const borderClass = isInvalid
-    ? 'border-red-500'
-    : isValid
-      ? 'border-green-500'
-      : 'border-gray-300';
+    if (debouncedValue) return 'border-green-500';
+
+    return 'border-gray-300';
+  }, [dirty, errorMessage, debouncedValue]);
 
   return (
     <div className="flex flex-col">
@@ -99,24 +74,10 @@ const InputField = ({
         {icon && <span className="mr-2">{icon}</span>}
 
         <input
-          ref={(el) => {
-            internalRef.current = el;
-            if (inputRef) inputRef.current = el;
-          }}
-          name={name}
           type={visible ? 'text' : type}
           placeholder={placeholder}
           value={value}
-          onChange={(e) => handleChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              const form = e.currentTarget.form;
-              const inputs = Array.from(form.elements);
-              const index = inputs.indexOf(e.currentTarget);
-              inputs[index + 1]?.focus();
-            }
-          }}
+          onChange={handleChange}
           className="flex-1 outline-none"
         />
 
@@ -127,23 +88,10 @@ const InputField = ({
         )}
       </div>
 
-      {/* Password Strength */}
-      {type === 'password' && dirty && value && (
-        <div className="mt-2">
-          <div className="h-2 w-full bg-gray-200 rounded">
-            <div
-              className={`h-2 rounded transition-all duration-300 ${strengthInfo.color}`}
-              style={{ width: `${(strength / 4) * 100}%` }}
-            />
-          </div>
-          <p className="text-xs mt-1 text-gray-600">
-            Strength: {strengthInfo.label}
-          </p>
-        </div>
-      )}
-
-      {isInvalid && (
-        <p className="text-red-600 text-sm mt-1">{error}</p>
+      {errorMessage && (
+        <p className="text-red-600 text-sm mt-1">
+          {errorMessage}
+        </p>
       )}
     </div>
   );
