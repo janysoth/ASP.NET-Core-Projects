@@ -67,6 +67,7 @@ export const REGISTER_FIELDS = [
     normalize: (v) => v.trim(),
     pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     validate: validateEmail,
+    checkEmailExists: true,
 
     asyncValidate: async (value) => {
       if (!value) return '';

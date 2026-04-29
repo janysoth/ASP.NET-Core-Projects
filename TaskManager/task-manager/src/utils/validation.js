@@ -42,3 +42,22 @@ export const validateFullName = (name) => {
   if (name.length < 2) return 'Name must be at least 2 characters.';
   return '';
 };
+
+export const getPasswordStrength = (password) => {
+  if (!password) return { score: 0, label: '' };
+
+  let score = 0;
+
+  if (password.length >= 8) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  const labels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
+
+  return {
+    score,
+    label: labels[Math.max(0, score - 1)],
+  };
+};
