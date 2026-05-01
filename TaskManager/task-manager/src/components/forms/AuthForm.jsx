@@ -40,8 +40,15 @@ const AuthForm = ({
       onChange={handleChange(field.name)}
       error={errors[field.name]}
       showError={submitted}
+
+      emailMode={
+        title === 'Welcome Back' ? 'login' : 'register'
+      }
     />
-  ), [formData, handleChange, errors, submitted]);
+  ), [formData, handleChange, errors, submitted, title]);
+
+  const disableSubmit =
+    hasErrors || form.asyncErrors?.email;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-50 to-indigo-100 p-4">
@@ -64,7 +71,7 @@ const AuthForm = ({
 
           <FormButton
             isLoading={isLoading}
-            disabled={hasErrors}
+            disabled={disableSubmit}
             loadingText={loadingText}
           >
             {submitText}

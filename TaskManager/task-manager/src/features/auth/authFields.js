@@ -27,6 +27,7 @@ export const LOGIN_FIELDS = [
     pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     validate: validateEmail,
     normalize: (v) => v.trim(),
+    emailMode: 'login',
   },
   {
     name: 'password',

@@ -1,6 +1,8 @@
 // components/navigation/Navbar.jsx
 import React, { useEffect, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+
 import { useAuth } from '../../hooks/useAuth';
 import { ChecklistIcon, HomeIcon, LogoutIcon, UserIcon } from '../icons/Icons';
 
@@ -24,8 +26,29 @@ const Navbar = () => {
   }, []);
 
   const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
+    try {
+      logout();
+
+      toast.success('Logged out successfully', {
+        icon: '👋',
+        style: {
+          background: '#10b981',
+          color: '#fff',
+        },
+      });
+
+      navigate('/login', { replace: true });
+    } catch (err) {
+      toast.error('Logout failed. Please try again.', {
+        icon: '❌',
+        style: {
+          background: '#ef4444',
+          color: '#fff',
+        },
+      });
+
+      console.error('Logout error:', err);
+    }
   };
 
   const toggleDropdown = () => setIsDropdownOpen(!isDropdownOpen);
