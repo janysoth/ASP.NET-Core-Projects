@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import FormButton from '../common/FormButton';
 import InputField from '../input/InputField';
 
@@ -23,6 +23,15 @@ const AuthForm = ({
     handleChange,
   } = form;
 
+  const [asyncErrors, setAsyncErrors] = useState({});
+
+  const handleAsyncValidation = (fieldName, error) => {
+    setAsyncErrors(prev => ({
+      ...prev,
+      [fieldName]: error
+    }));
+  };
+
   const handleSubmit = useCallback((e) => {
     e.preventDefault();
     setSubmitted(true);
@@ -38,17 +47,17 @@ const AuthForm = ({
       {...field}
       value={formData[field.name]}
       onChange={handleChange(field.name)}
-      error={errors[field.name]}
-      showError={submitted}
-
-      emailMode={
-        title === 'Welcome Back' ? 'login' : 'register'
+      emailMode={title === 'Welcome Back' ? 'login' : 'register'}
+      onAsyncValidationChange={(value, error) =>
+        handleAsyncValidation(field.name, error)
       }
     />
   ), [formData, handleChange, errors, submitted, title]);
 
   const disableSubmit =
     hasErrors || form.asyncErrors?.email;
+
+  const hasServerErrors = Object.values(asyncErrors).some(Boolean);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-50 to-indigo-100 p-4">
@@ -71,7 +80,7 @@ const AuthForm = ({
 
           <FormButton
             isLoading={isLoading}
-            disabled={disableSubmit}
+            disabled={hasErrors || hasServerErrors}
             loadingText={loadingText}
           >
             {submitText}

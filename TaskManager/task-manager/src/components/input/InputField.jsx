@@ -14,7 +14,7 @@ const InputField = ({
   validate,
   value,
   onChange,
-
+  onAsyncValidationChange,
   emailMode,
 }) => {
   const [visible, setVisible] = useState(false);
@@ -77,22 +77,18 @@ const InputField = ({
         // REGISTER MODE
         // =========================
         if (emailMode === 'register') {
-          if (exists) {
-            setAsyncError('Email already exists');
-          } else {
-            setAsyncError('');
-          }
+          const error = exists ? 'Email already exists.' : '';
+          setAsyncError(error);
+          onAsyncValidationChange?.(value, error);
         }
 
         // =========================
         // LOGIN MODE
         // =========================
         if (emailMode === 'login') {
-          if (!exists) {
-            setAsyncError('Email does not exist');
-          } else {
-            setAsyncError('');
-          }
+          const error = !exists ? 'Email does not exist.' : '';
+          setAsyncError(error);
+          onAsyncValidationChange?.(value, error);
         }
 
       } catch {
