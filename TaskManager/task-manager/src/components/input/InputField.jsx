@@ -38,7 +38,10 @@ const InputField = ({
 
   const handleChange = (e) => {
     if (!dirty) setDirty(true);
+
     setAsyncError('');
+    onAsyncValidationChange?.('', ''); // reset global error
+
     onChange(e.target.value);
   };
 
@@ -52,9 +55,9 @@ const InputField = ({
     return validate(debouncedValue);
   }, [validate, debouncedValue, dirty]);
 
-  // ====================================
-  // EMAIL EXIST CHECK (REGISTER + LOGIN)
-  // ====================================
+  // =========================
+  // Async email validation
+  // =========================
   useEffect(() => {
     if (type !== 'email') return;
     if (!emailMode) return;
@@ -73,27 +76,23 @@ const InputField = ({
 
         if (!active) return;
 
-        // =========================
-        // REGISTER MODE
-        // =========================
+        let error = '';
+
         if (emailMode === 'register') {
-          const error = exists ? 'Email already exists.' : '';
-          setAsyncError(error);
-          onAsyncValidationChange?.(value, error);
+          error = exists ? 'Email already exists.' : '';
         }
 
-        // =========================
-        // LOGIN MODE
-        // =========================
         if (emailMode === 'login') {
-          const error = !exists ? 'Email does not exist.' : '';
-          setAsyncError(error);
-          onAsyncValidationChange?.(value, error);
+          error = !exists ? 'Email does not exist.' : '';
         }
+
+        setAsyncError(error);
+        onAsyncValidationChange?.(type, error); // notify parent
 
       } catch {
         if (active) {
           setAsyncError('Unable to validate email');
+          onAsyncValidationChange?.(type, 'Unable to validate email');
         }
       } finally {
         if (active) setIsChecking(false);
@@ -105,7 +104,15 @@ const InputField = ({
     return () => {
       active = false;
     };
-  }, [debouncedValue, syncError, dirty, emailMode, type]);
+  }, [
+    debouncedValue,
+    syncError,
+    dirty,
+    emailMode,
+    type,
+    onAsyncValidationChange, // ✅ FIXED
+    value // ✅ FIXED (eslint requirement)
+  ]);
 
   // =========================
   // Password strength
@@ -115,27 +122,15 @@ const InputField = ({
     return getPasswordStrength(debouncedValue);
   }, [debouncedValue, dirty, type]);
 
-  // =========================
-  // Error
-  // =========================
   const errorMessage = syncError || asyncError;
 
-  // =========================
-  // Border color
-  // =========================
   const borderClass = useMemo(() => {
     if (!dirty) return 'border-gray-300';
-
     if (errorMessage) return 'border-red-500';
-
     if (debouncedValue && !isChecking) return 'border-green-500';
-
     return 'border-gray-300';
   }, [dirty, errorMessage, debouncedValue, isChecking]);
 
-  // =========================
-  // Strength UI
-  // =========================
   const strengthWidth = passwordStrength
     ? `${(passwordStrength.score / 5) * 100}%`
     : '0%';
@@ -169,7 +164,6 @@ const InputField = ({
         )}
       </div>
 
-      {/* Password Strength */}
       {type === 'password' && dirty && passwordStrength && (
         <div className="mt-2">
           <div className="h-2 w-full bg-gray-200 rounded">
@@ -184,12 +178,10 @@ const InputField = ({
         </div>
       )}
 
-      {/* Checking */}
       {isChecking && (
         <p className="text-gray-500 text-sm mt-1">Checking email...</p>
       )}
 
-      {/* Error */}
       {!isChecking && errorMessage && (
         <p className="text-red-600 text-sm mt-1">{errorMessage}</p>
       )}

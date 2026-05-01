@@ -16,30 +16,31 @@ const AuthForm = ({
 }) => {
   const {
     formData,
-    errors,
     hasErrors,
-    submitted,
     setSubmitted,
     handleChange,
   } = form;
 
   const [asyncErrors, setAsyncErrors] = useState({});
 
-  const handleAsyncValidation = (fieldName, error) => {
+  // ✅ STABLE callback (fix for InputField warning)
+  const handleAsyncValidation = useCallback((fieldName, error) => {
     setAsyncErrors(prev => ({
       ...prev,
       [fieldName]: error
     }));
-  };
+  }, []);
+
+  const hasServerErrors = Object.values(asyncErrors).some(Boolean);
 
   const handleSubmit = useCallback((e) => {
     e.preventDefault();
     setSubmitted(true);
 
-    if (hasErrors) return;
+    if (hasErrors || hasServerErrors) return;
 
-    onSubmit(formData); // ✅ no normalization layer
-  }, [hasErrors, onSubmit, setSubmitted, formData]);
+    onSubmit(formData);
+  }, [hasErrors, hasServerErrors, onSubmit, setSubmitted, formData]);
 
   const renderField = useCallback((field) => (
     <InputField
@@ -48,16 +49,9 @@ const AuthForm = ({
       value={formData[field.name]}
       onChange={handleChange(field.name)}
       emailMode={title === 'Welcome Back' ? 'login' : 'register'}
-      onAsyncValidationChange={(value, error) =>
-        handleAsyncValidation(field.name, error)
-      }
+      onAsyncValidationChange={handleAsyncValidation} // ✅ stable now
     />
-  ), [formData, handleChange, errors, submitted, title]);
-
-  const disableSubmit =
-    hasErrors || form.asyncErrors?.email;
-
-  const hasServerErrors = Object.values(asyncErrors).some(Boolean);
+  ), [formData, handleChange, handleAsyncValidation, title]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-50 to-indigo-100 p-4">
