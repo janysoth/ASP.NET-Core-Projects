@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { checkEmailExists } from '../../services/api';
 import { getPasswordStrength } from '../../utils/validation';
 
-const DEBOUNCE_DELAY = 500;
+const DEBOUNCE_DELAY = 300;
 
 const InputField = ({
   label,
@@ -118,9 +118,11 @@ const InputField = ({
   // Password strength
   // =========================
   const passwordStrength = useMemo(() => {
-    if (type !== 'password' || !dirty) return null;
+    if (type !== 'password' || emailMode !== 'register' || !dirty)
+      return null;
+
     return getPasswordStrength(debouncedValue);
-  }, [debouncedValue, dirty, type]);
+  }, [debouncedValue, dirty, type, emailMode]);
 
   const errorMessage = syncError || asyncError;
 
@@ -164,7 +166,7 @@ const InputField = ({
         )}
       </div>
 
-      {type === 'password' && dirty && passwordStrength && (
+      {type === 'password' && emailMode === 'register' && dirty && passwordStrength && (
         <div className="mt-2">
           <div className="h-2 w-full bg-gray-200 rounded">
             <div

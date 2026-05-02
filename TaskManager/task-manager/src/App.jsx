@@ -20,7 +20,7 @@ function App() {
         position="top-right"
         reverseOrder={false}
         toastOptions={{
-          duration: 2000,
+          duration: 1000,
           style: {
             borderRadius: '10px',
             background: '#333',
