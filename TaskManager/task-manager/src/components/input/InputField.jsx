@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { checkEmailExists } from '../../services/api';
 import { getPasswordStrength } from '../../utils/validation';
 
-const DEBOUNCE_DELAY = 300;
+const DEBOUNCE_DELAY = 500;
 
 const InputField = ({
   label,
@@ -40,7 +40,7 @@ const InputField = ({
     if (!dirty) setDirty(true);
 
     setAsyncError('');
-    onAsyncValidationChange?.('', ''); // reset global error
+    onAsyncValidationChange?.('', '');
 
     onChange(e.target.value);
   };
@@ -56,7 +56,7 @@ const InputField = ({
   }, [validate, debouncedValue, dirty]);
 
   // =========================
-  // Async email validation
+  // Email async validation
   // =========================
   useEffect(() => {
     if (type !== 'email') return;
@@ -87,7 +87,7 @@ const InputField = ({
         }
 
         setAsyncError(error);
-        onAsyncValidationChange?.(type, error); // notify parent
+        onAsyncValidationChange?.(type, error);
 
       } catch {
         if (active) {
@@ -110,29 +110,60 @@ const InputField = ({
     dirty,
     emailMode,
     type,
-    onAsyncValidationChange, // ✅ FIXED
-    value // ✅ FIXED (eslint requirement)
+    onAsyncValidationChange,
+    value
   ]);
 
   // =========================
-  // Password strength
+  // Password Strength + Rules
   // =========================
   const passwordStrength = useMemo(() => {
-    if (type !== 'password' || emailMode !== 'register' || !dirty)
+    if (
+      type !== 'password' ||
+      emailMode !== 'register' ||
+      !dirty ||
+      debouncedValue.length < 6 // ✅ delay showing
+    ) {
       return null;
+    }
 
     return getPasswordStrength(debouncedValue);
   }, [debouncedValue, dirty, type, emailMode]);
 
+  // ✅ Checklist rules
+  const passwordRules = useMemo(() => {
+    if (type !== 'password' || emailMode !== 'register' || !dirty) return null;
+
+    return {
+      length: debouncedValue.length >= 8,
+      upper: /[A-Z]/.test(debouncedValue),
+      lower: /[a-z]/.test(debouncedValue),
+      number: /\d/.test(debouncedValue),
+      special: /[^A-Za-z0-9]/.test(debouncedValue),
+    };
+  }, [debouncedValue, dirty, type, emailMode]);
+
+  // =========================
+  // Error
+  // =========================
   const errorMessage = syncError || asyncError;
 
+  // =========================
+  // Border color
+  // =========================
   const borderClass = useMemo(() => {
     if (!dirty) return 'border-gray-300';
+
     if (errorMessage) return 'border-red-500';
+
     if (debouncedValue && !isChecking) return 'border-green-500';
+
     return 'border-gray-300';
   }, [dirty, errorMessage, debouncedValue, isChecking]);
 
+  // =========================
+  // Strength UI
+  // =========================
   const strengthWidth = passwordStrength
     ? `${(passwordStrength.score / 5) * 100}%`
     : '0%';
@@ -144,11 +175,21 @@ const InputField = ({
           passwordStrength?.score === 4 ? 'bg-blue-500' :
             'bg-green-500';
 
+  // =========================
+  // Helper UI
+  // =========================
+  const Rule = ({ valid, text }) => (
+    <div className={`text-xs flex items-center gap-2 transition ${valid ? 'text-green-600' : 'text-gray-400'}`}>
+      <span>{valid ? '✔' : '•'}</span>
+      {text}
+    </div>
+  );
+
   return (
     <div className="flex flex-col">
       <label className="mb-1 font-medium">{label}</label>
 
-      <div className={`flex items-center border rounded px-3 py-2 transition ${borderClass}`}>
+      <div className={`flex items-center border rounded px-3 py-2 transition-all duration-300 ${borderClass}`}>
         {icon && <span className="mr-2">{icon}</span>}
 
         <input
@@ -166,24 +207,43 @@ const InputField = ({
         )}
       </div>
 
-      {type === 'password' && emailMode === 'register' && dirty && passwordStrength && (
-        <div className="mt-2">
-          <div className="h-2 w-full bg-gray-200 rounded">
+      {/* =========================
+          Password Strength
+      ========================= */}
+      {passwordStrength && (
+        <div className="mt-3 space-y-2 animate-fade-in">
+
+          {/* Strength bar */}
+          <div className="h-2 w-full bg-gray-200 rounded overflow-hidden">
             <div
-              className={`h-2 rounded transition-all ${strengthColor}`}
+              className={`h-2 ${strengthColor} transition-all duration-500`}
               style={{ width: strengthWidth }}
             />
           </div>
-          <p className="text-xs mt-1 text-gray-600">
+
+          <p className="text-xs text-gray-600">
             Strength: {passwordStrength.label}
           </p>
+
+          {/* Checklist */}
+          {passwordRules && (
+            <div className="grid grid-cols-2 gap-y-1 mt-1">
+              <Rule valid={passwordRules.length} text="8+ characters" />
+              <Rule valid={passwordRules.upper} text="Uppercase letter" />
+              <Rule valid={passwordRules.lower} text="Lowercase letter" />
+              <Rule valid={passwordRules.number} text="Number" />
+              <Rule valid={passwordRules.special} text="Special character" />
+            </div>
+          )}
         </div>
       )}
 
+      {/* Checking */}
       {isChecking && (
         <p className="text-gray-500 text-sm mt-1">Checking email...</p>
       )}
 
+      {/* Error */}
       {!isChecking && errorMessage && (
         <p className="text-red-600 text-sm mt-1">{errorMessage}</p>
       )}
