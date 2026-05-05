@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useDebounce } from '../../hooks/useDebounce';
 import { checkEmailExists } from '../../services/api';
-import { getPasswordStrength } from '../../utils/validation';
-
-const DEBOUNCE_DELAY = 500;
+import PasswordStrength from '../common/PasswordStrength';
 
 const InputField = ({
   label,
@@ -20,32 +19,17 @@ const InputField = ({
   const [visible, setVisible] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
   const [asyncError, setAsyncError] = useState('');
   const [isChecking, setIsChecking] = useState(false);
 
-  // =========================
-  // Debounce
-  // =========================
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedValue(value);
-    }, DEBOUNCE_DELAY);
-
-    return () => clearTimeout(timer);
-  }, [value]);
+  const debouncedValue = useDebounce(value, 500);
 
   const handleChange = (e) => {
     if (!dirty) setDirty(true);
-
     setAsyncError('');
     onAsyncValidationChange?.('', '');
-
     onChange(e.target.value);
   };
-
-  const toggleVisibility = () => setVisible(!visible);
 
   // =========================
   // Sync validation
@@ -59,11 +43,7 @@ const InputField = ({
   // Email async validation
   // =========================
   useEffect(() => {
-    if (type !== 'email') return;
-    if (!emailMode) return;
-    if (!dirty) return;
-    if (!debouncedValue) return;
-    if (syncError) return;
+    if (type !== 'email' || !emailMode || !dirty || syncError || !debouncedValue) return;
 
     let active = true;
 
@@ -76,24 +56,16 @@ const InputField = ({
 
         if (!active) return;
 
-        let error = '';
-
-        if (emailMode === 'register') {
-          error = exists ? 'Email already exists.' : '';
-        }
-
-        if (emailMode === 'login') {
-          error = !exists ? 'Email does not exist.' : '';
-        }
+        const error =
+          emailMode === 'register'
+            ? exists ? 'Email already exists.' : ''
+            : !exists ? 'Email does not exist.' : '';
 
         setAsyncError(error);
         onAsyncValidationChange?.(type, error);
 
       } catch {
-        if (active) {
-          setAsyncError('Unable to validate email');
-          onAsyncValidationChange?.(type, 'Unable to validate email');
-        }
+        if (active) setAsyncError('Unable to validate email');
       } finally {
         if (active) setIsChecking(false);
       }
@@ -101,150 +73,51 @@ const InputField = ({
 
     run();
 
-    return () => {
-      active = false;
-    };
-  }, [
-    debouncedValue,
-    syncError,
-    dirty,
-    emailMode,
-    type,
-    onAsyncValidationChange,
-    value
-  ]);
+    return () => { active = false; };
 
-  // =========================
-  // Password Strength + Rules
-  // =========================
-  const passwordStrength = useMemo(() => {
-    if (
-      type !== 'password' ||
-      emailMode !== 'register' ||
-      !dirty ||
-      debouncedValue.length < 6 // ✅ delay showing
-    ) {
-      return null;
-    }
+  }, [debouncedValue, syncError, dirty, emailMode, type, onAsyncValidationChange]);
 
-    return getPasswordStrength(debouncedValue);
-  }, [debouncedValue, dirty, type, emailMode]);
-
-  // ✅ Checklist rules
-  const passwordRules = useMemo(() => {
-    if (type !== 'password' || emailMode !== 'register' || !dirty) return null;
-
-    return {
-      length: debouncedValue.length >= 8,
-      upper: /[A-Z]/.test(debouncedValue),
-      lower: /[a-z]/.test(debouncedValue),
-      number: /\d/.test(debouncedValue),
-      special: /[^A-Za-z0-9]/.test(debouncedValue),
-    };
-  }, [debouncedValue, dirty, type, emailMode]);
-
-  // =========================
-  // Error
-  // =========================
   const errorMessage = syncError || asyncError;
 
-  // =========================
-  // Border color
-  // =========================
   const borderClass = useMemo(() => {
     if (!dirty) return 'border-gray-300';
-
     if (errorMessage) return 'border-red-500';
-
     if (debouncedValue && !isChecking) return 'border-green-500';
-
     return 'border-gray-300';
   }, [dirty, errorMessage, debouncedValue, isChecking]);
-
-  // =========================
-  // Strength UI
-  // =========================
-  const strengthWidth = passwordStrength
-    ? `${(passwordStrength.score / 5) * 100}%`
-    : '0%';
-
-  const strengthColor =
-    passwordStrength?.score <= 1 ? 'bg-red-500' :
-      passwordStrength?.score === 2 ? 'bg-orange-500' :
-        passwordStrength?.score === 3 ? 'bg-yellow-500' :
-          passwordStrength?.score === 4 ? 'bg-blue-500' :
-            'bg-green-500';
-
-  // =========================
-  // Helper UI
-  // =========================
-  const Rule = ({ valid, text }) => (
-    <div className={`text-xs flex items-center gap-2 transition ${valid ? 'text-green-600' : 'text-gray-400'}`}>
-      <span>{valid ? '✔' : '•'}</span>
-      {text}
-    </div>
-  );
 
   return (
     <div className="flex flex-col">
       <label className="mb-1 font-medium">{label}</label>
 
-      <div className={`flex items-center border rounded px-3 py-2 transition-all duration-300 ${borderClass}`}>
+      <div className={`flex items-center border rounded px-3 py-2 ${borderClass}`}>
         {icon && <span className="mr-2">{icon}</span>}
 
         <input
-          type={visible ? 'text' : type}
-          placeholder={placeholder}
+          type={type === 'password' && visible ? 'text' : type}
           value={value}
+          placeholder={placeholder}
           onChange={handleChange}
           className="flex-1 outline-none"
         />
 
-        {type === 'password' && (showIcon || hideIcon) && (
-          <span onClick={toggleVisibility} className="ml-2 cursor-pointer">
+        {type === 'password' && (
+          <span onClick={() => setVisible(v => !v)} className="ml-2 cursor-pointer">
             {visible ? hideIcon : showIcon}
           </span>
         )}
       </div>
 
-      {/* =========================
-          Password Strength
-      ========================= */}
-      {passwordStrength && (
-        <div className="mt-3 space-y-2 animate-fade-in">
-
-          {/* Strength bar */}
-          <div className="h-2 w-full bg-gray-200 rounded overflow-hidden">
-            <div
-              className={`h-2 ${strengthColor} transition-all duration-500`}
-              style={{ width: strengthWidth }}
-            />
-          </div>
-
-          <p className="text-xs text-gray-600">
-            Strength: {passwordStrength.label}
-          </p>
-
-          {/* Checklist */}
-          {passwordRules && (
-            <div className="grid grid-cols-2 gap-y-1 mt-1">
-              <Rule valid={passwordRules.length} text="8+ characters" />
-              <Rule valid={passwordRules.upper} text="Uppercase letter" />
-              <Rule valid={passwordRules.lower} text="Lowercase letter" />
-              <Rule valid={passwordRules.number} text="Number" />
-              <Rule valid={passwordRules.special} text="Special character" />
-            </div>
-          )}
-        </div>
+      {/* Password Strength ONLY on Register */}
+      {type === 'password' && emailMode === 'register' && (
+        <PasswordStrength password={debouncedValue} />
       )}
 
-      {/* Checking */}
       {isChecking && (
         <p className="text-gray-500 text-sm mt-1">Checking email...</p>
       )}
 
-      {/* Error */}
-      {!isChecking && errorMessage && (
+      {errorMessage && !isChecking && (
         <p className="text-red-600 text-sm mt-1">{errorMessage}</p>
       )}
     </div>
