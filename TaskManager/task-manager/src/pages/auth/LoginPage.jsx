@@ -76,6 +76,7 @@ const LoginPage = () => {
 
   return (
     <AuthForm
+      mode="login"
       title="Welcome Back"
       fields={LOGIN_FIELDS}
       form={form}

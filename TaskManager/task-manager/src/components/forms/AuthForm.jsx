@@ -1,9 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import FormButton from '../common/FormButton';
-import InputField from '../input/InputField';
+import PasswordStrength from '../common/PasswordStrength';
+import InputField from '../input/InputField'; // ✅ ADD THIS
 
 const AuthForm = ({
   title,
+  mode,
   fields,
   form,
   onSubmit,
@@ -23,15 +25,22 @@ const AuthForm = ({
 
   const [asyncErrors, setAsyncErrors] = useState({});
 
-  // ✅ STABLE callback (fix for InputField warning)
   const handleAsyncValidation = useCallback((fieldName, error) => {
-    setAsyncErrors(prev => ({
-      ...prev,
-      [fieldName]: error
-    }));
+    setAsyncErrors(prev => {
+      if (!error) {
+        const updated = { ...prev };
+        delete updated[fieldName];
+        return updated;
+      }
+
+      return {
+        ...prev,
+        [fieldName]: error
+      };
+    });
   }, []);
 
-  const hasServerErrors = Object.values(asyncErrors).some(Boolean);
+  const hasServerErrors = Object.keys(asyncErrors).length > 0;
 
   const handleSubmit = useCallback((e) => {
     e.preventDefault();
@@ -42,16 +51,36 @@ const AuthForm = ({
     onSubmit(formData);
   }, [hasErrors, hasServerErrors, onSubmit, setSubmitted, formData]);
 
-  const renderField = useCallback((field) => (
-    <InputField
-      key={field.name}
-      {...field}
-      value={formData[field.name]}
-      onChange={handleChange(field.name)}
-      emailMode={title === 'Welcome Back' ? 'login' : 'register'}
-      onAsyncValidationChange={handleAsyncValidation} // ✅ stable now
-    />
-  ), [formData, handleChange, handleAsyncValidation, title]);
+  const renderField = useCallback((field) => {
+    const handleAsync = (error) => {
+      handleAsyncValidation(field.name, error);
+    };
+
+    const handleChangeWithReset = (value) => {
+      handleAsyncValidation(field.name, '');
+      handleChange(field.name)(value);
+    };
+
+    return (
+      <div key={field.name}>
+
+        {/* INPUT */}
+        <InputField
+          {...field}
+          value={formData[field.name]}
+          onChange={handleChangeWithReset}
+          emailMode={title === 'Welcome Back' ? 'login' : 'register'}
+          onAsyncValidationChange={handleAsync}
+        />
+
+        {/* ✅ PASSWORD STRENGTH ONLY FOR PASSWORD FIELD IN REGISTER PAGE */}
+        {mode === 'register' && field.type === 'password' && (
+          <PasswordStrength password={formData[field.name]} />
+        )}
+
+      </div>
+    );
+  }, [formData, handleChange, handleAsyncValidation, title, mode]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-50 to-indigo-100 p-4">

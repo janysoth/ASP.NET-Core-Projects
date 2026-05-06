@@ -3,19 +3,10 @@ import { getPasswordStrength } from '../../utils/validation';
 
 const PasswordStrength = ({ password }) => {
   const strength = useMemo(() => {
-    if (!password || password.length < 6) return null;
-    return getPasswordStrength(password);
+    return getPasswordStrength(password || '');
   }, [password]);
 
-  if (!strength) return null;
-
-  const rules = {
-    length: password.length >= 8,
-    upper: /[A-Z]/.test(password),
-    lower: /[a-z]/.test(password),
-    number: /\d/.test(password),
-    special: /[^A-Za-z0-9]/.test(password),
-  };
+  const rules = strength.rules || {};
 
   const width = `${(strength.score / 5) * 100}%`;
 
@@ -34,6 +25,8 @@ const PasswordStrength = ({ password }) => {
 
   return (
     <div className="mt-3 space-y-2">
+
+      {/* bar always exists */}
       <div className="h-2 bg-gray-200 rounded">
         <div
           className={`h-2 rounded transition-all duration-300 ${color}`}
@@ -41,17 +34,20 @@ const PasswordStrength = ({ password }) => {
         />
       </div>
 
+      {/* label fallback */}
       <p className="text-xs text-gray-600">
-        Strength: {strength.label}
+        Strength: {strength.label || '—'}
       </p>
 
+      {/* checklist always renders safely */}
       <div className="grid grid-cols-2 gap-1">
-        <Rule ok={rules.length} text="8+ chars" />
-        <Rule ok={rules.upper} text="Uppercase" />
-        <Rule ok={rules.lower} text="Lowercase" />
-        <Rule ok={rules.number} text="Number" />
-        <Rule ok={rules.special} text="Special char" />
+        <Rule ok={!!rules.length} text="8+ chars" />
+        <Rule ok={!!rules.upper} text="Uppercase" />
+        <Rule ok={!!rules.lower} text="Lowercase" />
+        <Rule ok={!!rules.number} text="Number" />
+        <Rule ok={!!rules.special} text="Special char" />
       </div>
+
     </div>
   );
 };

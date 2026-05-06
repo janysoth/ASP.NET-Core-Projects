@@ -80,6 +80,7 @@ const RegisterPage = () => {
 
   return (
     <AuthForm
+      mode="register"
       title="Create Account"
       fields={REGISTER_FIELDS}
       form={form}

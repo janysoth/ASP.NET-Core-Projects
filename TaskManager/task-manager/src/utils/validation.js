@@ -33,8 +33,26 @@ export const validateEmail = (email) => {
 
 export const validatePassword = (password) => {
   if (!password) return 'Password is required.';
-  if (password.length < 8) return 'Password must be at least 8 characters.';
-  return '';
+
+  const rules = {
+    length: password.length >= 8,
+    upper: /[A-Z]/.test(password),
+    lower: /[a-z]/.test(password),
+    number: /\d/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
+  };
+
+  const failed = [];
+
+  if (!rules.length) failed.push('8+ characters');
+  if (!rules.upper) failed.push('1 uppercase letter');
+  if (!rules.lower) failed.push('1 lowercase letter');
+  if (!rules.number) failed.push('1 number');
+  if (!rules.special) failed.push('1 special character');
+
+  return failed.length
+    ? `Password must include: ${failed.join(', ')}`
+    : '';
 };
 
 export const validateFullName = (name) => {
@@ -43,21 +61,33 @@ export const validateFullName = (name) => {
   return '';
 };
 
-export const getPasswordStrength = (password) => {
-  if (!password) return { score: 0, label: '' };
+export const getPasswordStrength = (password = '') => {
+  const value = password || '';
 
-  let score = 0;
+  const rules = {
+    length: value.length >= 8,
+    upper: /[A-Z]/.test(value),
+    lower: /[a-z]/.test(value),
+    number: /\d/.test(value),
+    special: /[^A-Za-z0-9]/.test(value),
+  };
 
-  if (password.length >= 8) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/[a-z]/.test(password)) score++;
-  if (/\d/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
+  const score = Object.values(rules).filter(Boolean).length;
 
-  const labels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
+  const labels = [
+    'Very Weak',
+    'Weak',
+    'Fair',
+    'Good',
+    'Strong',
+  ];
+
+  // map score (0–5) safely to label index (0–4)
+  const labelIndex = Math.max(0, Math.min(score - 1, labels.length - 1));
 
   return {
     score,
-    label: labels[Math.max(0, score - 1)],
+    label: score === 0 ? '' : labels[labelIndex],
+    rules,
   };
 };

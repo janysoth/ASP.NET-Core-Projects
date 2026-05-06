@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useDebounce } from '../../hooks/useDebounce';
-import { checkEmailExists } from '../../services/api';
-import PasswordStrength from '../common/PasswordStrength';
+import { useEmailValidation } from '../../hooks/useEmailValidation';
+
+const DEBOUNCE_DELAY = 500;
 
 const InputField = ({
   label,
@@ -18,18 +18,29 @@ const InputField = ({
 }) => {
   const [visible, setVisible] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
-  const [asyncError, setAsyncError] = useState('');
-  const [isChecking, setIsChecking] = useState(false);
+  // =========================
+  // Debounce
+  // =========================
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, DEBOUNCE_DELAY);
 
-  const debouncedValue = useDebounce(value, 500);
+    return () => clearTimeout(timer);
+  }, [value]);
 
   const handleChange = (e) => {
     if (!dirty) setDirty(true);
-    setAsyncError('');
-    onAsyncValidationChange?.('', '');
+
+    // ✅ Clear async error immediately
+    onAsyncValidationChange?.('');
+
     onChange(e.target.value);
   };
+
+  const toggleVisibility = () => setVisible(!visible);
 
   // =========================
   // Sync validation
@@ -40,45 +51,24 @@ const InputField = ({
   }, [validate, debouncedValue, dirty]);
 
   // =========================
-  // Email async validation
+  // Async Email Validation
   // =========================
-  useEffect(() => {
-    if (type !== 'email' || !emailMode || !dirty || syncError || !debouncedValue) return;
+  const { error: asyncError, isChecking } = useEmailValidation({
+    value: debouncedValue,
+    enabled: type === 'email' && !!emailMode && dirty,
+    mode: emailMode,
+    syncError,
+    onResult: (error) => onAsyncValidationChange?.(error),
+  });
 
-    let active = true;
-
-    const run = async () => {
-      try {
-        setIsChecking(true);
-
-        const res = await checkEmailExists(debouncedValue);
-        const exists = res.data.emailExists;
-
-        if (!active) return;
-
-        const error =
-          emailMode === 'register'
-            ? exists ? 'Email already exists.' : ''
-            : !exists ? 'Email does not exist.' : '';
-
-        setAsyncError(error);
-        onAsyncValidationChange?.(type, error);
-
-      } catch {
-        if (active) setAsyncError('Unable to validate email');
-      } finally {
-        if (active) setIsChecking(false);
-      }
-    };
-
-    run();
-
-    return () => { active = false; };
-
-  }, [debouncedValue, syncError, dirty, emailMode, type, onAsyncValidationChange]);
-
+  // =========================
+  // Final error
+  // =========================
   const errorMessage = syncError || asyncError;
 
+  // =========================
+  // Border color
+  // =========================
   const borderClass = useMemo(() => {
     if (!dirty) return 'border-gray-300';
     if (errorMessage) return 'border-red-500';
@@ -90,34 +80,31 @@ const InputField = ({
     <div className="flex flex-col">
       <label className="mb-1 font-medium">{label}</label>
 
-      <div className={`flex items-center border rounded px-3 py-2 ${borderClass}`}>
+      <div className={`flex items-center border rounded px-3 py-2 transition ${borderClass}`}>
         {icon && <span className="mr-2">{icon}</span>}
 
         <input
-          type={type === 'password' && visible ? 'text' : type}
-          value={value}
+          type={visible ? 'text' : type}
           placeholder={placeholder}
+          value={value}
           onChange={handleChange}
           className="flex-1 outline-none"
         />
 
-        {type === 'password' && (
-          <span onClick={() => setVisible(v => !v)} className="ml-2 cursor-pointer">
+        {type === 'password' && (showIcon || hideIcon) && (
+          <span onClick={toggleVisibility} className="ml-2 cursor-pointer">
             {visible ? hideIcon : showIcon}
           </span>
         )}
       </div>
 
-      {/* Password Strength ONLY on Register */}
-      {type === 'password' && emailMode === 'register' && (
-        <PasswordStrength password={debouncedValue} />
-      )}
-
+      {/* Checking */}
       {isChecking && (
         <p className="text-gray-500 text-sm mt-1">Checking email...</p>
       )}
 
-      {errorMessage && !isChecking && (
+      {/* Error */}
+      {!isChecking && errorMessage && (
         <p className="text-red-600 text-sm mt-1">{errorMessage}</p>
       )}
     </div>
