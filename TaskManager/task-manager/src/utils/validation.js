@@ -32,27 +32,27 @@ export const validateEmail = (email) => {
 };
 
 export const validatePassword = (password) => {
+
   if (!password) return 'Password is required.';
 
-  const rules = {
-    length: password.length >= 8,
-    upper: /[A-Z]/.test(password),
-    lower: /[a-z]/.test(password),
-    number: /\d/.test(password),
-    special: /[^A-Za-z0-9]/.test(password),
-  };
+  const { rules, isValid } = getPasswordStrength(password);
+
+  if (isValid) return '';
 
   const failed = [];
 
   if (!rules.length) failed.push('8+ characters');
-  if (!rules.upper) failed.push('1 uppercase letter');
-  if (!rules.lower) failed.push('1 lowercase letter');
-  if (!rules.number) failed.push('1 number');
-  if (!rules.special) failed.push('1 special character');
 
-  return failed.length
-    ? `Password must include: ${failed.join(', ')}`
-    : '';
+  if (!rules.upper) failed.push('uppercase letter');
+
+  if (!rules.lower) failed.push('lowercase letter');
+
+  if (!rules.number) failed.push('number');
+
+  if (!rules.special) failed.push('special character');
+
+  return `Password must include: ${failed.join(', ')}`;
+
 };
 
 export const validateFullName = (name) => {
@@ -61,7 +61,7 @@ export const validateFullName = (name) => {
   return '';
 };
 
-export const getPasswordStrength = (password = '') => {
+export const getPasswordStrength = (password) => {
   const value = password || '';
 
   const rules = {
@@ -74,20 +74,12 @@ export const getPasswordStrength = (password = '') => {
 
   const score = Object.values(rules).filter(Boolean).length;
 
-  const labels = [
-    'Very Weak',
-    'Weak',
-    'Fair',
-    'Good',
-    'Strong',
-  ];
-
-  // map score (0–5) safely to label index (0–4)
-  const labelIndex = Math.max(0, Math.min(score - 1, labels.length - 1));
+  const labels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
 
   return {
     score,
-    label: score === 0 ? '' : labels[labelIndex],
+    label: labels[Math.max(0, score - 1)] || '',
     rules,
+    isValid: score === 5, // ✅ single truth
   };
 };
