@@ -43,13 +43,13 @@ export const validatePassword = (password) => {
 
   if (!rules.length) failed.push('8+ characters');
 
-  if (!rules.upper) failed.push('uppercase letter');
+  if (!rules.upper) failed.push('Uppercase letter');
 
-  if (!rules.lower) failed.push('lowercase letter');
+  if (!rules.lower) failed.push('Lowercase letter');
 
-  if (!rules.number) failed.push('number');
+  if (!rules.number) failed.push('Number');
 
-  if (!rules.special) failed.push('special character');
+  if (!rules.special) failed.push('Special character');
 
   return `Password must include: ${failed.join(', ')}`;
 
