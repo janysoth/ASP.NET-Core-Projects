@@ -8,9 +8,10 @@ import {
 import { checkEmailExists } from '../../services/api';
 
 import {
+  validateConfirmPassword,
   validateEmail,
   validateFullName,
-  validatePassword,
+  validatePassword
 } from '../../utils/validation';
 
 // =========================
@@ -89,5 +90,19 @@ export const REGISTER_FIELDS = [
     required: true,
     minLength: 6,
     validate: validatePassword,
+  },
+
+  {
+    name: 'confirmPassword',
+    label: 'Confirm Password',
+    type: 'password',
+    placeholder: 'Confirm your password',
+    icon: <LockIcon />,
+    showIcon: <EyeIcon />,
+    hideIcon: <EyeOffIcon />,
+    required: true,
+
+    validate: (value, formData) =>
+      validateConfirmPassword(value, formData),
   },
 ];

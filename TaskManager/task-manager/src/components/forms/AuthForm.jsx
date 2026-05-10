@@ -68,13 +68,14 @@ const AuthForm = ({
         <InputField
           {...field}
           value={formData[field.name]}
+          formData={formData}
           onChange={handleChangeWithReset}
           emailMode={title === 'Welcome Back' ? 'login' : 'register'}
           onAsyncValidationChange={handleAsync}
         />
 
         {/* ✅ PASSWORD STRENGTH ONLY FOR PASSWORD FIELD IN REGISTER PAGE */}
-        {mode === 'register' && field.type === 'password' && (
+        {mode === 'register' && field.name === 'password' && (
           <PasswordStrength password={formData[field.name]} />
         )}
 

@@ -1,106 +1,172 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 const DEBOUNCE_DELAY = 500;
 
 export const useForm = (fieldConfig, getInitialState) => {
   const [formData, setFormData] = useState(getInitialState);
+
   const [submitted, setSubmitted] = useState(false);
 
   const [asyncErrors, setAsyncErrors] = useState({});
+
   const [asyncLoading, setAsyncLoading] = useState({});
 
-  const requestIdRef = useRef({}); // track latest request per field
+  // Track latest async request per field
+  const requestIdRef = useRef({});
 
   // =========================
-  // Sync validation (existing)
+  // Sync Validation
   // =========================
   const errors = useMemo(() => {
     const result = {};
 
     fieldConfig.forEach((field) => {
-      if (field.validate) {
-        result[field.name] = field.validate(formData[field.name]);
-      }
+      if (!field.validate) return;
+
+      result[field.name] = field.validate(
+        formData[field.name],
+        formData // ✅ full form access
+      );
     });
 
     return result;
   }, [formData, fieldConfig]);
 
+  // =========================
+  // Combined Errors
+  // =========================
   const hasErrors = useMemo(() => {
-    return Object.values(errors).some(Boolean)
-      || Object.values(asyncErrors).some(Boolean);
+    return (
+      Object.values(errors).some(Boolean) ||
+      Object.values(asyncErrors).some(Boolean)
+    );
   }, [errors, asyncErrors]);
 
   // =========================
-  // Handle change
+  // Handle Change
   // =========================
   const handleChange = useCallback(
     (fieldName) => (value) => {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        [fieldName]: value, // ✅ raw value only
+        [fieldName]: value,
+      }));
+
+      // Clear async error while typing
+      setAsyncErrors((prev) => ({
+        ...prev,
+        [fieldName]: '',
       }));
     },
     []
   );
 
   // =========================
-  // Async validation effect
+  // Async Validation
   // =========================
   useEffect(() => {
+    const timers = [];
+
     fieldConfig.forEach((field) => {
       if (!field.asyncValidate) return;
 
       const value = formData[field.name];
 
+      // Skip empty
       if (!value) {
-        setAsyncErrors(prev => ({ ...prev, [field.name]: '' }));
+        setAsyncErrors((prev) => ({
+          ...prev,
+          [field.name]: '',
+        }));
+
+        setAsyncLoading((prev) => ({
+          ...prev,
+          [field.name]: false,
+        }));
+
+        return;
+      }
+
+      // Skip async if sync validation failed
+      if (errors[field.name]) {
+        setAsyncErrors((prev) => ({
+          ...prev,
+          [field.name]: '',
+        }));
+
         return;
       }
 
       const requestId = Date.now();
+
       requestIdRef.current[field.name] = requestId;
 
-      setAsyncLoading(prev => ({ ...prev, [field.name]: true }));
+      setAsyncLoading((prev) => ({
+        ...prev,
+        [field.name]: true,
+      }));
 
       const timer = setTimeout(async () => {
         try {
-          const error = await field.asyncValidate(value);
+          const error = await field.asyncValidate(
+            value,
+            formData
+          );
 
-          // 🚫 Ignore outdated response
-          if (requestIdRef.current[field.name] !== requestId) return;
+          // Ignore outdated request
+          if (
+            requestIdRef.current[field.name] !== requestId
+          ) {
+            return;
+          }
 
-          setAsyncErrors(prev => ({
+          setAsyncErrors((prev) => ({
             ...prev,
-            [field.name]: error,
+            [field.name]: error || '',
           }));
         } catch {
-          setAsyncErrors(prev => ({
+          setAsyncErrors((prev) => ({
             ...prev,
             [field.name]: 'Validation failed',
           }));
         } finally {
-          setAsyncLoading(prev => ({
+          setAsyncLoading((prev) => ({
             ...prev,
             [field.name]: false,
           }));
         }
       }, DEBOUNCE_DELAY);
 
-      return () => clearTimeout(timer);
+      timers.push(timer);
     });
-  }, [formData, fieldConfig]);
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+  }, [formData, fieldConfig, errors]);
 
   // =========================
-  // Reset
+  // Reset Form
   // =========================
   const resetForm = useCallback(() => {
     setFormData(getInitialState());
+
     setSubmitted(false);
+
     setAsyncErrors({});
+
     setAsyncLoading({});
   }, [getInitialState]);
 
+  // =========================
+  // Normalized Data
+  // =========================
   const getNormalizedData = useCallback(() => {
     const normalized = {};
 
@@ -108,7 +174,9 @@ export const useForm = (fieldConfig, getInitialState) => {
       const value = formData[key];
 
       normalized[key] =
-        typeof value === 'string' ? value.trim() : value;
+        typeof value === 'string'
+          ? value.trim()
+          : value;
     });
 
     return normalized;
@@ -116,14 +184,23 @@ export const useForm = (fieldConfig, getInitialState) => {
 
   return {
     formData,
+
     errors,
+
     asyncErrors,
+
     asyncLoading,
+
     hasErrors,
+
     submitted,
+
     setSubmitted,
+
     handleChange,
+
     resetForm,
-    getNormalizedData
+
+    getNormalizedData,
   };
 };

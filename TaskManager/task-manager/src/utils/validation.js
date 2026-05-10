@@ -55,6 +55,16 @@ export const validatePassword = (password) => {
 
 };
 
+export const validateConfirmPassword = (confirmPassword, formData) => {
+  if (!confirmPassword)
+    return 'Please confirm your password.';
+
+  if (confirmPassword !== formData.password)
+    return 'Passwords do not match.';
+
+  return '';
+};
+
 export const validateFullName = (name) => {
   if (!name) return 'Full name is required.';
   if (name.length < 2) return 'Name must be at least 2 characters.';

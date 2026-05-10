@@ -15,6 +15,7 @@ const InputField = ({
   onChange,
   onAsyncValidationChange,
   emailMode,
+  formData,
 }) => {
   const [visible, setVisible] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -47,8 +48,8 @@ const InputField = ({
   // =========================
   const syncError = useMemo(() => {
     if (!validate || !dirty) return '';
-    return validate(debouncedValue);
-  }, [validate, debouncedValue, dirty]);
+    return validate(debouncedValue, formData);
+  }, [validate, debouncedValue, dirty, formData]);
 
   // =========================
   // Async Email Validation
