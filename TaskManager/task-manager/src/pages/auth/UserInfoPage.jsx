@@ -1,14 +1,17 @@
 // pages/UserInfoPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+import PasswordStrength from '../../components/common/PasswordStrength';
 import { EyeIcon, EyeOffIcon } from '../../components/icons/Icons';
 import InputField from '../../components/input/InputField';
 import { useAuth } from '../../hooks/useAuth';
 import { changePassword } from '../../services/api';
 import { formatDate } from '../../utils/helpers';
+import { validateConfirmPassword, validatePassword } from '../../utils/validation';
 
 const UserInfoPage = () => {
-  const { user, token, logout } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -19,6 +22,16 @@ const UserInfoPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const passwordError = validatePassword(form.newPassword);
+  const confirmPasswordError = validateConfirmPassword(
+    form.confirmPassword,
+    {
+      password: form.newPassword,
+    }
+  );
+
+  const hasErrors = !!passwordError || !!confirmPasswordError;
 
   const handleChange = (field, value) => {
     setError('');
@@ -43,10 +56,9 @@ const UserInfoPage = () => {
         token
       );
 
-      setSuccess('Password changed successfully. Logging out...');
+      setSuccess('Password changed successfully.');
       setTimeout(async () => {
-        await logout();
-        navigate('/login', { replace: true });
+        navigate('/', { replace: true });
       }, 1200);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to change password.');
@@ -83,27 +95,39 @@ const UserInfoPage = () => {
           showIcon={<EyeIcon className="w-5 h-5" />}
           hideIcon={<EyeOffIcon className="w-5 h-5" />}
         />
+
         <InputField
           label="New Password"
           type="password"
           placeholder="Enter new password"
           value={form.newPassword}
+          formData={{
+            password: form.newPassword,
+          }}
+          validate={validatePassword}
           onChange={(val) => handleChange('newPassword', val)}
           showIcon={<EyeIcon className="w-5 h-5" />}
           hideIcon={<EyeOffIcon className="w-5 h-5" />}
         />
+
+        <PasswordStrength password={form.newPassword} />
+
         <InputField
           label="Confirm New Password"
           type="password"
           placeholder="Confirm new password"
           value={form.confirmPassword}
+          formData={{
+            password: form.newPassword,
+          }}
+          validate={validateConfirmPassword}
           onChange={(val) => handleChange('confirmPassword', val)}
           showIcon={<EyeIcon className="w-5 h-5" />}
           hideIcon={<EyeOffIcon className="w-5 h-5" />}
         />
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || hasErrors}
           className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
         >
           {loading ? 'Updating...' : 'Change Password'}
