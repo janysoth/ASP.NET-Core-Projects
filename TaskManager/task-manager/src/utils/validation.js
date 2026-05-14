@@ -55,12 +55,20 @@ export const validatePassword = (password) => {
 
 };
 
-export const validateConfirmPassword = (confirmPassword, formData) => {
-  if (!confirmPassword)
+export const validateConfirmPassword = (
+  confirmPassword,
+  formData = {},
+  passwordField = 'password'
+) => {
+  if (!confirmPassword) {
     return 'Please confirm your password.';
+  }
 
-  if (confirmPassword !== formData.password)
+  if (
+    confirmPassword !== formData?.[passwordField]
+  ) {
     return 'Passwords do not match.';
+  }
 
   return '';
 };
