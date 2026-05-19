@@ -10,18 +10,15 @@ const DEBOUNCE_DELAY = 500;
 
 export const useForm = (fieldConfig, getInitialState) => {
   const [formData, setFormData] = useState(getInitialState);
-
   const [submitted, setSubmitted] = useState(false);
 
   const [asyncErrors, setAsyncErrors] = useState({});
-
   const [asyncLoading, setAsyncLoading] = useState({});
 
-  // Track latest async request per field
   const requestIdRef = useRef({});
 
   // =========================
-  // Sync Validation
+  // SYNC VALIDATION
   // =========================
   const errors = useMemo(() => {
     const result = {};
@@ -31,16 +28,13 @@ export const useForm = (fieldConfig, getInitialState) => {
 
       result[field.name] = field.validate(
         formData[field.name],
-        formData // ✅ full form access
+        formData
       );
     });
 
     return result;
   }, [formData, fieldConfig]);
 
-  // =========================
-  // Combined Errors
-  // =========================
   const hasErrors = useMemo(() => {
     return (
       Object.values(errors).some(Boolean) ||
@@ -49,7 +43,7 @@ export const useForm = (fieldConfig, getInitialState) => {
   }, [errors, asyncErrors]);
 
   // =========================
-  // Handle Change
+  // HANDLE CHANGE
   // =========================
   const handleChange = useCallback(
     (fieldName) => (value) => {
@@ -57,18 +51,12 @@ export const useForm = (fieldConfig, getInitialState) => {
         ...prev,
         [fieldName]: value,
       }));
-
-      // Clear async error while typing
-      setAsyncErrors((prev) => ({
-        ...prev,
-        [fieldName]: '',
-      }));
     },
     []
   );
 
   // =========================
-  // Async Validation
+  // ASYNC VALIDATION
   // =========================
   useEffect(() => {
     const timers = [];
@@ -78,33 +66,9 @@ export const useForm = (fieldConfig, getInitialState) => {
 
       const value = formData[field.name];
 
-      // Skip empty
-      if (!value) {
-        setAsyncErrors((prev) => ({
-          ...prev,
-          [field.name]: '',
-        }));
-
-        setAsyncLoading((prev) => ({
-          ...prev,
-          [field.name]: false,
-        }));
-
-        return;
-      }
-
-      // Skip async if sync validation failed
-      if (errors[field.name]) {
-        setAsyncErrors((prev) => ({
-          ...prev,
-          [field.name]: '',
-        }));
-
-        return;
-      }
+      if (!value) return;
 
       const requestId = Date.now();
-
       requestIdRef.current[field.name] = requestId;
 
       setAsyncLoading((prev) => ({
@@ -114,17 +78,9 @@ export const useForm = (fieldConfig, getInitialState) => {
 
       const timer = setTimeout(async () => {
         try {
-          const error = await field.asyncValidate(
-            value,
-            formData
-          );
+          const error = await field.asyncValidate(value, formData);
 
-          // Ignore outdated request
-          if (
-            requestIdRef.current[field.name] !== requestId
-          ) {
-            return;
-          }
+          if (requestIdRef.current[field.name] !== requestId) return;
 
           setAsyncErrors((prev) => ({
             ...prev,
@@ -146,26 +102,21 @@ export const useForm = (fieldConfig, getInitialState) => {
       timers.push(timer);
     });
 
-    return () => {
-      timers.forEach(clearTimeout);
-    };
-  }, [formData, fieldConfig, errors]);
+    return () => timers.forEach(clearTimeout);
+  }, [formData, fieldConfig]);
 
   // =========================
-  // Reset Form
+  // RESET
   // =========================
   const resetForm = useCallback(() => {
     setFormData(getInitialState());
-
     setSubmitted(false);
-
     setAsyncErrors({});
-
     setAsyncLoading({});
   }, [getInitialState]);
 
   // =========================
-  // Normalized Data
+  // NORMALIZE
   // =========================
   const getNormalizedData = useCallback(() => {
     const normalized = {};
@@ -174,9 +125,7 @@ export const useForm = (fieldConfig, getInitialState) => {
       const value = formData[key];
 
       normalized[key] =
-        typeof value === 'string'
-          ? value.trim()
-          : value;
+        typeof value === 'string' ? value.trim() : value;
     });
 
     return normalized;
@@ -184,23 +133,14 @@ export const useForm = (fieldConfig, getInitialState) => {
 
   return {
     formData,
-
     errors,
-
     asyncErrors,
-
     asyncLoading,
-
     hasErrors,
-
     submitted,
-
     setSubmitted,
-
     handleChange,
-
     resetForm,
-
     getNormalizedData,
   };
 };

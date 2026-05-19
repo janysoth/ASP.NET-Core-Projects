@@ -48,3 +48,38 @@ export const CHANGE_PASSWORD_FIELDS = [
   }
 ];
 
+export const USER_PASSWORD_FIELDS = [
+
+  {
+    name: 'currentPassword',
+    label: 'Current Password',
+    type: 'password',
+    icon: <LockIcon />,
+    showIcon: <EyeIcon />,
+    hideIcon: <EyeOffIcon />,
+    validate: validatePassword,
+  },
+
+  {
+    name: 'newPassword',
+    label: 'New Password',
+    type: 'password',
+    icon: <LockIcon />,
+    showIcon: <EyeIcon />,
+    hideIcon: <EyeOffIcon />,
+    validate: validatePassword,
+  },
+
+  {
+    name: 'confirmPassword',
+    label: 'Confirm Password',
+    type: 'password',
+    icon: <LockIcon />,
+    showIcon: <EyeIcon />,
+    hideIcon: <EyeOffIcon />,
+    validate: (value, formData) =>
+      validateConfirmPassword(value, formData, 'newPassword'),
+  },
+
+];
+

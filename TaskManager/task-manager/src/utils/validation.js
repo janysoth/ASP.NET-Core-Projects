@@ -3,20 +3,13 @@ export const validateEmail = (email) => {
 
   const value = email.trim();
 
-  // Basic structure check
   const emailRegex =
     /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/;
 
-  if (!emailRegex.test(value)) {
-    return 'Invalid email format';
-  }
+  if (!emailRegex.test(value)) return 'Invalid email format';
 
-  // ❌ Reject consecutive dots
-  if (value.includes('..')) {
-    return 'Invalid email format';
-  }
+  if (value.includes('..')) return 'Invalid email format';
 
-  // ❌ Reject invalid domain patterns
   const domain = value.split('@')[1];
 
   if (
@@ -31,54 +24,7 @@ export const validateEmail = (email) => {
   return '';
 };
 
-export const validatePassword = (password) => {
-
-  if (!password) return 'Password is required.';
-
-  const { rules, isValid } = getPasswordStrength(password);
-
-  if (isValid) return '';
-
-  const failed = [];
-
-  if (!rules.length) failed.push('8+ characters');
-
-  if (!rules.upper) failed.push('Uppercase letter');
-
-  if (!rules.lower) failed.push('Lowercase letter');
-
-  if (!rules.number) failed.push('Number');
-
-  if (!rules.special) failed.push('Special character');
-
-  return `Password must include: ${failed.join(', ')}`;
-
-};
-
-export const validateConfirmPassword = (
-  confirmPassword,
-  formData = {},
-  passwordField = 'password'
-) => {
-  if (!confirmPassword) {
-    return 'Please confirm your password.';
-  }
-
-  if (
-    confirmPassword !== formData?.[passwordField]
-  ) {
-    return 'Passwords do not match.';
-  }
-
-  return '';
-};
-
-export const validateFullName = (name) => {
-  if (!name) return 'Full name is required.';
-  if (name.length < 2) return 'Name must be at least 2 characters.';
-  return '';
-};
-
+// ✅ shared strength logic only
 export const getPasswordStrength = (password) => {
   const value = password || '';
 
@@ -98,6 +44,50 @@ export const getPasswordStrength = (password) => {
     score,
     label: labels[Math.max(0, score - 1)] || '',
     rules,
-    isValid: score === 5, // ✅ single truth
+    isValid: score === 5,
   };
+};
+
+// ✅ clean password validation (single source of truth)
+export const validatePassword = (password) => {
+  if (!password) return 'Password is required.';
+
+  const { rules, isValid } = getPasswordStrength(password);
+
+  if (isValid) return '';
+
+  const failed = [];
+
+  if (!rules.length) failed.push('8+ characters');
+  if (!rules.upper) failed.push('uppercase letter');
+  if (!rules.lower) failed.push('lowercase letter');
+  if (!rules.number) failed.push('number');
+  if (!rules.special) failed.push('special character');
+
+  return `Password must include: ${failed.join(', ')}`;
+};
+
+// ✅ FULL FIX: safe + reusable
+export const validateConfirmPassword = (value, formData, matchField) => {
+
+  if (!value) return 'Please confirm your password.';
+
+  const originalPassword = formData?.[matchField];
+
+  if (!originalPassword) return ''; // don't block UI early
+
+  if (value !== originalPassword) {
+
+    return 'Passwords do not match.';
+
+  }
+
+  return '';
+
+};
+
+export const validateFullName = (name) => {
+  if (!name) return 'Full name is required.';
+  if (name.length < 2) return 'Name must be at least 2 characters.';
+  return '';
 };

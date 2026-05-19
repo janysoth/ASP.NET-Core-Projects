@@ -5,17 +5,18 @@ import {
   LockIcon,
   UserIcon,
 } from '../../components/icons/Icons';
+
 import { checkEmailExists } from '../../services/api';
 
 import {
   validateConfirmPassword,
   validateEmail,
   validateFullName,
-  validatePassword
+  validatePassword,
 } from '../../utils/validation';
 
 // =========================
-// Login Fields
+// Login
 // =========================
 export const LOGIN_FIELDS = [
   {
@@ -24,11 +25,7 @@ export const LOGIN_FIELDS = [
     type: 'email',
     placeholder: 'Enter your email',
     icon: <EmailIcon />,
-    required: true,
-    pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     validate: validateEmail,
-    normalize: (v) => v.trim(),
-    emailMode: 'login',
   },
   {
     name: 'password',
@@ -38,14 +35,12 @@ export const LOGIN_FIELDS = [
     icon: <LockIcon />,
     showIcon: <EyeIcon />,
     hideIcon: <EyeOffIcon />,
-    required: true,
-    minLength: 6,
     validate: validatePassword,
   },
 ];
 
 // =========================
-// Register Fields
+// Register
 // =========================
 export const REGISTER_FIELDS = [
   {
@@ -54,55 +49,45 @@ export const REGISTER_FIELDS = [
     type: 'text',
     placeholder: 'Enter your full name',
     icon: <UserIcon />,
-    required: true,
-    minLength: 2,
     validate: validateFullName,
-    normalize: (v) => v.trim(),
   },
   {
     name: 'email',
     label: 'Email',
     type: 'email',
-    placeholder: "Enter your email",
+    placeholder: 'Enter your email',
     icon: <EmailIcon />,
-    required: true,
-    normalize: (v) => v.trim(),
-    pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     validate: validateEmail,
-    checkEmailExists: true,
 
     asyncValidate: async (value) => {
       if (!value) return '';
 
       const res = await checkEmailExists(value);
       return res.data.exists ? 'Email already in use' : '';
-    }
+    },
   },
   {
     name: 'password',
     label: 'Password',
     type: 'password',
-    placeholder: 'Create a password',
-    showStrength: true,
+    placeholder: 'Create password',
     icon: <LockIcon />,
     showIcon: <EyeIcon />,
     hideIcon: <EyeOffIcon />,
-    required: true,
-    minLength: 6,
     validate: validatePassword,
   },
 
+  // ✅ confirm password lives ONLY here
   {
     name: 'confirmPassword',
     label: 'Confirm Password',
     type: 'password',
-    placeholder: 'Confirm your password',
+    placeholder: 'Confirm password',
     icon: <LockIcon />,
     showIcon: <EyeIcon />,
     hideIcon: <EyeOffIcon />,
-    required: true,
 
     validate: (value, formData) =>
-      validateConfirmPassword(value, formData),
+      validateConfirmPassword(value, formData, 'password'),
   },
 ];

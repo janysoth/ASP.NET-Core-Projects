@@ -11,11 +11,11 @@ const InputField = ({
   showIcon,
   hideIcon,
   validate,
-  value,
+  value = '',
   onChange,
   onAsyncValidationChange,
   emailMode,
-  formData,
+  formData = {}, // ✅ SAFE DEFAULT
 }) => {
   const [visible, setVisible] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -35,13 +35,11 @@ const InputField = ({
   const handleChange = (e) => {
     if (!dirty) setDirty(true);
 
-    // ✅ Clear async error immediately
     onAsyncValidationChange?.('');
-
     onChange(e.target.value);
   };
 
-  const toggleVisibility = () => setVisible(!visible);
+  const toggleVisibility = () => setVisible((v) => !v);
 
   // =========================
   // Sync validation
@@ -52,7 +50,7 @@ const InputField = ({
   }, [validate, debouncedValue, dirty, formData]);
 
   // =========================
-  // Async Email Validation
+  // Async email validation
   // =========================
   const { error: asyncError, isChecking } = useEmailValidation({
     value: debouncedValue,
@@ -62,9 +60,6 @@ const InputField = ({
     onResult: (error) => onAsyncValidationChange?.(error),
   });
 
-  // =========================
-  // Final error
-  // =========================
   const errorMessage = syncError || asyncError;
 
   // =========================
@@ -82,8 +77,10 @@ const InputField = ({
       <label className="mb-1 font-medium">{label}</label>
 
       <div className={`flex items-center border rounded px-3 py-2 transition ${borderClass}`}>
+        {/* LEFT ICON */}
         {icon && <span className="mr-2">{icon}</span>}
 
+        {/* INPUT */}
         <input
           type={visible ? 'text' : type}
           placeholder={placeholder}
@@ -92,6 +89,7 @@ const InputField = ({
           className="flex-1 outline-none"
         />
 
+        {/* PASSWORD TOGGLE */}
         {type === 'password' && (showIcon || hideIcon) && (
           <span onClick={toggleVisibility} className="ml-2 cursor-pointer">
             {visible ? hideIcon : showIcon}
@@ -99,12 +97,12 @@ const InputField = ({
         )}
       </div>
 
-      {/* Checking */}
+      {/* EMAIL CHECK */}
       {isChecking && (
         <p className="text-gray-500 text-sm mt-1">Checking email...</p>
       )}
 
-      {/* Error */}
+      {/* ERROR */}
       {!isChecking && errorMessage && (
         <p className="text-red-600 text-sm mt-1">{errorMessage}</p>
       )}
