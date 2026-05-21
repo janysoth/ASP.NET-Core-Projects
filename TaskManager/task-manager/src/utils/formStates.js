@@ -13,6 +13,8 @@ export const getRegisterFormState = () => ({
   fullName: '',
   email: '',
   password: '',
+  confirmPassword: '',
+  profileImage: null,
 });
 
 export const getForgotPasswordFormState = () => ({
