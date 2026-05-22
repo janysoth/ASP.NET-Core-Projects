@@ -4,6 +4,7 @@ using TaskManager.Api.Auth;
 using TaskManager.Api.Dtos;
 using TaskManager.Api.Models;
 using TaskManager.Api.Repositories;
+using TaskManager.Api.Helpers;
 
 namespace TaskManager.Api.Services;
 
@@ -16,17 +17,20 @@ public sealed class AuthService
   private readonly JwtTokenService _jwt;
   private readonly IConfiguration _config;
   private readonly EmailService _emailService;
+  private readonly FileStorageService _fileStorage;
 
   public AuthService(
       UserRepository users,
       JwtTokenService jwt,
       IConfiguration config,
-      EmailService emailService)
+      EmailService emailService,
+      FileStorageService fileStorage)
   {
     _users = users;
     _jwt = jwt;
     _config = config;
     _emailService = emailService;
+    _fileStorage = fileStorage;
   }
 
   // ----------------------------------------------------
@@ -53,11 +57,21 @@ public sealed class AuthService
     if (existing is not null)
       throw new InvalidOperationException("Email already registered.");
 
+    string? profileImageUrl = null;
+
+    if (req.ProfileImage is not null)
+    {
+      profileImageUrl = await _fileStorage.SaveProfileImageAsync(req.ProfileImage);
+    }
+
     var user = new User
     {
       FullName = fullName,
       Email = email,
       PasswordHash = PasswordHasher.Hash(req.Password),
+
+      ProfileImageUrl = profileImageUrl,
+
       CreatedAtUtc = DateTime.UtcNow,
       RefreshTokens = new List<RefreshTokenRecord>()
     };
@@ -73,6 +87,10 @@ public sealed class AuthService
         user.Id!,
         user.FullName,
         user.Email,
+
+        user.ProfileImageUrl,
+        UserHelpers.GetInitials(user.FullName),
+
         user.CreatedAtUtc
     );
 
@@ -105,6 +123,10 @@ public sealed class AuthService
         user.Id!,
         user.FullName,
         user.Email,
+
+        user.ProfileImageUrl,
+        UserHelpers.GetInitials(user.FullName),
+
         user.CreatedAtUtc
     );
 

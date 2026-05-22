@@ -5,7 +5,9 @@ namespace TaskManager.Api.Dtos;
 public sealed record RegisterRequest(
     string FullName,
     string Email,
-    string Password
+    string Password,
+
+    IFormFile? ProfileImage
 );
 
 /// Request payload for logging in an existing user.
@@ -21,6 +23,10 @@ public sealed record AuthUserDto(
     string Id,
     string FullName,
     string Email,
+
+    string? ProfileImageUrl,
+    string Initials,
+
     DateTime CreatedAtUtc
 );
 

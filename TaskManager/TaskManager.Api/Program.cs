@@ -11,14 +11,20 @@ using TaskManager.Api.Services;
 using TaskManager.Api.Settings;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 1️⃣ Load .env
 var envPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
-if (!File.Exists(envPath)) throw new InvalidOperationException($".env file not found at: {envPath}");
+
+if (!File.Exists(envPath))
+    throw new InvalidOperationException($".env file not found at: {envPath}");
+
 Env.Load(envPath);
 builder.Configuration.AddEnvironmentVariables();
+
 
 // 2️⃣ Configure strongly-typed settings
 builder.Services.AddOptions<MongoDbSettings>()
@@ -39,6 +45,7 @@ builder.Services.AddOptions<EmailSettings>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+
 // 3️⃣ MongoDB
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
@@ -53,6 +60,7 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
     return client.GetDatabase(settings.DatabaseName);
 });
 
+
 // 4️⃣ Dependency Injection
 builder.Services.AddSingleton<UserRepository>();
 builder.Services.AddSingleton<TodoRepository>();
@@ -60,8 +68,17 @@ builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddSingleton<EmailService>();
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<TodoService>();
+builder.Services.AddSingleton<FileStorageService>();
 
-// 5️⃣ Controllers & Swagger
+
+// 5️⃣ File upload limits (IMPORTANT)
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10MB
+});
+
+
+// 6️⃣ Controllers & Swagger
 builder.Services.AddControllers()
     .AddJsonOptions(opt =>
     {
@@ -74,8 +91,11 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// 6️⃣ CORS
-var frontendOrigin = builder.Configuration["Frontend:Origin"] ?? "http://localhost:3000";
+
+// 7️⃣ CORS
+var frontendOrigin =
+    builder.Configuration["Frontend:Origin"] ?? "http://localhost:3000";
+
 builder.Services.AddCors(opt =>
 {
     opt.AddPolicy("DevCors", policy =>
@@ -85,7 +105,8 @@ builder.Services.AddCors(opt =>
               .AllowCredentials());
 });
 
-// 7️⃣ JWT Authentication
+
+// 8️⃣ JWT Authentication
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()!;
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key));
 
@@ -96,10 +117,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidateIssuer = true,
             ValidIssuer = jwt.Issuer,
+
             ValidateAudience = true,
             ValidAudience = jwt.Audience,
+
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = signingKey,
+
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1)
         };
@@ -107,7 +131,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+
+// -------------------------
+// BUILD APP
+// -------------------------
 var app = builder.Build();
+
+
+// 9️⃣ Ensure wwwroot exists (IMPORTANT FIX)
+var webRoot = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+
+if (!Directory.Exists(webRoot))
+{
+    Directory.CreateDirectory(webRoot);
+}
+
 
 // Mongo health check
 using (var scope = app.Services.CreateScope())
@@ -117,17 +155,29 @@ using (var scope = app.Services.CreateScope())
     Console.WriteLine("MongoDB connection OK: " + result.ToJson());
 }
 
-// Middleware
+
+// -------------------------
+// MIDDLEWARE
+// -------------------------
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+// Static files (profiles, uploads, etc.)
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(webRoot),
+    RequestPath = ""
+});
+
 app.UseRouting();
 app.UseCors("DevCors");
+
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();

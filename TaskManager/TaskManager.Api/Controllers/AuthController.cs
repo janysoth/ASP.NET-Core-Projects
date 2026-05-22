@@ -5,6 +5,7 @@ using TaskManager.Api.Dtos;
 using TaskManager.Api.Services;
 using TaskManager.Api.Auth;
 using TaskManager.Api.Exceptions;
+using TaskManager.Api.Helpers;
 using System.Reflection.Metadata; // Add this using directive
 
 namespace TaskManager.Api.Controllers;
@@ -26,10 +27,13 @@ public sealed class AuthController : ControllerBase
   // REGISTER
   // =========================
   [HttpPost("register")]
-  public async Task<ActionResult<AuthResponse>> Register(RegisterRequest req)
+  public async Task<ActionResult<AuthResponse>> Register([FromForm] RegisterRequest req)
   {
     try
     {
+      if (req.ProfileImage != null && req.ProfileImage.Length > 10 * 1024 * 1024)
+        throw new ArgumentException("Image too large (max 10MB).");
+
       var (res, refreshToken) = await _auth.RegisterAsync(req);
       SetRefreshCookie(refreshToken);
       return Ok(res);
@@ -114,6 +118,10 @@ public sealed class AuthController : ControllerBase
         user.Id!,
         user.FullName,
         user.Email,
+
+        user.ProfileImageUrl,
+        UserHelpers.GetInitials(user.FullName),
+
         user.CreatedAtUtc
     ));
   }

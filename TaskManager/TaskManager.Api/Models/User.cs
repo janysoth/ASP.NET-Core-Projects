@@ -15,6 +15,9 @@ public sealed class User
   public string? PasswordResetTokenHash { get; set; } = "";
   public DateTime? PasswordResetExpiresAtUtc { get; set; }
 
+  public string? ProfileImageUrl { get; set; }
+  public string Initials { get; set; } = string.Empty;
+
   public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
   public List<RefreshTokenRecord> RefreshTokens { get; set; } = new();
