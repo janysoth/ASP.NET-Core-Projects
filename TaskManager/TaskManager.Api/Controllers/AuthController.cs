@@ -120,7 +120,7 @@ public sealed class AuthController : ControllerBase
         user.Email,
 
         user.ProfileImageUrl,
-        UserHelpers.GetInitials(user.FullName),
+        user.Initials,
 
         user.CreatedAtUtc
     ));

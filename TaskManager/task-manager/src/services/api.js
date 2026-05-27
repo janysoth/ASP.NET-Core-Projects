@@ -30,16 +30,18 @@ api.interceptors.request.use((config) => {
 
 // Register user
 export const register = async (formData) => {
-  return await api.post(
-    'auth/register',
+  const response = await api.post(
+    '/auth/register',
     formData,
     {
       headers: {
         'Content-Type':
-          'multipart/form-data'
-      }
+          'multipart/form-data',
+      },
     }
   );
+
+  return response.data;
 };
 
 // Login user

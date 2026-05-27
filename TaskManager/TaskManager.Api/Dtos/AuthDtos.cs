@@ -1,14 +1,16 @@
+using Microsoft.AspNetCore.Http;
+
 namespace TaskManager.Api.Dtos;
 
 /// Request payload for registering a new user.
 /// Contains sensitive data and is NEVER returned to the client.
-public sealed record RegisterRequest(
-    string FullName,
-    string Email,
-    string Password,
-
-    IFormFile? ProfileImage
-);
+public sealed class RegisterRequest
+{
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public IFormFile? ProfileImage { get; set; }
+}
 
 /// Request payload for logging in an existing user.
 public sealed record LoginRequest(

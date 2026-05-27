@@ -57,6 +57,8 @@ public sealed class AuthService
     if (existing is not null)
       throw new InvalidOperationException("Email already registered.");
 
+    var initials = UserHelpers.GetInitials(fullName);
+
     string? profileImageUrl = null;
 
     if (req.ProfileImage is not null)
@@ -71,6 +73,7 @@ public sealed class AuthService
       PasswordHash = PasswordHasher.Hash(req.Password),
 
       ProfileImageUrl = profileImageUrl,
+      Initials = initials,
 
       CreatedAtUtc = DateTime.UtcNow,
       RefreshTokens = new List<RefreshTokenRecord>()
@@ -89,7 +92,7 @@ public sealed class AuthService
         user.Email,
 
         user.ProfileImageUrl,
-        UserHelpers.GetInitials(user.FullName),
+        user.Initials,
 
         user.CreatedAtUtc
     );
@@ -125,7 +128,7 @@ public sealed class AuthService
         user.Email,
 
         user.ProfileImageUrl,
-        UserHelpers.GetInitials(user.FullName),
+        user.Initials,
 
         user.CreatedAtUtc
     );
