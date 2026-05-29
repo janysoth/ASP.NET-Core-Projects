@@ -1,14 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import Avatar from '../../components/common/Avatar';
 import PasswordStrength from '../../components/common/PasswordStrength';
 import InputField from '../../components/input/InputField';
-
-import { useAuth } from '../../hooks/useAuth';
-import { changePassword } from '../../services/api';
-
 import { USER_PASSWORD_FIELDS } from '../../features/user/userFields';
+import { useAuth } from '../../hooks/useAuth';
 import { useForm } from '../../hooks/useForm';
+import { changePassword } from '../../services/api';
 
 const UserInfoPage = () => {
   const { user, token } = useAuth();
@@ -17,6 +16,10 @@ const UserInfoPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const backendUrl =
+    process.env.REACT_APP_API_URL ||
+    'http://localhost:5000';
 
   const form = useForm(USER_PASSWORD_FIELDS, () => ({
     currentPassword: '',
@@ -85,9 +88,30 @@ const UserInfoPage = () => {
     <div className="max-w-md mx-auto mt-12 bg-white p-6 rounded-xl shadow">
       <h1 className="text-2xl font-bold mb-4">User Information</h1>
 
-      <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
-        <p className="font-semibold">Full Name: {user?.fullName}</p>
-        <p className="text-gray-600">Email: {user?.email}</p>
+      <div className="mb-6 p-6 bg-gray-50 rounded-xl border">
+        <div className="flex items-center gap-4">
+
+          <Avatar
+            size="xl"
+            fullName={user?.fullName}
+            profileImageUrl={
+              user?.profileImageUrl
+                ? `${backendUrl}${user.profileImageUrl}`
+                : ''
+            }
+          />
+
+          <div>
+            <p className="text-xl font-semibold text-gray-800">
+              {user?.fullName}
+            </p>
+
+            <p className="text-gray-600">
+              {user?.email}
+            </p>
+          </div>
+
+        </div>
       </div>
 
       <h2 className="text-xl font-semibold mb-4">Change Password</h2>
