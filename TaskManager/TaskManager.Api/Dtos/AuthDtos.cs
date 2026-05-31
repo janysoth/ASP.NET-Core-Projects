@@ -27,7 +27,7 @@ public sealed record AuthUserDto(
     string Email,
 
     string? ProfileImageUrl,
-    string Initials,
+    string? Initials,
 
     DateTime CreatedAtUtc
 );

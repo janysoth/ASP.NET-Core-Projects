@@ -99,3 +99,20 @@ export const checkEmailExists = (email) => {
     params: { email },
   });
 };
+
+export const updateProfileImage = async (
+  formData,
+  token
+) => {
+  return await api.post(
+    'auth/update-profile-image',
+    formData,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type':
+          'multipart/form-data',
+      },
+    }
+  );
+};

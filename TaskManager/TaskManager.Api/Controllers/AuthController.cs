@@ -241,6 +241,67 @@ public sealed class AuthController : ControllerBase
   }
 
   // =========================
+  // UPDATE PROFILE IMAGE
+  // =========================
+  [Authorize]
+  [HttpPost("update-profile-image")]
+  public async Task<IActionResult> UpdateProfileImage(
+    [FromForm] IFormFile file)
+  {
+    var userId =
+        User.FindFirstValue(
+            ClaimTypes.NameIdentifier
+        );
+
+    if (string.IsNullOrWhiteSpace(userId))
+    {
+      return Unauthorized(new
+      {
+        error = "User not found."
+      });
+    }
+
+    if (file is null || file.Length == 0)
+    {
+      return BadRequest(new
+      {
+        error = "Invalid file."
+      });
+    }
+
+    try
+    {
+      var updatedUser =
+          await _auth.UpdateProfileImageAsync(
+              userId,
+              file
+          );
+
+      return Ok(new
+      {
+        message =
+              "Profile image updated successfully.",
+        user = updatedUser
+      });
+    }
+    catch (InvalidOperationException ex)
+    {
+      return BadRequest(new
+      {
+        error = ex.Message
+      });
+    }
+    catch (Exception)
+    {
+      return StatusCode(500, new
+      {
+        error =
+              "An unexpected error occurred."
+      });
+    }
+  }
+
+  // =========================
   // CHECK EMAIL EXIST
   // =========================
   [HttpGet("check-email")]

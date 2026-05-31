@@ -23,11 +23,10 @@ public sealed class FileStorageService
     if (!allowedExtensions.Contains(extension))
       throw new InvalidOperationException("Only jpg, jpeg, png, webp allowed.");
 
-    var uploadsFolder = Path.Combine(
-        _env.WebRootPath,
-        "uploads",
-        "profiles"
-    );
+    // FIX: ensure WebRootPath exists
+    var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+
+    var uploadsFolder = Path.Combine(webRoot, "uploads", "profiles");
 
     Directory.CreateDirectory(uploadsFolder);
 

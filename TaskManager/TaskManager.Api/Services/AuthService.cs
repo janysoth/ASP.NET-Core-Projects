@@ -413,6 +413,35 @@ public sealed class AuthService
     );
   }
 
+  // ----------------------------------------------------
+  // UPDATE PROFILE IMAGE
+  // ----------------------------------------------------
+  public async Task<AuthUserDto> UpdateProfileImageAsync(
+      string userId,
+      IFormFile file)
+  {
+    var user = await _users.GetByIdAsync(userId);
+
+    if (user is null)
+      throw new InvalidOperationException("User not found.");
+
+    var imageUrl =
+        await _fileStorage.SaveProfileImageAsync(file);
+
+    user.ProfileImageUrl = imageUrl;
+
+    await _users.UpdateAsync(user);
+
+    return new AuthUserDto(
+        user.Id!,
+        user.FullName,
+        user.Email,
+        user.ProfileImageUrl,
+        user.Initials,
+        user.CreatedAtUtc
+    );
+  }
+
   private static void PruneOldRefreshTokens(User user)
   {
     user.RefreshTokens = user.RefreshTokens

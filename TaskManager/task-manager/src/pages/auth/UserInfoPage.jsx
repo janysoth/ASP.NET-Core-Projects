@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import Avatar from '../../components/common/Avatar';
@@ -7,13 +7,19 @@ import InputField from '../../components/input/InputField';
 import { USER_PASSWORD_FIELDS } from '../../features/user/userFields';
 import { useAuth } from '../../hooks/useAuth';
 import { useForm } from '../../hooks/useForm';
-import { changePassword } from '../../services/api';
+import {
+  changePassword,
+  updateProfileImage,
+} from '../../services/api';
 
 const UserInfoPage = () => {
-  const { user, token } = useAuth();
+  const { user, token, updateUser } = useAuth();
   const navigate = useNavigate();
 
+  const fileInputRef = useRef(null);
+
   const [loading, setLoading] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -34,12 +40,17 @@ const UserInfoPage = () => {
     setSubmitted,
   } = form;
 
+  const profileImageUrl = user?.profileImageUrl
+    ? `${backendUrl}${user.profileImageUrl}`
+    : '';
+
   const handleSubmit = useCallback(
     async (e) => {
       e.preventDefault();
       setSubmitted(true);
+      setError('');
+      setSuccess('');
 
-      // 🚀 ONLY check form engine
       if (hasErrors) return;
 
       try {
@@ -55,7 +66,7 @@ const UserInfoPage = () => {
 
         setSuccess('Password changed successfully.');
 
-        setTimeout(async () => {
+        setTimeout(() => {
           navigate('/', { replace: true });
         }, 1200);
       } catch (err) {
@@ -69,6 +80,46 @@ const UserInfoPage = () => {
     [formData, hasErrors, token, navigate, setSubmitted]
   );
 
+  const handleChooseImage = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImageChange = useCallback(
+    async (e) => {
+      const file = e.target.files?.[0];
+
+      if (!file) return;
+
+      const payload = new FormData();
+      payload.append('file', file);
+
+      try {
+        setImageLoading(true);
+        setError('');
+        setSuccess('');
+
+        const response = await updateProfileImage(payload, token);
+
+        updateUser(response.data.user);
+
+        setSuccess('Profile image updated successfully.');
+      } catch (err) {
+        setError(
+          err.response?.data?.error ||
+          err.error ||
+          'Failed to update profile image.'
+        );
+      } finally {
+        setImageLoading(false);
+
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    },
+    [token, updateUser]
+  );
+
   const renderField = (field) => (
     <div key={field.name}>
       <InputField
@@ -77,7 +128,6 @@ const UserInfoPage = () => {
         onChange={handleChange(field.name)}
       />
 
-      {/* optional: show strength ONLY for new password */}
       {field.name === 'newPassword' && (
         <PasswordStrength password={formData.newPassword} />
       )}
@@ -90,27 +140,43 @@ const UserInfoPage = () => {
 
       <div className="mb-6 p-6 bg-gray-50 rounded-xl border">
         <div className="flex items-center gap-4">
-
           <Avatar
             size="xl"
             fullName={user?.fullName}
-            profileImageUrl={
-              user?.profileImageUrl
-                ? `${backendUrl}${user.profileImageUrl}`
-                : ''
-            }
+            profileImageUrl={profileImageUrl}
           />
 
-          <div>
-            <p className="text-xl font-semibold text-gray-800">
+          <div className="min-w-0">
+            <p className="text-xl font-semibold text-gray-800 truncate">
               {user?.fullName}
             </p>
 
-            <p className="text-gray-600">
+            <p
+              className="text-gray-600 truncate"
+              title={user?.email}
+            >
               {user?.email}
             </p>
-          </div>
 
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="hidden"
+            />
+
+            <button
+              type="button"
+              onClick={handleChooseImage}
+              disabled={imageLoading}
+              className="mt-3 text-sm px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {imageLoading
+                ? 'Uploading...'
+                : 'Change Profile Image'}
+            </button>
+          </div>
         </div>
       </div>
 

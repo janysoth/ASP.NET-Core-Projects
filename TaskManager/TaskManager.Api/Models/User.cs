@@ -16,7 +16,7 @@ public sealed class User
   public DateTime? PasswordResetExpiresAtUtc { get; set; }
 
   public string? ProfileImageUrl { get; set; }
-  public string Initials { get; set; } = string.Empty;
+  public string? Initials { get; set; } = string.Empty;
 
   public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 

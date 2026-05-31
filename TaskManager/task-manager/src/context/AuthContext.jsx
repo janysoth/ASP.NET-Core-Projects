@@ -15,9 +15,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // =========================
-  // Stable logout
-  // =========================
   const logout = useCallback(() => {
     authStorage.clear();
     setUser(null);
@@ -28,9 +25,18 @@ export const AuthProvider = ({ children }) => {
     setUser(user);
   }, []);
 
-  // =========================
-  // Session timeout hook
-  // =========================
+  // ✅ NEW: update user without logging in again
+  const updateUser = useCallback((updatedUser) => {
+    const token = authStorage.getToken();
+
+    authStorage.setSession({
+      token,
+      user: updatedUser,
+    });
+
+    setUser(updatedUser);
+  }, []);
+
   const {
     showWarning,
     timeRemaining,
@@ -40,9 +46,6 @@ export const AuthProvider = ({ children }) => {
     onLogout: logout,
   });
 
-  // =========================
-  // Restore session once
-  // =========================
   useEffect(() => {
     const token = authStorage.getToken();
     const storedUser = authStorage.getUser();
@@ -54,9 +57,6 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  // =========================
-  // Stable context value
-  // =========================
   const value = useMemo(
     () => ({
       user,
@@ -65,6 +65,7 @@ export const AuthProvider = ({ children }) => {
       isAuthenticated: !!user,
       login,
       logout,
+      updateUser, // ✅ expose it
       extendSession,
       showWarning,
       timeRemaining,
@@ -74,6 +75,7 @@ export const AuthProvider = ({ children }) => {
       loading,
       login,
       logout,
+      updateUser,
       extendSession,
       showWarning,
       timeRemaining,
