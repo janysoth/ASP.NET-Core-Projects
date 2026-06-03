@@ -1,9 +1,11 @@
 import React, { useCallback, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
-import Avatar from '../../components/common/Avatar';
-import PasswordStrength from '../../components/common/PasswordStrength';
-import InputField from '../../components/input/InputField';
+import AccountInfoCard from '../../components/profile/AccountInfoCard';
+import ChangePasswordCard from '../../components/profile/ChangePasswordCard';
+import ProfileCard from '../../components/profile/ProfileCard';
+
 import { USER_PASSWORD_FIELDS } from '../../features/user/userFields';
 import { useAuth } from '../../hooks/useAuth';
 import { useForm } from '../../hooks/useForm';
@@ -69,7 +71,8 @@ const UserInfoPage = () => {
         }, 1200);
       } catch (err) {
         setError(
-          err.response?.data?.error || 'Failed to change password.'
+          err.response?.data?.error ||
+          'Failed to change password.'
         );
       } finally {
         setLoading(false);
@@ -90,20 +93,41 @@ const UserInfoPage = () => {
       const payload = new FormData();
       payload.append('file', file);
 
+      const toastId = toast.loading('Uploading profile image...', {
+        style: {
+          background: '#334155',
+          color: '#fff',
+        },
+      });
+
       try {
         setImageLoading(true);
         setError('');
-        setSuccess('');
 
         const response = await updateProfileImage(payload, token);
 
         updateUser(response.data.user);
-        setSuccess('Profile image updated successfully.');
+
+        toast.success('Profile image updated successfully!', {
+          id: toastId,
+          icon: '📸',
+          style: {
+            background: '#10b981',
+            color: '#fff',
+          },
+        });
       } catch (err) {
-        setError(
+        toast.error(
           err.response?.data?.error ||
-          err.error ||
-          'Failed to update profile image.'
+          'Failed to update profile image.',
+          {
+            id: toastId,
+            icon: '❌',
+            style: {
+              background: '#ef4444',
+              color: '#fff',
+            },
+          }
         );
       } finally {
         setImageLoading(false);
@@ -116,35 +140,19 @@ const UserInfoPage = () => {
     [token, updateUser]
   );
 
-  const renderField = (field) => (
-    <div key={field.name}>
-      <InputField
-        {...field}
-        value={formData[field.name]}
-        onChange={handleChange(field.name)}
-      />
-
-      {field.name === 'newPassword' && (
-        <PasswordStrength password={formData.newPassword} />
-      )}
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10">
       <div className="mx-auto max-w-4xl space-y-6">
-
-        {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-slate-900">
             Account Settings
           </h1>
+
           <p className="mt-1 text-slate-600">
             Manage your profile information and password.
           </p>
         </div>
 
-        {/* Alerts */}
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
             {error}
@@ -158,111 +166,26 @@ const UserInfoPage = () => {
         )}
 
         <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+          <ProfileCard
+            user={user}
+            profileImageUrl={profileImageUrl}
+            imageLoading={imageLoading}
+            fileInputRef={fileInputRef}
+            onChooseImage={handleChooseImage}
+            onImageChange={handleImageChange}
+          />
 
-          {/* Profile Card */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm border">
-            <h2 className="text-xl font-semibold text-slate-900">
-              Profile
-            </h2>
-
-            <div className="mt-6 flex flex-col items-center text-center">
-              <Avatar
-                size="xl"
-                fullName={user?.fullName}
-                profileImageUrl={profileImageUrl}
-              />
-
-              <h3 className="mt-4 text-2xl font-bold text-slate-900">
-                {user?.fullName || 'User'}
-              </h3>
-
-              <p
-                className="mt-1 max-w-full truncate text-slate-500"
-                title={user?.email}
-              >
-                {user?.email}
-              </p>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-              />
-
-              <button
-                type="button"
-                onClick={handleChooseImage}
-                disabled={imageLoading}
-                className="mt-5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {imageLoading ? 'Uploading...' : 'Change Profile Image'}
-              </button>
-
-              <p className="mt-3 text-xs text-slate-500">
-                JPG, PNG, JPEG, or WEBP.
-              </p>
-            </div>
-          </section>
-
-          {/* Account Details */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm border">
-            <h2 className="text-xl font-semibold text-slate-900">
-              Account Information
-            </h2>
-
-            <div className="mt-5 space-y-4">
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Full Name</p>
-                <p className="mt-1 font-medium text-slate-900">
-                  {user?.fullName || 'Not available'}
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Email</p>
-                <p
-                  className="mt-1 truncate font-medium text-slate-900"
-                  title={user?.email}
-                >
-                  {user?.email || 'Not available'}
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">User ID</p>
-                <p className="mt-1 break-all text-sm font-medium text-slate-900">
-                  {user?.id || 'Not available'}
-                </p>
-              </div>
-            </div>
-          </section>
+          <AccountInfoCard user={user} />
         </div>
 
-        {/* Change Password */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm border">
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold text-slate-900">
-              Change Password
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Use a strong password that includes uppercase, lowercase, number, and special character.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {USER_PASSWORD_FIELDS.map(renderField)}
-
-            <button
-              type="submit"
-              disabled={loading || hasErrors}
-              className="w-full rounded-lg bg-indigo-600 py-3 font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loading ? 'Updating...' : 'Change Password'}
-            </button>
-          </form>
-        </section>
+        <ChangePasswordCard
+          fields={USER_PASSWORD_FIELDS}
+          formData={formData}
+          handleChange={handleChange}
+          onSubmit={handleSubmit}
+          loading={loading}
+          hasErrors={hasErrors}
+        />
       </div>
     </div>
   );
