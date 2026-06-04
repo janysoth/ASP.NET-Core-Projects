@@ -137,7 +137,7 @@ const UserMenu = () => {
       {open && (
         <div className="
           absolute right-0
-          w-[220px]
+          w-64
           rounded-xl
           border border-gray-200
           bg-white

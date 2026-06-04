@@ -2,9 +2,11 @@ import React, { useCallback, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
+import ExpandableSection from '../../components/common/ExpandableSection';
 import AccountInfoCard from '../../components/profile/AccountInfoCard';
 import ChangePasswordCard from '../../components/profile/ChangePasswordCard';
 import ProfileCard from '../../components/profile/ProfileCard';
+import ProfileOverviewCard from '../../components/profile/ProfileOverviewCard';
 
 import { USER_PASSWORD_FIELDS } from '../../features/user/userFields';
 import { useAuth } from '../../hooks/useAuth';
@@ -165,7 +167,11 @@ const UserInfoPage = () => {
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+        <ExpandableSection
+          title="Profile"
+          description="Manage your profile image and display information."
+          defaultOpen
+        >
           <ProfileCard
             user={user}
             profileImageUrl={profileImageUrl}
@@ -174,18 +180,35 @@ const UserInfoPage = () => {
             onChooseImage={handleChooseImage}
             onImageChange={handleImageChange}
           />
+        </ExpandableSection>
 
+        <ExpandableSection
+          title="Account Information"
+          description="View your account details."
+        >
           <AccountInfoCard user={user} />
-        </div>
+        </ExpandableSection>
 
-        <ChangePasswordCard
-          fields={USER_PASSWORD_FIELDS}
-          formData={formData}
-          handleChange={handleChange}
-          onSubmit={handleSubmit}
-          loading={loading}
-          hasErrors={hasErrors}
-        />
+        <ExpandableSection
+          title="Account Overview"
+          description="Review account age, completion, and security summary."
+        >
+          <ProfileOverviewCard user={user} />
+        </ExpandableSection>
+
+        <ExpandableSection
+          title="Security Settings"
+          description="Update your account password."
+        >
+          <ChangePasswordCard
+            fields={USER_PASSWORD_FIELDS}
+            formData={formData}
+            handleChange={handleChange}
+            onSubmit={handleSubmit}
+            loading={loading}
+            hasErrors={hasErrors}
+          />
+        </ExpandableSection>
       </div>
     </div>
   );
