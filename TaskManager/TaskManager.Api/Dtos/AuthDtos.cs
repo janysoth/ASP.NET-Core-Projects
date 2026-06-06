@@ -64,3 +64,8 @@ public sealed record ResetPasswordRequest(
     string Token,
     string NewPassword
 );
+
+public sealed record UpdateProfileInfoRequest(
+string FullName,
+string Email
+);

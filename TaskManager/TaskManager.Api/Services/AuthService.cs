@@ -442,6 +442,54 @@ public sealed class AuthService
     );
   }
 
+  // ----------------------------------------------------
+  // UPDATE PROFILE INFO
+  // ----------------------------------------------------
+  public async Task<AuthUserDto> UpdateProfileInfoAsync(
+    string userId,
+    UpdateProfileInfoRequest req)
+  {
+    var user = await _users.GetByIdAsync(userId);
+
+    if (user is null)
+      throw new InvalidOperationException("User not found.");
+
+    var fullName = req.FullName.Trim();
+    var email = req.Email.Trim().ToLowerInvariant();
+
+    if (string.IsNullOrWhiteSpace(fullName))
+      throw new ArgumentException("Full name is required.");
+
+    if (fullName.Length < 2)
+      throw new ArgumentException("Full name must be at least 2 characters.");
+
+    if (string.IsNullOrWhiteSpace(email))
+      throw new ArgumentException("Email is required.");
+
+    if (!IsValidEmail(email))
+      throw new ArgumentException("Invalid email format.");
+
+    var existingUser = await _users.GetByEmailAsync(email);
+
+    if (existingUser is not null && existingUser.Id != user.Id)
+      throw new InvalidOperationException("Email already registered.");
+
+    user.FullName = fullName;
+    user.Email = email;
+    user.Initials = UserHelpers.GetInitials(fullName);
+
+    await _users.UpdateAsync(user);
+
+    return new AuthUserDto(
+        user.Id!,
+        user.FullName,
+        user.Email,
+        user.ProfileImageUrl,
+        user.Initials,
+        user.CreatedAtUtc
+    );
+  }
+
   private static void PruneOldRefreshTokens(User user)
   {
     user.RefreshTokens = user.RefreshTokens

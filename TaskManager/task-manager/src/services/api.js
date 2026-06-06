@@ -116,3 +116,11 @@ export const updateProfileImage = async (
     }
   );
 };
+
+export const updateProfileInfo = async (data, token) => {
+  return await api.patch('auth/update-profile-info', data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};

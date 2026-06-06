@@ -302,6 +302,48 @@ public sealed class AuthController : ControllerBase
   }
 
   // =========================
+  // UPDATE PROFILE IMAGE
+  // =========================
+  [Authorize]
+  [HttpPatch("update-profile-info")]
+  public async Task<IActionResult> UpdateProfileInfo(
+    UpdateProfileInfoRequest request)
+  {
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    if (string.IsNullOrWhiteSpace(userId))
+    {
+      return Unauthorized(new
+      {
+        error = "User not found."
+      });
+    }
+
+    try
+    {
+      var updatedUser =
+          await _auth.UpdateProfileInfoAsync(
+              userId,
+              request
+          );
+
+      return Ok(new
+      {
+        message = "Profile updated successfully.",
+        user = updatedUser
+      });
+    }
+    catch (ArgumentException ex)
+    {
+      return BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+      return BadRequest(new { error = ex.Message });
+    }
+  }
+
+  // =========================
   // CHECK EMAIL EXIST
   // =========================
   [HttpGet("check-email")]

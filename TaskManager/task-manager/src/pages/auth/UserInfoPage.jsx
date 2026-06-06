@@ -14,6 +14,7 @@ import { useForm } from '../../hooks/useForm';
 import {
   changePassword,
   updateProfileImage,
+  updateProfileInfo,
 } from '../../services/api';
 
 const UserInfoPage = () => {
@@ -25,6 +26,7 @@ const UserInfoPage = () => {
   const [imageLoading, setImageLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const backendUrl =
     process.env.REACT_APP_API_URL || 'http://localhost:5295';
@@ -142,6 +144,41 @@ const UserInfoPage = () => {
     [token, updateUser]
   );
 
+  const handleUpdateProfile = useCallback(
+    async (data) => {
+      try {
+        setProfileLoading(true);
+        setError('');
+
+        const response = await updateProfileInfo(data, token);
+
+        updateUser(response.data.user);
+
+        toast.success('Profile updated successfully!', {
+          icon: '✅',
+          style: {
+            background: '#10b981',
+            color: '#fff',
+          },
+        });
+      } catch (err) {
+        toast.error(
+          err.response?.data?.error || 'Failed to update profile.',
+          {
+            icon: '❌',
+            style: {
+              background: '#ef4444',
+              color: '#fff',
+            },
+          }
+        );
+      } finally {
+        setProfileLoading(false);
+      }
+    },
+    [token, updateUser]
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10">
       <div className="mx-auto max-w-4xl space-y-6">
@@ -186,7 +223,11 @@ const UserInfoPage = () => {
           title="Account Information"
           description="View your account details."
         >
-          <AccountInfoCard user={user} />
+          <AccountInfoCard
+            user={user}
+            loading={profileLoading}
+            onUpdateProfile={handleUpdateProfile}
+          />
         </ExpandableSection>
 
         <ExpandableSection
