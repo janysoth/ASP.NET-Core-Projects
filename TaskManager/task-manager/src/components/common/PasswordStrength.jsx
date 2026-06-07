@@ -23,21 +23,26 @@ const PasswordStrength = ({ password }) => {
             'bg-green-500';
 
   const Rule = ({ ok, text }) => (
-    <div className={`text-xs ${ok ? 'text-green-600' : 'text-gray-400'}`}>
+    <div
+      className={`text-xs ${ok
+          ? 'text-green-500'
+          : 'text-[var(--app-text-muted)] opacity-70'
+        }`}
+    >
       {ok ? '✔' : '•'} {text}
     </div>
   );
 
   return (
     <div className="mt-3 space-y-2">
-      <div className="h-2 bg-gray-200 rounded">
+      <div className="h-2 rounded bg-[var(--app-surface-muted)]">
         <div
-          className={`h-2 rounded ${color}`}
+          className={`h-2 rounded transition-all ${color}`}
           style={{ width }}
         />
       </div>
 
-      <p className="text-xs text-gray-600">
+      <p className="text-xs text-[var(--app-text-muted)]">
         Strength: {label}
       </p>
 

@@ -2,7 +2,7 @@ import { Outlet } from 'react-router-dom';
 
 const AuthLayout = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-tr from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-[var(--app-bg)] text-[var(--app-text)]">
       <Outlet />
     </div>
   );

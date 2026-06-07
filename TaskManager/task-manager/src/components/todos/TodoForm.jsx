@@ -10,35 +10,36 @@ const TodoForm = ({
 }) => {
   const isDisabled = !formData.title.trim() || isSubmitting;
 
+  const inputClass =
+    'w-full px-4 py-3 rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] placeholder:text-[var(--app-text-muted)] focus:border-[var(--app-primary)] focus:ring-2 focus:ring-[var(--app-primary)]/20 outline-none transition-all duration-200';
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+    <div className="mb-6 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm">
       <form onSubmit={onSubmit} className="space-y-4">
-        {/* Title */}
         <div>
           <input
             type="text"
             placeholder="What needs to be done?"
             value={formData.title}
             onChange={onChange('title')}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all duration-200 text-lg"
+            className={`${inputClass} text-lg`}
             disabled={isSubmitting}
           />
         </div>
 
-        {/* Description + Due Date */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <textarea
             placeholder="Add a description (optional)"
             value={formData.description}
             onChange={onChange('description')}
             rows={2}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all duration-200 resize-none"
+            className={`${inputClass} resize-none`}
             disabled={isSubmitting}
           />
 
           <div className="flex flex-col">
-            <label className="text-sm text-gray-600 mb-1 flex items-center gap-1">
-              <CalendarIcon className="w-4 h-4" />
+            <label className="mb-1 flex items-center gap-1 text-sm text-[var(--app-text-muted)]">
+              <CalendarIcon className="h-4 w-4" />
               Due Date
             </label>
 
@@ -46,25 +47,24 @@ const TodoForm = ({
               type="date"
               value={formData.dueDate}
               onChange={onChange('dueDate')}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all duration-200"
+              className={inputClass}
               disabled={isSubmitting}
             />
           </div>
         </div>
 
-        {/* Buttons */}
         <div className="flex items-center gap-3">
           <button
             type="submit"
             disabled={isDisabled}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${isDisabled
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]'
+            className={`flex items-center gap-2 rounded-lg px-6 py-3 font-semibold transition-all duration-200 ${isDisabled
+                ? 'cursor-not-allowed bg-[var(--app-surface-muted)] text-[var(--app-text-muted)]'
+                : 'bg-[var(--app-primary)] text-white hover:bg-[var(--app-primary-hover)] hover:shadow-md active:scale-[0.98]'
               }`}
           >
             {isSubmitting ? (
               <>
-                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
                   <circle
                     className="opacity-25"
                     cx="12"
@@ -86,7 +86,7 @@ const TodoForm = ({
               </>
             ) : (
               <>
-                <PlusIcon className="w-5 h-5" />
+                <PlusIcon className="h-5 w-5" />
                 {editingId ? 'Update Todo' : 'Add Todo'}
               </>
             )}
@@ -96,9 +96,9 @@ const TodoForm = ({
             <button
               type="button"
               onClick={onCancel}
-              className="flex items-center gap-2 px-4 py-3 rounded-lg font-semibold text-gray-600 hover:bg-red-500 hover:text-white transition-colors duration-200"
+              className="flex items-center gap-2 rounded-lg px-4 py-3 font-semibold text-[var(--app-text-muted)] transition-colors duration-200 hover:bg-red-500 hover:text-white"
             >
-              <XIcon className="w-5 h-5" />
+              <XIcon className="h-5 w-5" />
               Cancel
             </button>
           )}

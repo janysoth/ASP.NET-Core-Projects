@@ -9,26 +9,26 @@ const ExpandableSection = ({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <section className="rounded-2xl bg-white shadow-sm border overflow-hidden">
+    <section className="overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="w-full flex items-center justify-between gap-4 p-6 text-left hover:bg-slate-50 transition"
+        className="flex w-full items-center justify-between gap-4 p-6 text-left transition hover:bg-[var(--app-surface-muted)]"
       >
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">
+          <h2 className="text-xl font-semibold text-[var(--app-text)]">
             {title}
           </h2>
 
           {description && (
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-[var(--app-text-muted)]">
               {description}
             </p>
           )}
         </div>
 
         <svg
-          className={`w-5 h-5 text-slate-500 transition-transform ${open ? 'rotate-180' : ''
+          className={`h-5 w-5 text-[var(--app-text-muted)] transition-transform ${open ? 'rotate-180' : ''
             }`}
           fill="none"
           stroke="currentColor"
@@ -44,7 +44,7 @@ const ExpandableSection = ({
       </button>
 
       {open && (
-        <div className="border-t border-slate-100 p-6">
+        <div className="border-t border-[var(--app-border)] p-6">
           {children}
         </div>
       )}

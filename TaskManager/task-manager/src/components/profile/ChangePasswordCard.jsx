@@ -1,4 +1,5 @@
 import React from 'react';
+
 import PasswordStrength from '../common/PasswordStrength';
 import InputField from '../input/InputField';
 
@@ -19,25 +20,41 @@ const ChangePasswordCard = ({
       />
 
       {field.name === 'newPassword' && (
-        <PasswordStrength password={formData.newPassword} />
+        <PasswordStrength
+          password={formData.newPassword}
+        />
       )}
     </div>
   );
 
   return (
-    <div>
-      <form onSubmit={onSubmit} className="space-y-4">
-        {fields.map(renderField)}
+    <form
+      onSubmit={onSubmit}
+      className="space-y-4"
+    >
+      {fields.map(renderField)}
 
-        <button
-          type="submit"
-          disabled={loading || hasErrors}
-          className="w-full rounded-lg bg-indigo-600 py-3 font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {loading ? 'Updating...' : 'Change Password'}
-        </button>
-      </form>
-    </div>
+      <button
+        type="submit"
+        disabled={loading || hasErrors}
+        className="
+          w-full
+          rounded-lg
+          bg-[var(--app-primary)]
+          py-3
+          font-medium
+          text-white
+          transition-colors
+          hover:bg-[var(--app-primary-hover)]
+          disabled:cursor-not-allowed
+          disabled:opacity-50
+        "
+      >
+        {loading
+          ? 'Updating...'
+          : 'Change Password'}
+      </button>
+    </form>
   );
 };
 

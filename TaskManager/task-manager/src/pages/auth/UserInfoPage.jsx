@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import ExpandableSection from '../../components/common/ExpandableSection';
 import AccountInfoCard from '../../components/profile/AccountInfoCard';
 import ChangePasswordCard from '../../components/profile/ChangePasswordCard';
+import PreferencesCard from '../../components/profile/PreferencesCard';
 import ProfileCard from '../../components/profile/ProfileCard';
 import ProfileOverviewCard from '../../components/profile/ProfileOverviewCard';
 
@@ -180,15 +181,15 @@ const UserInfoPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-10">
+    <div className="min-h-screen bg-slate-50 px-4 py-10 dark:bg-slate-950">
       <div className="mx-auto max-w-4xl space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
             Account Settings
           </h1>
 
-          <p className="mt-1 text-slate-600">
-            Manage your profile information and password.
+          <p className="mt-1 text-slate-600 dark:text-slate-400">
+            Manage your profile information, email, image, and password.
           </p>
         </div>
 
@@ -249,6 +250,13 @@ const UserInfoPage = () => {
             loading={loading}
             hasErrors={hasErrors}
           />
+        </ExpandableSection>
+
+        <ExpandableSection
+          title="Preferences"
+          description="Customize your app settings and todo behavior."
+        >
+          <PreferencesCard />
         </ExpandableSection>
       </div>
     </div>

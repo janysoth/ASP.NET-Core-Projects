@@ -15,15 +15,12 @@ const InputField = ({
   onChange,
   onAsyncValidationChange,
   emailMode,
-  formData = {}, // ✅ SAFE DEFAULT
+  formData = {},
 }) => {
   const [visible, setVisible] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [debouncedValue, setDebouncedValue] = useState(value);
 
-  // =========================
-  // Debounce
-  // =========================
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedValue(value);
@@ -41,17 +38,11 @@ const InputField = ({
 
   const toggleVisibility = () => setVisible((v) => !v);
 
-  // =========================
-  // Sync validation
-  // =========================
   const syncError = useMemo(() => {
     if (!validate || !dirty) return '';
     return validate(debouncedValue, formData);
   }, [validate, debouncedValue, dirty, formData]);
 
-  // =========================
-  // Async email validation
-  // =========================
   const { error: asyncError, isChecking } = useEmailValidation({
     value: debouncedValue,
     enabled: type === 'email' && !!emailMode && dirty,
@@ -62,49 +53,65 @@ const InputField = ({
 
   const errorMessage = syncError || asyncError;
 
-  // =========================
-  // Border color
-  // =========================
   const borderClass = useMemo(() => {
-    if (!dirty) return 'border-gray-300';
+    if (!dirty) return 'border-[var(--app-border)]';
     if (errorMessage) return 'border-red-500';
     if (debouncedValue && !isChecking) return 'border-green-500';
-    return 'border-gray-300';
+    return 'border-[var(--app-border)]';
   }, [dirty, errorMessage, debouncedValue, isChecking]);
 
   return (
     <div className="flex flex-col">
-      <label className="mb-1 font-medium">{label}</label>
+      <label className="mb-1 font-medium text-[var(--app-text)]">
+        {label}
+      </label>
 
-      <div className={`flex items-center border rounded px-3 py-2 transition ${borderClass}`}>
-        {/* LEFT ICON */}
-        {icon && <span className="mr-2">{icon}</span>}
+      <div
+        className={`
+          flex items-center rounded border px-3 py-2 transition
+          bg-[var(--app-surface)]
+          text-[var(--app-text)]
+          ${borderClass}
+        `}
+      >
+        {icon && (
+          <span className="mr-2 text-[var(--app-text-muted)]">
+            {icon}
+          </span>
+        )}
 
-        {/* INPUT */}
         <input
           type={visible ? 'text' : type}
           placeholder={placeholder}
           value={value}
           onChange={handleChange}
-          className="flex-1 outline-none"
+          className="
+            flex-1 bg-transparent outline-none
+            text-[var(--app-text)]
+            placeholder:text-[var(--app-text-muted)]
+          "
         />
 
-        {/* PASSWORD TOGGLE */}
         {type === 'password' && (showIcon || hideIcon) && (
-          <span onClick={toggleVisibility} className="ml-2 cursor-pointer">
+          <span
+            onClick={toggleVisibility}
+            className="ml-2 cursor-pointer text-[var(--app-text-muted)] hover:text-[var(--app-text)]"
+          >
             {visible ? hideIcon : showIcon}
           </span>
         )}
       </div>
 
-      {/* EMAIL CHECK */}
       {isChecking && (
-        <p className="text-gray-500 text-sm mt-1">Checking email...</p>
+        <p className="mt-1 text-sm text-[var(--app-text-muted)]">
+          Checking email...
+        </p>
       )}
 
-      {/* ERROR */}
       {!isChecking && errorMessage && (
-        <p className="text-red-600 text-sm mt-1">{errorMessage}</p>
+        <p className="mt-1 text-sm text-red-600">
+          {errorMessage}
+        </p>
       )}
     </div>
   );

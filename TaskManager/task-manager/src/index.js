@@ -5,6 +5,13 @@ import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import './index.css';
 
+import {
+  applyTheme,
+  getPreferences,
+} from './utils/userPreferences';
+
+applyTheme(getPreferences().theme);
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
 root.render(

@@ -6,8 +6,8 @@ const HomePage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen px-6 py-10">
-      <h1 className="text-3xl font-bold mb-8 text-gray-800">
+    <div className="min-h-screen px-6 py-10 bg-[var(--app-bg)]">
+      <h1 className="text-3xl font-bold mb-8 text-[var(--app-text)]">
         My Apps
       </h1>
 
@@ -16,15 +16,15 @@ const HomePage = () => {
           <button
             key={app.title}
             onClick={() => navigate(app.route)}
-            className="bg-white rounded-2xl shadow-md p-6 text-left hover:shadow-xl hover:-translate-y-1 transition-all duration-200 border border-gray-100"
+            className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 text-left shadow-md transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
           >
             <div className="text-5xl mb-4">{app.icon}</div>
 
-            <h2 className="text-xl font-semibold text-gray-800">
+            <h2 className="text-xl font-semibold text-[var(--app-text)]">
               {app.title}
             </h2>
 
-            <p className="text-gray-500 mt-2 text-sm">
+            <p className="text-[var(--app-text-muted)] mt-2 text-sm">
               {app.description}
             </p>
           </button>

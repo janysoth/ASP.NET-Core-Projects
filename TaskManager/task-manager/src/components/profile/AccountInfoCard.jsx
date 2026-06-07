@@ -58,11 +58,23 @@ const AccountInfoCard = ({
     setIsEditing(false);
   };
 
+  const fieldBoxClass =
+    'rounded-xl bg-[var(--app-surface-muted)] p-4';
+
+  const labelClass =
+    'text-sm text-[var(--app-text-muted)]';
+
+  const valueClass =
+    'mt-1 font-medium text-[var(--app-text)]';
+
+  const inputClass =
+    'mt-1 w-full rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2 text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-muted)] focus:border-[var(--app-primary)]';
+
   return (
     <div className="space-y-4">
-      <div className="rounded-xl bg-slate-50 p-4">
+      <div className={fieldBoxClass}>
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-slate-500">
+          <p className={labelClass}>
             Profile Details
           </p>
 
@@ -70,7 +82,7 @@ const AccountInfoCard = ({
             <button
               type="button"
               onClick={() => setIsEditing(true)}
-              className="text-sm font-medium text-indigo-600 hover:underline"
+              className="text-sm font-medium text-[var(--app-primary)] hover:underline"
             >
               Edit
             </button>
@@ -80,14 +92,14 @@ const AccountInfoCard = ({
         {isEditing ? (
           <div className="mt-4 space-y-4">
             <div>
-              <label className="text-sm text-slate-500">
+              <label className={labelClass}>
                 Full Name
               </label>
 
               <input
                 value={form.fullName}
                 onChange={handleChange('fullName')}
-                className="mt-1 w-full rounded-lg border px-3 py-2 outline-none focus:border-indigo-500"
+                className={inputClass}
               />
 
               {fullNameError && (
@@ -98,7 +110,7 @@ const AccountInfoCard = ({
             </div>
 
             <div>
-              <label className="text-sm text-slate-500">
+              <label className={labelClass}>
                 Email
               </label>
 
@@ -106,7 +118,7 @@ const AccountInfoCard = ({
                 type="email"
                 value={form.email}
                 onChange={handleChange('email')}
-                className="mt-1 w-full rounded-lg border px-3 py-2 outline-none focus:border-indigo-500"
+                className={inputClass}
               />
 
               {emailError && (
@@ -121,7 +133,7 @@ const AccountInfoCard = ({
                 type="button"
                 onClick={handleSave}
                 disabled={loading || hasErrors}
-                className="rounded-lg bg-indigo-600 px-3 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
+                className="rounded-lg bg-[var(--app-primary)] px-3 py-2 text-sm text-white hover:bg-[var(--app-primary-hover)] disabled:opacity-50"
               >
                 {loading ? 'Saving...' : 'Save'}
               </button>
@@ -130,7 +142,7 @@ const AccountInfoCard = ({
                 type="button"
                 onClick={handleCancel}
                 disabled={loading}
-                className="rounded-lg border px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2 text-sm text-[var(--app-text)] hover:bg-[var(--app-surface-muted)] disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -139,16 +151,16 @@ const AccountInfoCard = ({
         ) : (
           <div className="mt-4 space-y-4">
             <div>
-              <p className="text-sm text-slate-500">Full Name</p>
-              <p className="mt-1 font-medium text-slate-900">
+              <p className={labelClass}>Full Name</p>
+              <p className={valueClass}>
                 {user?.fullName || 'Not available'}
               </p>
             </div>
 
             <div>
-              <p className="text-sm text-slate-500">Email</p>
+              <p className={labelClass}>Email</p>
               <p
-                className="mt-1 truncate font-medium text-slate-900"
+                className={`${valueClass} truncate`}
                 title={user?.email}
               >
                 {user?.email || 'Not available'}
@@ -158,9 +170,9 @@ const AccountInfoCard = ({
         )}
       </div>
 
-      <div className="rounded-xl bg-slate-50 p-4">
-        <p className="text-sm text-slate-500">User ID</p>
-        <p className="mt-1 break-all text-sm font-medium text-slate-900">
+      <div className={fieldBoxClass}>
+        <p className={labelClass}>User ID</p>
+        <p className="mt-1 break-all text-sm font-medium text-[var(--app-text)]">
           {user?.id || 'Not available'}
         </p>
       </div>

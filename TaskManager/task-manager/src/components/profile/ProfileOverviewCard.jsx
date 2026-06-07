@@ -6,9 +6,7 @@ const ProfileOverviewCard = ({ user }) => {
       return 'Not available';
     }
 
-    return new Date(
-      user.createdAtUtc
-    ).toLocaleDateString();
+    return new Date(user.createdAtUtc).toLocaleDateString();
   }, [user]);
 
   const accountAge = useMemo(() => {
@@ -16,25 +14,15 @@ const ProfileOverviewCard = ({ user }) => {
       return 'Not available';
     }
 
-    const created = new Date(
-      user.createdAtUtc
-    );
-
+    const created = new Date(user.createdAtUtc);
     const now = new Date();
 
     const months =
-      (now.getFullYear() -
-        created.getFullYear()) *
-      12 +
-      (now.getMonth() -
-        created.getMonth());
+      (now.getFullYear() - created.getFullYear()) * 12 +
+      (now.getMonth() - created.getMonth());
 
-    const years = Math.floor(
-      months / 12
-    );
-
-    const remainingMonths =
-      months % 12;
+    const years = Math.floor(months / 12);
+    const remainingMonths = months % 12;
 
     if (years === 0) {
       return `${remainingMonths} month(s)`;
@@ -61,49 +49,56 @@ const ProfileOverviewCard = ({ user }) => {
     return 'Good';
   }, []);
 
-  return (
-    <div className="mt-5 grid gap-4 sm:grid-cols-2">
+  const cardClass =
+    'rounded-xl bg-[var(--app-surface-muted)] p-4';
 
-      <div className="rounded-xl bg-slate-50 p-4">
-        <p className="text-sm text-slate-500">
+  const labelClass =
+    'text-sm text-[var(--app-text-muted)]';
+
+  const valueClass =
+    'mt-1 font-semibold text-[var(--app-text)]';
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div className={cardClass}>
+        <p className={labelClass}>
           Member Since
         </p>
 
-        <p className="mt-1 font-semibold text-slate-900">
+        <p className={valueClass}>
           {memberSince}
         </p>
       </div>
 
-      <div className="rounded-xl bg-slate-50 p-4">
-        <p className="text-sm text-slate-500">
+      <div className={cardClass}>
+        <p className={labelClass}>
           Account Age
         </p>
 
-        <p className="mt-1 font-semibold text-slate-900">
+        <p className={valueClass}>
           {accountAge}
         </p>
       </div>
 
-      <div className="rounded-xl bg-slate-50 p-4">
-        <p className="text-sm text-slate-500">
+      <div className={cardClass}>
+        <p className={labelClass}>
           Profile Completion
         </p>
 
-        <p className="mt-1 font-semibold text-slate-900">
+        <p className={valueClass}>
           {profileCompletion}%
         </p>
       </div>
 
-      <div className="rounded-xl bg-slate-50 p-4">
-        <p className="text-sm text-slate-500">
+      <div className={cardClass}>
+        <p className={labelClass}>
           Security Level
         </p>
 
-        <p className="mt-1 font-semibold text-green-600">
+        <p className="mt-1 font-semibold text-green-500">
           {securityLevel}
         </p>
       </div>
-
     </div>
   );
 };
