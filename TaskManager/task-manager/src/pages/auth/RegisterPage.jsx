@@ -180,10 +180,13 @@ const RegisterPage = () => {
 
       footer={
         <>
-          Already have an account?{' '}
+          <span className="text-[var(--app-text-muted)]">
+            Already have an account?{' '}
+          </span>
+
           <Link
             to="/login"
-            className="text-indigo-600 font-medium hover:underline"
+            className="font-medium text-[var(--app-primary)] hover:underline"
           >
             Login
           </Link>

@@ -16,9 +16,6 @@ const UserMenu = () => {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
 
-  // =========================
-  // Backend URL
-  // =========================
   const backendUrl = useMemo(() => {
     return (
       process.env.REACT_APP_API_URL ||
@@ -26,17 +23,11 @@ const UserMenu = () => {
     );
   }, []);
 
-  // =========================
-  // Profile Image
-  // =========================
   const profileImageUrl = useMemo(() => {
     if (!user?.profileImageUrl) return '';
     return `${backendUrl}${user.profileImageUrl}`;
   }, [backendUrl, user?.profileImageUrl]);
 
-  // =========================
-  // Close on outside click
-  // =========================
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -48,26 +39,22 @@ const UserMenu = () => {
     };
 
     document.addEventListener('mousedown', handleClickOutside);
+
     return () =>
       document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // =========================
-  // ESC closes menu
-  // =========================
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') setOpen(false);
     };
 
     document.addEventListener('keydown', handleKeyDown);
+
     return () =>
       document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // =========================
-  // Logout
-  // =========================
   const handleLogout = async () => {
     try {
       await logout();
@@ -83,17 +70,14 @@ const UserMenu = () => {
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      {/* =========================
-          Navbar Trigger
-      ========================== */}
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className="
           flex items-center gap-3
           rounded-lg p-2
-          hover:bg-indigo-700
           transition
+          hover:bg-[var(--navbar-hover)]
         "
       >
         <Avatar
@@ -102,13 +86,13 @@ const UserMenu = () => {
           profileImageUrl={profileImageUrl}
         />
 
-        <div className="hidden sm:flex flex-col text-left max-w-[160px]">
-          <span className="text-sm font-semibold text-white truncate">
+        <div className="hidden max-w-[160px] flex-col text-left sm:flex">
+          <span className="truncate text-sm font-semibold text-[var(--navbar-text)]">
             {user?.fullName}
           </span>
 
           <span
-            className="text-xs text-indigo-100 truncate"
+            className="truncate text-xs text-[var(--navbar-text-muted)]"
             title={user?.email}
           >
             {user?.email}
@@ -116,7 +100,7 @@ const UserMenu = () => {
         </div>
 
         <svg
-          className={`w-4 h-4 text-white transition-transform ${open ? 'rotate-180' : ''
+          className={`h-4 w-4 text-[var(--navbar-text)] transition-transform ${open ? 'rotate-180' : ''
             }`}
           fill="none"
           stroke="currentColor"
@@ -131,30 +115,26 @@ const UserMenu = () => {
         </svg>
       </button>
 
-      {/* =========================
-          Dropdown 
-      ========================== */}
       {open && (
-        <div className="
-          absolute right-0
-          w-64
-          rounded-xl
-          border border-gray-200
-          bg-white
-          shadow-xl
-          z-50
-          overflow-hidden
-        ">
-          {/* Menu Items */}
+        <div
+          className="
+            absolute right-0 z-50
+            w-64 overflow-hidden
+            rounded-xl
+            border border-[var(--app-border)]
+            bg-[var(--app-surface)]
+            shadow-xl
+          "
+        >
           <div className="py-2">
             <Link
               to="/user-info"
               onClick={() => setOpen(false)}
               className="
                 block px-4 py-3
-                text-sm text-gray-700
-                hover:bg-indigo-50
+                text-sm text-[var(--app-text)]
                 transition
+                hover:bg-[var(--app-surface-muted)]
               "
             >
               Profile Settings
@@ -164,10 +144,10 @@ const UserMenu = () => {
               type="button"
               onClick={handleLogout}
               className="
-                w-full text-left px-4 py-3
-                text-sm text-red-600
-                hover:bg-red-50
+                w-full px-4 py-3 text-left
+                text-sm text-red-500
                 transition
+                hover:bg-red-500/10
               "
             >
               Logout

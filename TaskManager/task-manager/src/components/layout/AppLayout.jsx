@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 
+import FloatingThemeBar from '../common/FloatingThemeBar';
 import Navbar from '../navigation/Navbar';
 
 const AppLayout = () => {
@@ -10,6 +11,8 @@ const AppLayout = () => {
       <main className="pt-4">
         <Outlet />
       </main>
+
+      <FloatingThemeBar />
     </div>
   );
 };

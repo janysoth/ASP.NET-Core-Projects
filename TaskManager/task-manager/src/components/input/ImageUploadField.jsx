@@ -1,4 +1,5 @@
 import React from 'react';
+
 import Avatar from '../common/Avatar';
 
 const ImageUploadField = ({
@@ -31,12 +32,22 @@ const ImageUploadField = ({
           onChange={handleFileChange}
         />
 
-        <div className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition">
+        <div
+          className="
+            rounded-lg
+            bg-[var(--app-primary)]
+            px-4
+            py-2
+            text-white
+            transition
+            hover:bg-[var(--app-primary-hover)]
+          "
+        >
           Upload Profile Picture
         </div>
       </label>
 
-      <p className="text-sm text-gray-500 text-center">
+      <p className="text-center text-sm text-[var(--app-text-muted)]">
         JPG, PNG, WEBP supported
       </p>
     </div>

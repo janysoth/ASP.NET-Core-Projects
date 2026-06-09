@@ -4,13 +4,11 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import AuthForm from '../../components/forms/AuthForm';
 
+import { LOGIN_FIELDS } from '../../features/auth/authFields';
 import { useAuth } from '../../hooks/useAuth';
 import { useForm } from '../../hooks/useForm';
 import { login as loginApi } from '../../services/api';
-
-import { LOGIN_FIELDS } from '../../features/auth/authFields';
 import { getLoginFormState } from '../../utils/formStates';
-
 
 const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,13 +21,9 @@ const LoginPage = () => {
 
   const form = useForm(LOGIN_FIELDS, getLoginFormState);
 
-  // =========================
-  // Submit Handler
-  // =========================
   const handleLogin = useCallback(async (data) => {
     setIsLoading(true);
 
-    // 🔄 Loading toast
     const toastId = toast.loading('Logging in...', {
       style: {
         background: '#334155',
@@ -43,7 +37,6 @@ const LoginPage = () => {
 
       login({ token: accessToken, user });
 
-      // ✅ Success toast
       toast.success('Welcome back! 🎉', {
         id: toastId,
         icon: '✅',
@@ -58,7 +51,6 @@ const LoginPage = () => {
       const message =
         err.response?.data?.message || 'Invalid credentials.';
 
-      // ❌ Error toast
       toast.error(message, {
         id: toastId,
         icon: '❌',
@@ -84,34 +76,32 @@ const LoginPage = () => {
       isLoading={isLoading}
       submitText="Login"
       loadingText="Logging in..."
-
-      // ✅ Removed inline error completely
       error={null}
-
-      // ✅ Keep contextual message inline (correct UX)
       extraContent={
         sessionExpired && (
-          <div className="mb-4 bg-yellow-100 text-yellow-800 p-3 rounded-lg text-sm text-center">
+          <div className="mb-4 rounded-lg border border-yellow-300 bg-yellow-100 p-3 text-center text-sm text-yellow-800">
             Your session expired. Please log in again.
           </div>
         )
       }
-
       footer={
         <>
-          <div className="flex justify-end mb-2">
+          <div className="mb-2 flex justify-end">
             <Link
               to="/forgot-password"
-              className="text-sm text-indigo-600 hover:underline"
+              className="text-sm text-[var(--app-primary)] hover:underline"
             >
               Forgot Password?
             </Link>
           </div>
 
-          Don’t have an account?{' '}
+          <span className="text-[var(--app-text-muted)]">
+            Don’t have an account?{' '}
+          </span>
+
           <Link
             to="/register"
-            className="text-indigo-600 font-medium hover:underline"
+            className="font-medium text-[var(--app-primary)] hover:underline"
           >
             Register
           </Link>

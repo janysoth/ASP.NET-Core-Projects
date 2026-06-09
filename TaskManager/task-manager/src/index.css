@@ -13,6 +13,12 @@
 
   --app-primary: #4f46e5;
   --app-primary-hover: #4338ca;
+
+  --navbar-bg: #4f46e5;
+  --navbar-hover: rgba(255, 255, 255, 0.12);
+  --navbar-active: #4338ca;
+  --navbar-text: #ffffff;
+  --navbar-text-muted: rgba(255, 255, 255, 0.8);
 }
 
 .dark {
@@ -26,4 +32,10 @@
 
   --app-primary: #818cf8;
   --app-primary-hover: #6366f1;
+
+  --navbar-bg: #0f172a;
+  --navbar-hover: rgba(255, 255, 255, 0.08);
+  --navbar-active: #1e293b;
+  --navbar-text: #f8fafc;
+  --navbar-text-muted: #cbd5e1;
 }

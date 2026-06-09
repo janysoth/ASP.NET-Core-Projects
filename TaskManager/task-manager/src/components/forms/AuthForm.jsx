@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from 'react';
+
 import FormButton from '../common/FormButton';
 import PasswordStrength from '../common/PasswordStrength';
-import InputField from '../input/InputField'; // ✅ ADD THIS
+import InputField from '../input/InputField';
 
 const AuthForm = ({
   title,
@@ -14,7 +15,7 @@ const AuthForm = ({
   submitText,
   loadingText,
   footer,
-  extraContent
+  extraContent,
 }) => {
   const {
     formData,
@@ -26,7 +27,7 @@ const AuthForm = ({
   const [asyncErrors, setAsyncErrors] = useState({});
 
   const handleAsyncValidation = useCallback((fieldName, error) => {
-    setAsyncErrors(prev => {
+    setAsyncErrors((prev) => {
       if (!error) {
         const updated = { ...prev };
         delete updated[fieldName];
@@ -35,12 +36,13 @@ const AuthForm = ({
 
       return {
         ...prev,
-        [fieldName]: error
+        [fieldName]: error,
       };
     });
   }, []);
 
-  const hasServerErrors = Object.keys(asyncErrors).length > 0;
+  const hasServerErrors =
+    Object.keys(asyncErrors).length > 0;
 
   const handleSubmit = useCallback((e) => {
     e.preventDefault();
@@ -49,7 +51,13 @@ const AuthForm = ({
     if (hasErrors || hasServerErrors) return;
 
     onSubmit(formData);
-  }, [hasErrors, hasServerErrors, onSubmit, setSubmitted, formData]);
+  }, [
+    hasErrors,
+    hasServerErrors,
+    onSubmit,
+    setSubmitted,
+    formData,
+  ]);
 
   const renderField = useCallback((field) => {
     const handleAsync = (error) => {
@@ -63,43 +71,55 @@ const AuthForm = ({
 
     return (
       <div key={field.name}>
-
-        {/* INPUT */}
         <InputField
           {...field}
           value={formData[field.name]}
           formData={formData}
           onChange={handleChangeWithReset}
-          emailMode={title === 'Welcome Back' ? 'login' : 'register'}
+          emailMode={
+            title === 'Welcome Back'
+              ? 'login'
+              : 'register'
+          }
           onAsyncValidationChange={handleAsync}
         />
 
-        {/* ✅ PASSWORD STRENGTH ONLY FOR PASSWORD FIELD IN REGISTER PAGE */}
-        {mode === 'register' && field.name === 'password' && (
-          <PasswordStrength password={formData[field.name]} />
-        )}
-
+        {mode === 'register' &&
+          field.name === 'password' && (
+            <PasswordStrength
+              password={formData[field.name]}
+            />
+          )}
       </div>
     );
-  }, [formData, handleChange, handleAsyncValidation, title, mode]);
+  }, [
+    formData,
+    handleChange,
+    handleAsyncValidation,
+    title,
+    mode,
+  ]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-50 to-indigo-100 p-4">
-      <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
-
+    <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] p-4">
+      <div className="w-full max-w-md rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8 shadow-lg">
         {extraContent}
 
-        <h2 className="text-3xl font-bold text-center text-indigo-700 mb-6">
+        <h2 className="mb-6 text-center text-3xl font-bold text-[var(--app-primary)]">
           {title}
         </h2>
 
         {error && (
-          <div className="bg-red-100 text-red-700 p-3 mb-4 rounded-lg text-sm text-center">
+          <div className="mb-4 rounded-lg bg-red-100 p-3 text-center text-sm text-red-700">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+          noValidate
+        >
           {fields.map(renderField)}
 
           <FormButton
@@ -112,11 +132,10 @@ const AuthForm = ({
         </form>
 
         {footer && (
-          <div className="mt-6 text-center text-gray-600">
+          <div className="mt-6 text-center text-[var(--app-text-muted)]">
             {footer}
           </div>
         )}
-
       </div>
     </div>
   );
