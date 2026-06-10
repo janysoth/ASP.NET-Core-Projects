@@ -6,8 +6,7 @@ export const defaultPreferences = {
   reduceMotion: false,
   sessionWarningMinutes: 5,
   emailNotifications: true,
-  dateFormat: 'MM/DD/YYYY',
-  timeFormat: '12-hour',
+  defaultStartPage: '/',
 };
 
 export const getPreferences = () => {

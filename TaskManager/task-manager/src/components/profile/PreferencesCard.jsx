@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 import {
   getPreferences,
@@ -9,9 +10,7 @@ import {
 const PreferencesCard = () => {
   const [preferences, setPreferences] = useState(getPreferences);
 
-  useEffect(() => {
-    savePreferences(preferences);
-  }, [preferences]);
+  const navigate = useNavigate();
 
   const handleChange = (field) => (e) => {
     const value =
@@ -19,12 +18,14 @@ const PreferencesCard = () => {
         ? e.target.checked
         : e.target.value;
 
-    setPreferences((prev) => ({
-      ...prev,
+    const updated = {
+      ...preferences,
       [field]: value,
-    }));
-  };
+    };
 
+    setPreferences(updated);
+    savePreferences(updated);
+  };
   const handleSave = () => {
     savePreferences(preferences);
 
@@ -35,6 +36,10 @@ const PreferencesCard = () => {
         color: '#fff',
       },
     });
+
+    if (preferences.defaultStartPage) {
+      navigate(preferences.defaultStartPage);
+    }
   };
 
   return (
@@ -92,32 +97,17 @@ const PreferencesCard = () => {
 
       <div>
         <label className="mb-2 block font-medium text-[var(--app-text)]">
-          Date Format
+          Default Start Page
         </label>
 
         <select
-          value={preferences.dateFormat}
-          onChange={handleChange('dateFormat')}
+          value={preferences.defaultStartPage}
+          onChange={handleChange('defaultStartPage')}
           className="w-full rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2 text-[var(--app-text)] outline-none focus:border-[var(--app-primary)]"
         >
-          <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-          <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-          <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-        </select>
-      </div>
-
-      <div>
-        <label className="mb-2 block font-medium text-[var(--app-text)]">
-          Time Format
-        </label>
-
-        <select
-          value={preferences.timeFormat}
-          onChange={handleChange('timeFormat')}
-          className="w-full rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2 text-[var(--app-text)] outline-none focus:border-[var(--app-primary)]"
-        >
-          <option value="12-hour">12-hour</option>
-          <option value="24-hour">24-hour</option>
+          <option value="/">Home</option>
+          <option value="/todos">Todos</option>
+          <option value="/user-info">Account Settings</option>
         </select>
       </div>
 

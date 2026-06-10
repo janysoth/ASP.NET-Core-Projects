@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+
 import {
   authStorage,
   calculateSessionRemaining,
 } from '../utils/authHelpers';
+
 import { MINUTE, SECOND } from '../utils/constants';
+import { getPreferences } from '../utils/userPreferences';
 
 const SESSION_TIMEOUT = 120 * MINUTE;
-const WARNING_BEFORE_TIMEOUT = 1 * MINUTE;
-const CHECK_INTERVAL = 30 * SECOND;
+const CHECK_INTERVAL = 1 * SECOND;
 
 export const useSessionTimeout = ({ user, onLogout }) => {
   const [showWarning, setShowWarning] = useState(false);
@@ -16,9 +18,6 @@ export const useSessionTimeout = ({ user, onLogout }) => {
   const lastActivityRef = useRef(Date.now());
   const intervalRef = useRef(null);
 
-  // =========================
-  // Cleanup timers
-  // =========================
   const clearTimers = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -26,9 +25,6 @@ export const useSessionTimeout = ({ user, onLogout }) => {
     }
   }, []);
 
-  // =========================
-  // Activity tracker
-  // =========================
   const updateActivity = useCallback(() => {
     const now = Date.now();
 
@@ -39,9 +35,6 @@ export const useSessionTimeout = ({ user, onLogout }) => {
     setTimeRemaining(null);
   }, []);
 
-  // =========================
-  // Remaining session time
-  // =========================
   const getTimeRemaining = useCallback(() => {
     const lastActivity =
       authStorage.getLastActivity() || lastActivityRef.current;
@@ -52,9 +45,16 @@ export const useSessionTimeout = ({ user, onLogout }) => {
     );
   }, []);
 
-  // =========================
-  // Start watcher
-  // =========================
+  const getWarningBeforeTimeout = useCallback(() => {
+    const preferences = getPreferences();
+
+    const minutes = Number(
+      preferences.sessionWarningMinutes || 1
+    );
+
+    return minutes * MINUTE;
+  }, []);
+
   const startWatcher = useCallback(() => {
     clearTimers();
 
@@ -62,22 +62,26 @@ export const useSessionTimeout = ({ user, onLogout }) => {
 
     intervalRef.current = setInterval(() => {
       const remaining = getTimeRemaining();
+      const warningBeforeTimeout = getWarningBeforeTimeout();
 
       if (remaining <= 0) {
         onLogout();
         return;
       }
 
-      if (remaining <= WARNING_BEFORE_TIMEOUT) {
+      if (remaining <= warningBeforeTimeout) {
         setShowWarning(true);
         setTimeRemaining(remaining);
       }
     }, CHECK_INTERVAL);
-  }, [user, getTimeRemaining, onLogout, clearTimers]);
+  }, [
+    user,
+    getTimeRemaining,
+    getWarningBeforeTimeout,
+    onLogout,
+    clearTimers,
+  ]);
 
-  // =========================
-  // Start / stop session watcher
-  // =========================
   useEffect(() => {
     if (!user) {
       clearTimers();
@@ -89,9 +93,6 @@ export const useSessionTimeout = ({ user, onLogout }) => {
     return clearTimers;
   }, [user, startWatcher, clearTimers]);
 
-  // =========================
-  // Browser activity listeners
-  // =========================
   useEffect(() => {
     if (!user) return;
 
@@ -116,9 +117,6 @@ export const useSessionTimeout = ({ user, onLogout }) => {
     };
   }, [user, updateActivity]);
 
-  // =========================
-  // Restore last activity once
-  // =========================
   useEffect(() => {
     const lastActivity = authStorage.getLastActivity();
 
