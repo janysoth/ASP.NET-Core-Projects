@@ -85,6 +85,8 @@ export const useSessionTimeout = ({ user, onLogout }) => {
   useEffect(() => {
     if (!user) {
       clearTimers();
+      setShowWarning(false);
+      setTimeRemaining(null);
       return;
     }
 
@@ -107,12 +109,12 @@ export const useSessionTimeout = ({ user, onLogout }) => {
     const handleActivity = () => updateActivity();
 
     events.forEach((event) =>
-      window.addEventListener(event, handleActivity, true)
+      window.addEventListener(event, handleActivity)
     );
 
     return () => {
       events.forEach((event) =>
-        window.removeEventListener(event, handleActivity, true)
+        window.removeEventListener(event, handleActivity)
       );
     };
   }, [user, updateActivity]);
