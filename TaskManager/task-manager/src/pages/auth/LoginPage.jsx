@@ -9,6 +9,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useForm } from '../../hooks/useForm';
 import { login as loginApi } from '../../services/api';
 import { getLoginFormState } from '../../utils/formStates';
+import { getPreferences } from '../../utils/userPreferences';
 
 const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +47,11 @@ const LoginPage = () => {
         },
       });
 
-      navigate('/', { replace: true });
+      const { defaultStartPage } = getPreferences();
+
+      navigate(defaultStartPage || '/', {
+        replace: true,
+      });
     } catch (err) {
       const message =
         err.response?.data?.message || 'Invalid credentials.';
