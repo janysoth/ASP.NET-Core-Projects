@@ -39,6 +39,40 @@ export const getDueDateInfo = (utcIsoString, isCompleted = false) => {
   };
 };
 
+// =========================
+// DUE DATE STATUS 
+// =========================
+export const getDueStatusText = (utcIsoString, isCompleted = false) => {
+  if (!utcIsoString || isCompleted) return '';
+
+  const date = new Date(utcIsoString);
+
+  const dueDate = new Date(
+    date.getTime() + date.getTimezoneOffset() * 60 * 1000
+  );
+
+  dueDate.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const diffMs = dueDate.getTime() - today.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays > 0) {
+    return `Due in ${diffDays} ${diffDays === 1 ? 'day' : 'days'}`;
+  }
+
+  if (diffDays === 0) {
+    return 'Due today';
+  }
+
+  const overdueDays = Math.abs(diffDays);
+
+  return `Overdue: ${overdueDays} ${overdueDays === 1 ? 'day' : 'days'
+    } ago`;
+};
+
 // Existing helpers
 export const utcToLocalDateString = (utcIsoString) => {
   if (!utcIsoString) return '';
