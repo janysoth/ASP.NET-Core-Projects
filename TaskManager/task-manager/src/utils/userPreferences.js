@@ -36,17 +36,34 @@ export const applyTheme = (theme) => {
 
   if (theme === 'dark') {
     root.classList.add('dark');
-    return;
-  }
-
-  if (theme === 'light') {
+  } else if (theme === 'light') {
     root.classList.remove('dark');
-    return;
+  } else {
+    const prefersDark =
+      window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    root.classList.toggle('dark', prefersDark);
   }
+};
 
-  const prefersDark =
-    window.matchMedia &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches;
+export const applyLayoutPreferences = (preferences) => {
+  const root = document.documentElement;
 
-  root.classList.toggle('dark', prefersDark);
+  root.classList.toggle(
+    'compact-mode',
+    !!preferences.compactMode
+  );
+
+  root.classList.toggle(
+    'reduce-motion',
+    !!preferences.reduceMotion
+  );
+};
+
+export const applyAllPreferences = () => {
+  const preferences = getPreferences();
+
+  applyTheme(preferences.theme);
+  applyLayoutPreferences(preferences);
 };

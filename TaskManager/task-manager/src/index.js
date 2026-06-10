@@ -1,18 +1,18 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+
 import App from './App';
-import { AuthProvider } from './context/AuthContext';
 import './index.css';
 
-import {
-  applyTheme,
-  getPreferences,
-} from './utils/userPreferences';
+import { AuthProvider } from './context/AuthContext';
+import { applyAllPreferences } from './utils/userPreferences';
 
-applyTheme(getPreferences().theme);
+applyAllPreferences();
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+const root = ReactDOM.createRoot(
+  document.getElementById('root')
+);
 
 root.render(
   <React.StrictMode>

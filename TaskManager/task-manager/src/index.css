@@ -39,3 +39,27 @@
   --navbar-text: #f8fafc;
   --navbar-text-muted: #cbd5e1;
 }
+
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+.compact-mode .app-page-padding {
+  padding: 1rem !important;
+}
+
+.compact-mode .app-card-padding {
+  padding: 0.75rem !important;
+}
+
+.compact-mode .app-section-gap {
+  gap: 0.75rem !important;
+}
+
+.compact-mode .app-section-spacing {
+  margin-bottom: 1rem !important;
+}

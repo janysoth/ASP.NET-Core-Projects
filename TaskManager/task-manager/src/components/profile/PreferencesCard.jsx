@@ -3,13 +3,13 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
 import {
+  applyLayoutPreferences,
   getPreferences,
   savePreferences,
 } from '../../utils/userPreferences';
 
 const PreferencesCard = () => {
   const [preferences, setPreferences] = useState(getPreferences);
-
   const navigate = useNavigate();
 
   const handleChange = (field) => (e) => {
@@ -25,9 +25,12 @@ const PreferencesCard = () => {
 
     setPreferences(updated);
     savePreferences(updated);
+    applyLayoutPreferences(updated);
   };
+
   const handleSave = () => {
     savePreferences(preferences);
+    applyLayoutPreferences(preferences);
 
     toast.success('Preferences saved', {
       icon: '✅',
@@ -43,8 +46,8 @@ const PreferencesCard = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <label className="flex items-center justify-between gap-4 rounded-xl bg-[var(--app-surface-muted)] p-4">
+    <div className="space-y-6 app-section-gap">
+      <label className="flex items-center justify-between gap-4 rounded-xl bg-[var(--app-surface-muted)] p-4 app-card-padding">
         <div>
           <p className="font-medium text-[var(--app-text)]">
             Email Notifications
@@ -61,7 +64,7 @@ const PreferencesCard = () => {
         />
       </label>
 
-      <label className="flex items-center justify-between gap-4 rounded-xl bg-[var(--app-surface-muted)] p-4">
+      <label className="flex items-center justify-between gap-4 rounded-xl bg-[var(--app-surface-muted)] p-4 app-card-padding">
         <div>
           <p className="font-medium text-[var(--app-text)]">
             Compact Layout
@@ -78,7 +81,7 @@ const PreferencesCard = () => {
         />
       </label>
 
-      <label className="flex items-center justify-between gap-4 rounded-xl bg-[var(--app-surface-muted)] p-4">
+      <label className="flex items-center justify-between gap-4 rounded-xl bg-[var(--app-surface-muted)] p-4 app-card-padding">
         <div>
           <p className="font-medium text-[var(--app-text)]">
             Reduce Motion
