@@ -47,7 +47,7 @@ const TodoCard = ({
           </h3>
 
           {dueDate && (
-            <div className="flex flex-shrink-0 flex-col items-end gap-1">
+            <div className="flex flex-shrink-0 flex-col items-end">
               <span
                 className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${dueDate.isOverdue
                   ? 'bg-red-100 text-red-700'
@@ -56,15 +56,6 @@ const TodoCard = ({
               >
                 <CalendarIcon className="h-3 w-3" />
                 {dueDate.display}
-              </span>
-
-              <span
-                className={`text-xs ${dueDate.isOverdue
-                  ? 'text-red-500'
-                  : 'text-[var(--app-text-muted)]'
-                  }`}
-              >
-                {dueStatusText}
               </span>
             </div>
           )}
@@ -81,9 +72,22 @@ const TodoCard = ({
           </p>
         )}
 
-        <p className="mt-2 text-xs text-[var(--app-text-muted)] opacity-80">
-          Created {formatDate(todo.createdAtUtc)}
-        </p>
+        <div className="mt-2 flex items-center justify-between text-xs">
+          <span className="text-[var(--app-text-muted)] opacity-80">
+            Created {formatDate(todo.createdAtUtc)}
+          </span>
+
+          {dueStatusText && (
+            <span
+              className={`font-semibold ${dueDate?.isOverdue
+                  ? 'text-red-500'
+                  : 'text-[var(--app-text-muted)]'
+                }`}
+            >
+              {dueStatusText}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">

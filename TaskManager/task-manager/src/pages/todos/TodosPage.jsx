@@ -1,5 +1,6 @@
 import { XIcon } from '../../components/icons/Icons';
 
+import AddTodoPrompt from '../../components/todos/AddTodoPrompt';
 import TodoFilters from '../../components/todos/TodoFilters';
 import TodoFooterStats from '../../components/todos/TodoFooterStats';
 import TodoForm from '../../components/todos/TodoForm';
@@ -21,6 +22,9 @@ const TodosPage = () => {
     error,
     setError,
     editingId,
+    showForm,
+    handleShowAddForm,
+    handleHideForm,
     handleChange,
     handleSubmit,
     handleCancelEdit,
@@ -48,14 +52,23 @@ const TodosPage = () => {
           </div>
         )}
 
-        <TodoForm
-          formData={formData}
-          onChange={handleChange}
-          onSubmit={handleSubmit}
-          onCancel={handleCancelEdit}
-          isSubmitting={isSubmitting}
-          editingId={editingId}
+        <AddTodoPrompt
+          isOpen={showForm}
+          isEditing={!!editingId}
+          onAdd={handleShowAddForm}
+          onHide={handleHideForm}
         />
+
+        {showForm && (
+          <TodoForm
+            formData={formData}
+            onChange={handleChange}
+            onSubmit={handleSubmit}
+            onCancel={handleCancelEdit}
+            isSubmitting={isSubmitting}
+            editingId={editingId}
+          />
+        )}
 
         <TodoFilters
           filter={filter}

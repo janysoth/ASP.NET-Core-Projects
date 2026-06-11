@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import {
   createTodo,
@@ -22,15 +27,29 @@ import {
 
 export const useTodos = () => {
   const [todos, setTodos] = useState([]);
-  const [formData, setFormData] = useState(TODO_INITIAL_FORM_STATE);
-  const [filter, setFilter] = useState(FILTER_OPTIONS.ALL);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] =
+    useState(TODO_INITIAL_FORM_STATE);
+
+  const [filter, setFilter] =
+    useState(FILTER_OPTIONS.ALL);
+
+  const [isLoading, setIsLoading] =
+    useState(false);
+
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
+
   const [error, setError] = useState('');
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] =
+    useState(null);
+
+  const [showForm, setShowForm] =
+    useState(false);
 
   const filteredTodos = useMemo(() => {
-    return sortTodosByDueDate(filterTodos(todos, filter));
+    return sortTodosByDueDate(
+      filterTodos(todos, filter)
+    );
   }, [todos, filter]);
 
   const stats = useMemo(() => {
@@ -85,6 +104,11 @@ export const useTodos = () => {
             (todo) => todo.id === editingId
           );
 
+          if (!existingTodo) {
+            setError('Todo not found.');
+            return;
+          }
+
           const patchPayload = {};
           let hasChanges = false;
 
@@ -95,19 +119,24 @@ export const useTodos = () => {
             hasChanges = true;
           }
 
-          const newDesc =
-            formData.description?.trim() || null;
+          const newDescription =
+            formData.description.trim();
 
-          const currentDesc =
-            existingTodo.description || null;
+          const currentDescription =
+            existingTodo.description || '';
 
-          if (newDesc !== currentDesc) {
-            patchPayload.description = newDesc;
+          if (
+            newDescription !== currentDescription
+          ) {
+            patchPayload.description =
+              newDescription;
             hasChanges = true;
           }
 
           const newDueDate = formData.dueDate
-            ? localDateToUtcString(formData.dueDate)
+            ? localDateToUtcString(
+              formData.dueDate
+            )
             : null;
 
           const currentDueDate =
@@ -121,10 +150,15 @@ export const useTodos = () => {
           if (!hasChanges) {
             setEditingId(null);
             setFormData(TODO_INITIAL_FORM_STATE);
+            setShowForm(false);
             return;
           }
 
-          await patchTodo(editingId, patchPayload);
+          await patchTodo(
+            editingId,
+            patchPayload
+          );
+
           await fetchTodos();
 
           setEditingId(null);
@@ -132,13 +166,17 @@ export const useTodos = () => {
           const payload = {
             title: formData.title.trim(),
             description:
-              formData.description?.trim() || null,
+              formData.description?.trim() ||
+              null,
             dueDateUtc: formData.dueDate
-              ? localDateToUtcString(formData.dueDate)
+              ? localDateToUtcString(
+                formData.dueDate
+              )
               : null,
           };
 
-          const response = await createTodo(payload);
+          const response =
+            await createTodo(payload);
 
           setTodos((prev) => [
             response.data,
@@ -147,6 +185,7 @@ export const useTodos = () => {
         }
 
         setFormData(TODO_INITIAL_FORM_STATE);
+        setShowForm(false);
       } catch (err) {
         const errorData = err.response?.data;
 
@@ -160,7 +199,12 @@ export const useTodos = () => {
         setIsSubmitting(false);
       }
     },
-    [formData, editingId, todos, fetchTodos]
+    [
+      formData,
+      editingId,
+      todos,
+      fetchTodos,
+    ]
   );
 
   const handleToggleComplete = useCallback(
@@ -175,7 +219,8 @@ export const useTodos = () => {
             item.id === todo.id
               ? {
                 ...item,
-                isCompleted: !item.isCompleted,
+                isCompleted:
+                  !item.isCompleted,
               }
               : item
           )
@@ -188,41 +233,60 @@ export const useTodos = () => {
   );
 
   const handleEdit = useCallback((todo) => {
+    setShowForm(true);
     setEditingId(todo.id);
 
     setFormData({
       title: todo.title,
       description: todo.description || '',
-      dueDate: utcToLocalDateString(todo.dueDateUtc),
+      dueDate: utcToLocalDateString(
+        todo.dueDateUtc
+      ),
     });
   }, []);
 
   const handleCancelEdit = useCallback(() => {
     setEditingId(null);
+    setShowForm(false);
     setFormData(TODO_INITIAL_FORM_STATE);
   }, []);
 
-  const handleDelete = useCallback(async (id) => {
-    if (
-      !window.confirm(
-        'Are you sure you want to delete this todo?'
-      )
-    ) {
-      return;
-    }
+  const handleDelete = useCallback(
+    async (id) => {
+      if (
+        !window.confirm(
+          'Are you sure you want to delete this todo?'
+        )
+      ) {
+        return;
+      }
 
-    try {
-      await deleteTodo(id);
+      try {
+        await deleteTodo(id);
 
-      setTodos((prev) =>
-        prev.filter((todo) => todo.id !== id)
-      );
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-        'Failed to delete todo'
-      );
-    }
+        setTodos((prev) =>
+          prev.filter((todo) => todo.id !== id)
+        );
+      } catch (err) {
+        setError(
+          err.response?.data?.message ||
+          'Failed to delete todo'
+        );
+      }
+    },
+    []
+  );
+
+  const handleShowAddForm = useCallback(() => {
+    setEditingId(null);
+    setFormData(TODO_INITIAL_FORM_STATE);
+    setShowForm(true);
+  }, []);
+
+  const handleHideForm = useCallback(() => {
+    setEditingId(null);
+    setFormData(TODO_INITIAL_FORM_STATE);
+    setShowForm(false);
   }, []);
 
   return {
@@ -237,11 +301,15 @@ export const useTodos = () => {
     error,
     setError,
     editingId,
+    showForm,
+    setShowForm,
+    handleShowAddForm,
     handleChange,
     handleSubmit,
     handleCancelEdit,
     handleToggleComplete,
     handleEdit,
     handleDelete,
+    handleHideForm,
   };
 };
