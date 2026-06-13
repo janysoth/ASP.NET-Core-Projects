@@ -1,7 +1,7 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace TaskManager.Api.Models;
+namespace TaskManager.Api.Features.Budget.Models;
 
 public class ExpenseRecord
 {
