@@ -12,6 +12,13 @@ public class BudgetService
   private readonly IMongoCollection<IncomeRecord> _incomeRecords;
   private readonly IMongoCollection<ExpenseRecord> _expenseRecords;
 
+  /*=========================================================== 
+  // Constructor:
+  => Connects to MongoDB using settings from appsettings.json.
+  => Gets the database by name.
+  => Connects this service to the BudgetMonths, IncomeRecords, 
+     and ExpenseRecords collections.
+  ===========================================================*/
   public BudgetService(IOptions<MongoDbSettings> mongoDbSettings)
   {
     var client = new MongoClient(mongoDbSettings.Value.ConnectionString);
@@ -22,6 +29,13 @@ public class BudgetService
     _expenseRecords = database.GetCollection<ExpenseRecord>("ExpenseRecords");
   }
 
+  /*=========================================================== 
+  // GetBudgetMonthsAsync:
+  => Gets all budget months that belong to the logged-in user.
+  => Sorts them by newest year first, then newest month first.
+  => Builds a full response for each budget month, including 
+      income, expenses, and totals.
+  ===========================================================*/
   public async Task<List<BudgetMonthResponse>> GetBudgetMonthsAsync(string userId)
   {
     var budgetMonths = await _budgetMonths
@@ -39,7 +53,14 @@ public class BudgetService
 
     return responses;
   }
-
+  /*=========================================================== 
+  // GetBudgetMonthByIdAsync:
+  => Gets one specific budget month by Id.
+  => Also checks UserId so users can only access their own 
+      budget data.
+  => Returns null if the budget month does not exist or does not 
+      belong to the user.
+  ===========================================================*/
   public async Task<BudgetMonthResponse?> GetBudgetMonthByIdAsync(string id, string userId)
   {
     var budgetMonth = await _budgetMonths
@@ -54,6 +75,13 @@ public class BudgetService
     return await BuildBudgetMonthResponseAsync(budgetMonth);
   }
 
+  /*=========================================================== 
+  // CreateBudgetMonthAsync:
+  => Creates a new budget month for the logged-in user.
+  => Saves the month, year, planned income, and created date.
+  => Returns the newly created budget month with totals and 
+      record lists.
+  ===========================================================*/
   public async Task<BudgetMonthResponse> CreateBudgetMonthAsync(
       CreateBudgetMonthRequest request,
       string userId)
@@ -72,6 +100,12 @@ public class BudgetService
     return await BuildBudgetMonthResponseAsync(budgetMonth);
   }
 
+  /*=========================================================== 
+  // UpdateBudgetMonthAsync:
+  => Updates the planned income for an existing budget month.
+  => Only updates the record if it belongs to the logged-in user.
+  => Returns true if a matching budget month was found.
+  ===========================================================*/
   public async Task<bool> UpdateBudgetMonthAsync(
       string id,
       UpdateBudgetMonthRequest request,
@@ -87,6 +121,12 @@ public class BudgetService
     return result.MatchedCount > 0;
   }
 
+  /*=========================================================== 
+  // DeleteBudgetMonthAsync:
+  => Deletes a budget month if it belongs to the logged-in user.
+  => Also deletes all income and expense records connected to that budget month.
+  => Returns true if the budget month was deleted.
+  ===========================================================*/
   public async Task<bool> DeleteBudgetMonthAsync(string id, string userId)
   {
     var budgetMonth = await _budgetMonths
@@ -106,6 +146,12 @@ public class BudgetService
     return result.DeletedCount > 0;
   }
 
+  /*=========================================================== 
+  // AddIncomeAsync:
+  => Adds a new income record to a budget month.
+  => First checks that the budget month exists and belongs to the logged-in user.
+  => Returns null if the budget month does not exist.
+  ===========================================================*/
   public async Task<IncomeResponse?> AddIncomeAsync(
       string budgetMonthId,
       CreateIncomeRequest request,
@@ -134,10 +180,17 @@ public class BudgetService
     return MapIncomeResponse(incomeRecord);
   }
 
+  /*=========================================================== 
+  // UpdateIncomeAsync:
+  => Updates an existing income record.
+  => Updates source, amount, income date, and notes.
+  => Only updates the record if it belongs to the logged-in 
+  user.
+  ===========================================================*/
   public async Task<bool> UpdateIncomeAsync(
-      string incomeId,
-      UpdateIncomeRequest request,
-      string userId)
+        string incomeId,
+        UpdateIncomeRequest request,
+        string userId)
   {
     var update = Builders<IncomeRecord>.Update
         .Set(i => i.Source, request.Source)
@@ -152,6 +205,13 @@ public class BudgetService
     return result.MatchedCount > 0;
   }
 
+  /*=========================================================== 
+  // DeleteIncomeAsync:
+  => Deletes one income record.
+  => Only deletes it if the income record belongs to the 
+      logged-in user.
+  Returns true if the income record was deleted.
+  ===========================================================*/
   public async Task<bool> DeleteIncomeAsync(string incomeId, string userId)
   {
     var result = await _incomeRecords.DeleteOneAsync(
@@ -160,6 +220,13 @@ public class BudgetService
     return result.DeletedCount > 0;
   }
 
+  /*=========================================================== 
+  // AddExpenseAsync:
+  => Adds a new expense record to a budget month.
+  => First checks that the budget month exists and belongs to 
+      the logged-in user.
+  => Returns null if the budget month does not exist.
+  ===========================================================*/
   public async Task<ExpenseResponse?> AddExpenseAsync(
       string budgetMonthId,
       CreateExpenseRequest request,
@@ -189,6 +256,13 @@ public class BudgetService
     return MapExpenseResponse(expenseRecord);
   }
 
+  /*=========================================================== 
+  // UpdateExpenseAsync:
+  => Updates an existing expense record.
+  => Updates category, name, amount, expense date, and notes.
+  => Only updates the record if it belongs to the logged-in 
+        user.
+  ===========================================================*/
   public async Task<bool> UpdateExpenseAsync(
       string expenseId,
       UpdateExpenseRequest request,
@@ -208,6 +282,13 @@ public class BudgetService
     return result.MatchedCount > 0;
   }
 
+  /*=========================================================== 
+  ** DeleteExpenseAsync:
+  => Deletes one expense record.
+  => Only deletes it if the expense record belongs to the 
+      logged-in user.
+  => Returns true if the expense record was deleted.
+  ===========================================================*/
   public async Task<bool> DeleteExpenseAsync(string expenseId, string userId)
   {
     var result = await _expenseRecords.DeleteOneAsync(
@@ -216,6 +297,14 @@ public class BudgetService
     return result.DeletedCount > 0;
   }
 
+  /*=========================================================== 
+  ** BudgetMonthExistsAsync:
+  => Helper method used before adding income or expenses.
+  => Checks whether the budget month exists and belongs to the 
+      logged-in user.
+  =? Helps prevent adding records to invalid or unauthorized 
+      budget months.
+  ===========================================================*/
   private async Task<bool> BudgetMonthExistsAsync(string budgetMonthId, string userId)
   {
     var budgetMonth = await _budgetMonths
@@ -225,6 +314,15 @@ public class BudgetService
     return budgetMonth != null;
   }
 
+  /*===========================================================
+  ** BuildBudgetMonthResponseAsync:
+  => Builds the full API response for one budget month.
+  => Gets all income and expense records connected to 
+      the month.
+  => Calculates total income, total expenses, and remaining 
+      balance.
+  => Converts database models into response DTOs. 
+  ===========================================================*/
   private async Task<BudgetMonthResponse> BuildBudgetMonthResponseAsync(BudgetMonth budgetMonth)
   {
     var incomeRecords = await _incomeRecords
@@ -255,6 +353,14 @@ public class BudgetService
     };
   }
 
+  /*===========================================================
+  ** MapIncomeResponse:
+  => Converts an IncomeRecord database model into an 
+      IncomeResponse DTO.
+  => This keeps the API response clean and separate from 
+      the database model. 
+  ===========================================================*/
+
   private static IncomeResponse MapIncomeResponse(IncomeRecord incomeRecord)
   {
     return new IncomeResponse
@@ -269,6 +375,13 @@ public class BudgetService
     };
   }
 
+  /*===========================================================
+  ** MapExpenseResponse:
+  => Converts an ExpenseRecord database model into an 
+      ExpenseResponse DTO.
+  => This keeps the API response clean and separate from the 
+      database model. 
+  ===========================================================*/
   private static ExpenseResponse MapExpenseResponse(ExpenseRecord expenseRecord)
   {
     return new ExpenseResponse
