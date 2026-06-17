@@ -13,6 +13,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.FileProviders;
+using TaskManager.Api.Features.Budget.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -64,14 +65,18 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
 // 4️⃣ Dependency Injection
 builder.Services.AddSingleton<UserRepository>();
 builder.Services.AddSingleton<TodoRepository>();
+
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddSingleton<EmailService>();
+
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<TodoService>();
+builder.Services.AddSingleton<BudgetService>();
+
 builder.Services.AddSingleton<FileStorageService>();
 
 
-// 5️⃣ File upload limits (IMPORTANT)
+// 5️⃣ File upload limits
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10MB
@@ -138,7 +143,7 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 
-// 9️⃣ Ensure wwwroot exists (IMPORTANT FIX)
+// 9️⃣ Ensure wwwroot exists
 var webRoot = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
 
 if (!Directory.Exists(webRoot))
@@ -165,7 +170,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Static files (profiles, uploads, etc.)
+// Static files
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(webRoot),
@@ -173,6 +178,7 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseRouting();
+
 app.UseCors("DevCors");
 
 app.UseAuthentication();
