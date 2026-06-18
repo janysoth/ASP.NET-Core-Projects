@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using Microsoft.VisualBasic;
 
 namespace TaskManager.Api.Features.Budget.DTOs;
 
@@ -116,9 +118,46 @@ public sealed record BudgetMonthResponse
 
   public decimal RemainingBalance { get; set; }
 
+  public decimal TotalPlannedExpenses { get; set; }
+
+  public decimal RemainingPlannedExpenseBudget { get; set; }
+
+  public IReadOnlyList<BudgetCategoryResponse> BudgetCategories { get; set; } = [];
+
   public IReadOnlyList<IncomeResponse> IncomeRecords { get; set; } = [];
 
   public IReadOnlyList<ExpenseResponse> ExpenseRecords { get; set; } = [];
+
+  public DateTime CreatedAtUtc { get; set; }
+}
+
+public sealed record CreateBudgetCategoryRequest
+{
+  public string Name { get; set; } = string.Empty;
+
+  public decimal PlannedAmount { get; set; }
+}
+
+public sealed record UpdateBudgetCategoryRequest
+{
+  public string Name { get; set; } = string.Empty;
+
+  public decimal PlannedAmount { get; set; }
+}
+
+public sealed record BudgetCategoryResponse
+{
+  public string Id { get; set; } = string.Empty;
+
+  public string BudgetMonthId { get; set; } = string.Empty;
+
+  public string Name { get; set; } = string.Empty;
+
+  public decimal PlannedAmount { get; set; }
+
+  public decimal SpendAmount { get; set; }
+
+  public decimal RemainingAmount { get; set; }
 
   public DateTime CreatedAtUtc { get; set; }
 }
