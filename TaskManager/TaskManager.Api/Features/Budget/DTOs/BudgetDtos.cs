@@ -145,9 +145,9 @@ public sealed record UpdateBudgetCategoryRequest
   public decimal PlannedAmount { get; set; }
 }
 
-public sealed record BudgetCategoryResponse
+public class BudgetCategoryResponse
 {
-  public string Id { get; set; } = string.Empty;
+  public string? Id { get; set; }
 
   public string BudgetMonthId { get; set; } = string.Empty;
 
@@ -155,7 +155,7 @@ public sealed record BudgetCategoryResponse
 
   public decimal PlannedAmount { get; set; }
 
-  public decimal SpendAmount { get; set; }
+  public decimal SpentAmount { get; set; }
 
   public decimal RemainingAmount { get; set; }
 

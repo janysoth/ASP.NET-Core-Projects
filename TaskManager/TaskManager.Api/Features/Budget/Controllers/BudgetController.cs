@@ -13,24 +13,20 @@ public class BudgetController : ControllerBase
 {
   private readonly BudgetService _budgetService;
 
-  /*=========================================================== 
+  /*===========================================================
   // Constructor:
-  => Receives BudgetService through dependency injection.
-  => Stores BudgetService in a private field so this controller
-     can use it inside each endpoint.
-  => The controller does not talk directly to MongoDB; it asks
-     BudgetService to handle the database work.
+  => Receives BudgetService from dependency injection.
+  => Allows this controller to call budget-related database logic.
   ===========================================================*/
   public BudgetController(BudgetService budgetService)
   {
     _budgetService = budgetService;
   }
 
-  /*=========================================================== 
+  /*===========================================================
   // GetBudgetMonths:
-  => Handles GET /api/budget.
-  => Gets the logged-in user's Id from the JWT token.
-  => Returns all budget months that belong to the logged-in user.
+  => GET: /api/budget
+  => Gets all budget months for the logged-in user.
   => Returns Unauthorized if the user Id cannot be found.
   ===========================================================*/
   [HttpGet]
@@ -48,12 +44,11 @@ public class BudgetController : ControllerBase
     return Ok(budgetMonths);
   }
 
-  /*=========================================================== 
+  /*===========================================================
   // GetBudgetMonthById:
-  => Handles GET /api/budget/{id}.
-  => Gets one specific budget month by Id.
-  => Makes sure the budget month belongs to the logged-in user.
-  => Returns NotFound if the budget month does not exist.
+  => GET: /api/budget/{id}
+  => Gets one budget month by Id.
+  => Only returns the budget month if it belongs to the user.
   ===========================================================*/
   [HttpGet("{id}")]
   public async Task<ActionResult<BudgetMonthResponse>> GetBudgetMonthById(string id)
@@ -75,13 +70,11 @@ public class BudgetController : ControllerBase
     return Ok(budgetMonth);
   }
 
-  /*=========================================================== 
+  /*===========================================================
   // CreateBudgetMonth:
-  => Handles POST /api/budget.
+  => POST: /api/budget
   => Creates a new budget month for the logged-in user.
   => Validates month, year, and planned income before saving.
-  => Returns CreatedAtAction so the response includes the location
-     of the newly created budget month.
   ===========================================================*/
   [HttpPost]
   public async Task<ActionResult<BudgetMonthResponse>> CreateBudgetMonth(
@@ -117,13 +110,11 @@ public class BudgetController : ControllerBase
         createdBudgetMonth);
   }
 
-  /*=========================================================== 
+  /*===========================================================
   // UpdateBudgetMonth:
-  => Handles PUT /api/budget/{id}.
-  => Updates the planned income for one budget month.
-  => Makes sure planned income is not negative.
-  => Returns NoContent if update succeeds.
-  => Returns NotFound if the budget month does not exist.
+  => PUT: /api/budget/{id}
+  => Updates the planned income for a budget month.
+  => Returns NotFound if the budget month does not belong to the user.
   ===========================================================*/
   [HttpPut("{id}")]
   public async Task<IActionResult> UpdateBudgetMonth(
@@ -152,13 +143,11 @@ public class BudgetController : ControllerBase
     return NoContent();
   }
 
-  /*=========================================================== 
+  /*===========================================================
   // DeleteBudgetMonth:
-  => Handles DELETE /api/budget/{id}.
-  => Deletes one budget month that belongs to the logged-in user.
-  => The service also deletes income and expense records connected
-     to that budget month.
-  => Returns NoContent if delete succeeds.
+  => DELETE: /api/budget/{id}
+  => Deletes one budget month.
+  => Also deletes its connected categories, income, and expense records.
   ===========================================================*/
   [HttpDelete("{id}")]
   public async Task<IActionResult> DeleteBudgetMonth(string id)
@@ -180,12 +169,119 @@ public class BudgetController : ControllerBase
     return NoContent();
   }
 
-  /*=========================================================== 
+  /*===========================================================
+  // AddBudgetCategory:
+  => POST: /api/budget/{budgetMonthId}/categories
+  => Adds a planned spending category to a budget month.
+  => Validates category name and planned amount before saving.
+  ===========================================================*/
+  [HttpPost("{budgetMonthId}/categories")]
+  public async Task<ActionResult<BudgetCategoryResponse>> AddBudgetCategory(
+      string budgetMonthId,
+      CreateBudgetCategoryRequest request)
+  {
+    var userId = GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Name))
+    {
+      return BadRequest("Category name is required.");
+    }
+
+    if (request.PlannedAmount < 0)
+    {
+      return BadRequest("Planned amount cannot be negative.");
+    }
+
+    var category = await _budgetService.AddBudgetCategoryAsync(
+        budgetMonthId,
+        request,
+        userId);
+
+    if (category == null)
+    {
+      return NotFound("Budget month not found.");
+    }
+
+    return Ok(category);
+  }
+
+  /*===========================================================
+  // UpdateBudgetCategory:
+  => PUT: /api/budget/categories/{categoryId}
+  => Updates a budget category name and planned amount.
+  => Only updates the category if it belongs to the user.
+  ===========================================================*/
+  [HttpPut("categories/{categoryId}")]
+  public async Task<IActionResult> UpdateBudgetCategory(
+      string categoryId,
+      UpdateBudgetCategoryRequest request)
+  {
+    var userId = GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Name))
+    {
+      return BadRequest("Category name is required.");
+    }
+
+    if (request.PlannedAmount < 0)
+    {
+      return BadRequest("Planned amount cannot be negative.");
+    }
+
+    var updated = await _budgetService.UpdateBudgetCategoryAsync(
+        categoryId,
+        request,
+        userId);
+
+    if (!updated)
+    {
+      return NotFound("Budget category not found.");
+    }
+
+    return NoContent();
+  }
+
+  /*===========================================================
+  // DeleteBudgetCategory:
+  => DELETE: /api/budget/categories/{categoryId}
+  => Deletes one budget category.
+  => Does not delete expense records that used that category name.
+  ===========================================================*/
+  [HttpDelete("categories/{categoryId}")]
+  public async Task<IActionResult> DeleteBudgetCategory(string categoryId)
+  {
+    var userId = GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    var deleted = await _budgetService.DeleteBudgetCategoryAsync(categoryId, userId);
+
+    if (!deleted)
+    {
+      return NotFound("Budget category not found.");
+    }
+
+    return NoContent();
+  }
+
+  /*===========================================================
   // AddIncome:
-  => Handles POST /api/budget/{budgetMonthId}/income.
+  => POST: /api/budget/{budgetMonthId}/income
   => Adds a new income record to a budget month.
-  => Validates that source is not empty and amount is greater than 0.
-  => Returns NotFound if the budget month does not exist.
+  => Validates source and amount before saving.
   ===========================================================*/
   [HttpPost("{budgetMonthId}/income")]
   public async Task<ActionResult<IncomeResponse>> AddIncome(
@@ -219,12 +315,11 @@ public class BudgetController : ControllerBase
     return Ok(income);
   }
 
-  /*=========================================================== 
+  /*===========================================================
   // UpdateIncome:
-  => Handles PUT /api/budget/income/{incomeId}.
+  => PUT: /api/budget/income/{incomeId}
   => Updates an existing income record.
-  => Validates that source is not empty and amount is greater than 0.
-  => Returns NotFound if the income record does not exist.
+  => Only updates it if it belongs to the logged-in user.
   ===========================================================*/
   [HttpPut("income/{incomeId}")]
   public async Task<IActionResult> UpdateIncome(
@@ -258,12 +353,11 @@ public class BudgetController : ControllerBase
     return NoContent();
   }
 
-  /*=========================================================== 
+  /*===========================================================
   // DeleteIncome:
-  => Handles DELETE /api/budget/income/{incomeId}.
-  => Deletes one income record that belongs to the logged-in user.
-  => Returns NotFound if the income record does not exist.
-  => Returns NoContent if delete succeeds.
+  => DELETE: /api/budget/income/{incomeId}
+  => Deletes one income record.
+  => Only deletes it if it belongs to the logged-in user.
   ===========================================================*/
   [HttpDelete("income/{incomeId}")]
   public async Task<IActionResult> DeleteIncome(string incomeId)
@@ -285,12 +379,11 @@ public class BudgetController : ControllerBase
     return NoContent();
   }
 
-  /*=========================================================== 
+  /*===========================================================
   // AddExpense:
-  => Handles POST /api/budget/{budgetMonthId}/expense.
+  => POST: /api/budget/{budgetMonthId}/expense
   => Adds a new expense record to a budget month.
-  => Validates that category, name, and amount are valid.
-  => Returns NotFound if the budget month does not exist.
+  => Validates category, name, and amount before saving.
   ===========================================================*/
   [HttpPost("{budgetMonthId}/expense")]
   public async Task<ActionResult<ExpenseResponse>> AddExpense(
@@ -329,12 +422,11 @@ public class BudgetController : ControllerBase
     return Ok(expense);
   }
 
-  /*=========================================================== 
+  /*===========================================================
   // UpdateExpense:
-  => Handles PUT /api/budget/expense/{expenseId}.
+  => PUT: /api/budget/expense/{expenseId}
   => Updates an existing expense record.
-  => Validates that category, name, and amount are valid.
-  => Returns NotFound if the expense record does not exist.
+  => Only updates it if it belongs to the logged-in user.
   ===========================================================*/
   [HttpPut("expense/{expenseId}")]
   public async Task<IActionResult> UpdateExpense(
@@ -373,12 +465,11 @@ public class BudgetController : ControllerBase
     return NoContent();
   }
 
-  /*=========================================================== 
+  /*===========================================================
   // DeleteExpense:
-  => Handles DELETE /api/budget/expense/{expenseId}.
-  => Deletes one expense record that belongs to the logged-in user.
-  => Returns NotFound if the expense record does not exist.
-  => Returns NoContent if delete succeeds.
+  => DELETE: /api/budget/expense/{expenseId}
+  => Deletes one expense record.
+  => Only deletes it if it belongs to the logged-in user.
   ===========================================================*/
   [HttpDelete("expense/{expenseId}")]
   public async Task<IActionResult> DeleteExpense(string expenseId)
@@ -400,13 +491,11 @@ public class BudgetController : ControllerBase
     return NoContent();
   }
 
-  /*=========================================================== 
+  /*===========================================================
   // GetUserId:
-  => Helper method that reads the logged-in user's Id from the JWT token.
-  => First tries ClaimTypes.NameIdentifier.
-  => If that is not found, tries "id".
-  => If that is not found, tries "sub".
-  => Returns null if no user Id claim exists.
+  => Reads the logged-in user's Id from the JWT token claims.
+  => Tries ClaimTypes.NameIdentifier first.
+  => Falls back to "id" or "sub" depending on how the token was created.
   ===========================================================*/
   private string? GetUserId()
   {

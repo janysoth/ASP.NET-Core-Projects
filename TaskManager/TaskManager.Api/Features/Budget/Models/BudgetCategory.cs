@@ -1,4 +1,3 @@
-using System;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -8,7 +7,7 @@ public class BudgetCategory
 {
   [BsonId]
   [BsonRepresentation(BsonType.ObjectId)]
-  public string Id { get; set; } = string.Empty;
+  public string? Id { get; set; }
 
   public string UserId { get; set; } = string.Empty;
 
@@ -18,5 +17,5 @@ public class BudgetCategory
 
   public decimal PlannedAmount { get; set; }
 
-  public DateTime CreateAtUtc { get; set; } = DateTime.UtcNow;
+  public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
