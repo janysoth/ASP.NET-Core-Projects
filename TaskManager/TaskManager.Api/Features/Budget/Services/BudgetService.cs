@@ -12,10 +12,10 @@ public class BudgetService
   private readonly IMongoCollection<ExpenseRecord> _expenseRecords;
 
   /*===========================================================
-  // Constructor:
-  => Receives the MongoDB database from Program.cs dependency injection.
-  => Connects this service to the BudgetMonths, BudgetCategories,
-     IncomeRecords, and ExpenseRecords collections.
+    BudgetService Constructor:
+    => Receives the MongoDB database from Program.cs dependency injection.
+    => Connects this service to the BudgetMonths, BudgetCategories,
+       IncomeRecords, and ExpenseRecords collections.
   ===========================================================*/
   public BudgetService(IMongoDatabase database)
   {
@@ -26,18 +26,18 @@ public class BudgetService
   }
 
   /*===========================================================
-  // GetBudgetMonthsAsync:
-  => Gets all budget months for the logged-in user.
-  => Sorts newest year first, then newest month first.
-  => Builds a full response for each budget month.
+    GetBudgetMonthsAsync:
+    => Gets all budget months that belong to the logged-in user.
+    => Sorts them by newest year and newest month first.
+    => Builds full response data with totals and records.
   ===========================================================*/
   public async Task<List<BudgetMonthResponse>> GetBudgetMonthsAsync(string userId)
   {
     var budgetMonths = await _budgetMonths
-        .Find(b => b.UserId == userId)
-        .SortByDescending(b => b.Year)
-        .ThenByDescending(b => b.Month)
-        .ToListAsync();
+      .Find(b => b.UserId == userId)
+      .SortByDescending(b => b.Year)
+      .ThenByDescending(b => b.Month)
+      .ToListAsync();
 
     var responses = new List<BudgetMonthResponse>();
 
@@ -50,16 +50,16 @@ public class BudgetService
   }
 
   /*===========================================================
-  // GetBudgetMonthByIdAsync:
-  => Gets one budget month by Id.
-  => Checks UserId so users can only access their own data.
-  => Returns null if the budget month does not exist.
+    GetBudgetMonthByIdAsync:
+    => Gets one budget month by ID.
+    => Makes sure the budget month belongs to the logged-in user.
+    => Returns null if the budget month does not exist or is not owned by the user.
   ===========================================================*/
   public async Task<BudgetMonthResponse?> GetBudgetMonthByIdAsync(string id, string userId)
   {
     var budgetMonth = await _budgetMonths
-        .Find(b => b.Id == id && b.UserId == userId)
-        .FirstOrDefaultAsync();
+      .Find(b => b.Id == id && b.UserId == userId)
+      .FirstOrDefaultAsync();
 
     if (budgetMonth == null)
     {
@@ -70,14 +70,14 @@ public class BudgetService
   }
 
   /*===========================================================
-  // CreateBudgetMonthAsync:
-  => Creates a new budget month for the logged-in user.
-  => Saves month, year, planned income, and created date.
-  => Returns the full budget month response.
+    CreateBudgetMonthAsync:
+    => Creates a new monthly budget for the logged-in user.
+    => Stores planned income, month, and year.
+    => Returns the created budget month response.
   ===========================================================*/
   public async Task<BudgetMonthResponse> CreateBudgetMonthAsync(
-      CreateBudgetMonthRequest request,
-      string userId)
+    CreateBudgetMonthRequest request,
+    string userId)
   {
     var budgetMonth = new BudgetMonth
     {
@@ -94,37 +94,37 @@ public class BudgetService
   }
 
   /*===========================================================
-  // UpdateBudgetMonthAsync:
-  => Updates the planned income for a budget month.
-  => Only updates the budget month if it belongs to the user.
-  => Returns true if a matching budget month was found.
+    UpdateBudgetMonthAsync:
+    => Updates the planned income for a budget month.
+    => Only updates the record if it belongs to the logged-in user.
+    => Returns true if a matching budget month was found.
   ===========================================================*/
   public async Task<bool> UpdateBudgetMonthAsync(
-      string id,
-      UpdateBudgetMonthRequest request,
-      string userId)
+    string id,
+    UpdateBudgetMonthRequest request,
+    string userId)
   {
     var update = Builders<BudgetMonth>.Update
-        .Set(b => b.PlannedIncome, request.PlannedIncome);
+      .Set(b => b.PlannedIncome, request.PlannedIncome);
 
     var result = await _budgetMonths.UpdateOneAsync(
-        b => b.Id == id && b.UserId == userId,
-        update);
+      b => b.Id == id && b.UserId == userId,
+      update);
 
     return result.MatchedCount > 0;
   }
 
   /*===========================================================
-  // DeleteBudgetMonthAsync:
-  => Deletes a budget month if it belongs to the user.
-  => Also deletes connected categories, income records, and expense records.
-  => Returns true if the budget month was deleted.
+    DeleteBudgetMonthAsync:
+    => Deletes a budget month that belongs to the logged-in user.
+    => Also deletes related categories, income records, and expense records.
+    => Prevents orphaned budget data from staying in MongoDB.
   ===========================================================*/
   public async Task<bool> DeleteBudgetMonthAsync(string id, string userId)
   {
     var budgetMonth = await _budgetMonths
-        .Find(b => b.Id == id && b.UserId == userId)
-        .FirstOrDefaultAsync();
+      .Find(b => b.Id == id && b.UserId == userId)
+      .FirstOrDefaultAsync();
 
     if (budgetMonth == null)
     {
@@ -141,16 +141,15 @@ public class BudgetService
   }
 
   /*===========================================================
-  // AddBudgetCategoryAsync:
-  => Adds a new spending category to a budget month.
-  => First checks that the budget month belongs to the user.
-  => Calculates how much has already been spent in that category.
-  => Returns null if the budget month does not exist.
+    AddBudgetCategoryAsync:
+    => Creates a planned budget category for a budget month.
+    => Examples: Mortgage, Groceries, Emergency Fund, Student Loan Extra.
+    => Verifies that the budget month belongs to the logged-in user.
   ===========================================================*/
   public async Task<BudgetCategoryResponse?> AddBudgetCategoryAsync(
-      string budgetMonthId,
-      CreateBudgetCategoryRequest request,
-      string userId)
+    string budgetMonthId,
+    CreateBudgetCategoryRequest request,
+    string userId)
   {
     var budgetMonthExists = await BudgetMonthExistsAsync(budgetMonthId, userId);
 
@@ -164,6 +163,7 @@ public class BudgetService
       UserId = userId,
       BudgetMonthId = budgetMonthId,
       Name = request.Name,
+      Type = request.Type,
       PlannedAmount = request.PlannedAmount,
       CreatedAtUtc = DateTime.UtcNow
     };
@@ -171,61 +171,62 @@ public class BudgetService
     await _budgetCategories.InsertOneAsync(category);
 
     var expenses = await _expenseRecords
-        .Find(e =>
-            e.BudgetMonthId == budgetMonthId &&
-            e.UserId == userId &&
-            e.Category.ToLower() == category.Name.ToLower())
-        .ToListAsync();
+      .Find(e =>
+        e.BudgetMonthId == budgetMonthId &&
+        e.UserId == userId &&
+        e.Category.ToLower() == category.Name.ToLower())
+      .ToListAsync();
 
     return MapBudgetCategoryResponse(category, expenses);
   }
 
   /*===========================================================
-  // UpdateBudgetCategoryAsync:
-  => Updates a budget category name and planned amount.
-  => Only updates the category if it belongs to the logged-in user.
-  => Returns true if a matching category was found.
+    UpdateBudgetCategoryAsync:
+    => Updates a budget category's name, type, and planned amount.
+    => Only updates the category if it belongs to the logged-in user.
+    => Returns true if a matching category was found.
   ===========================================================*/
   public async Task<bool> UpdateBudgetCategoryAsync(
-      string categoryId,
-      UpdateBudgetCategoryRequest request,
-      string userId)
+    string categoryId,
+    UpdateBudgetCategoryRequest request,
+    string userId)
   {
     var update = Builders<BudgetCategory>.Update
-        .Set(c => c.Name, request.Name)
-        .Set(c => c.PlannedAmount, request.PlannedAmount);
+      .Set(c => c.Name, request.Name)
+      .Set(c => c.Type, request.Type)
+      .Set(c => c.PlannedAmount, request.PlannedAmount);
 
     var result = await _budgetCategories.UpdateOneAsync(
-        c => c.Id == categoryId && c.UserId == userId,
-        update);
+      c => c.Id == categoryId && c.UserId == userId,
+      update);
 
     return result.MatchedCount > 0;
   }
 
   /*===========================================================
-  // DeleteBudgetCategoryAsync:
-  => Deletes one budget category.
-  => Only deletes it if the category belongs to the logged-in user.
-  => Does not delete the expense records connected to that category.
+    DeleteBudgetCategoryAsync:
+    => Deletes one planned budget category.
+    => Only deletes the category if it belongs to the logged-in user.
+    => Does not delete actual expense records.
   ===========================================================*/
   public async Task<bool> DeleteBudgetCategoryAsync(string categoryId, string userId)
   {
     var result = await _budgetCategories.DeleteOneAsync(
-        c => c.Id == categoryId && c.UserId == userId);
+      c => c.Id == categoryId && c.UserId == userId);
 
     return result.DeletedCount > 0;
   }
 
   /*===========================================================
-  // AddIncomeAsync:
-  => Adds a new income record to a budget month.
-  => First checks that the budget month belongs to the user.
-  => Returns null if the budget month does not exist.
+    AddIncomeAsync:
+    => Creates a new income record for a budget month.
+    => Verifies that the budget month belongs to the logged-in user.
+    => Saves the income into MongoDB.
   ===========================================================*/
   public async Task<IncomeResponse?> AddIncomeAsync(
-      string budgetMonthId,
-      CreateIncomeRequest request,
-      string userId)
+    string budgetMonthId,
+    CreateIncomeRequest request,
+    string userId)
   {
     var budgetMonthExists = await BudgetMonthExistsAsync(budgetMonthId, userId);
 
@@ -251,53 +252,53 @@ public class BudgetService
   }
 
   /*===========================================================
-  // UpdateIncomeAsync:
-  => Updates an existing income record.
-  => Updates source, amount, income date, and notes.
-  => Only updates the record if it belongs to the user.
+    UpdateIncomeAsync:
+    => Updates an existing income record.
+    => Only updates the income if it belongs to the logged-in user.
+    => Returns true if a matching income record was found.
   ===========================================================*/
   public async Task<bool> UpdateIncomeAsync(
-      string incomeId,
-      UpdateIncomeRequest request,
-      string userId)
+    string incomeId,
+    UpdateIncomeRequest request,
+    string userId)
   {
     var update = Builders<IncomeRecord>.Update
-        .Set(i => i.Source, request.Source)
-        .Set(i => i.Amount, request.Amount)
-        .Set(i => i.IncomeDate, request.IncomeDate)
-        .Set(i => i.Notes, request.Notes);
+      .Set(i => i.Source, request.Source)
+      .Set(i => i.Amount, request.Amount)
+      .Set(i => i.IncomeDate, request.IncomeDate)
+      .Set(i => i.Notes, request.Notes);
 
     var result = await _incomeRecords.UpdateOneAsync(
-        i => i.Id == incomeId && i.UserId == userId,
-        update);
+      i => i.Id == incomeId && i.UserId == userId,
+      update);
 
     return result.MatchedCount > 0;
   }
 
   /*===========================================================
-  // DeleteIncomeAsync:
-  => Deletes one income record.
-  => Only deletes it if it belongs to the logged-in user.
-  => Returns true if the income record was deleted.
+    DeleteIncomeAsync:
+    => Deletes one income record.
+    => Only deletes the income if it belongs to the logged-in user.
+    => Returns true if the income record was deleted.
   ===========================================================*/
   public async Task<bool> DeleteIncomeAsync(string incomeId, string userId)
   {
     var result = await _incomeRecords.DeleteOneAsync(
-        i => i.Id == incomeId && i.UserId == userId);
+      i => i.Id == incomeId && i.UserId == userId);
 
     return result.DeletedCount > 0;
   }
 
   /*===========================================================
-  // AddExpenseAsync:
-  => Adds a new expense record to a budget month.
-  => First checks that the budget month belongs to the user.
-  => Returns null if the budget month does not exist.
+    AddExpenseAsync:
+    => Creates a new expense record for a budget month.
+    => Verifies that the budget month belongs to the logged-in user.
+    => Saves the expense into MongoDB.
   ===========================================================*/
   public async Task<ExpenseResponse?> AddExpenseAsync(
-      string budgetMonthId,
-      CreateExpenseRequest request,
-      string userId)
+    string budgetMonthId,
+    CreateExpenseRequest request,
+    string userId)
   {
     var budgetMonthExists = await BudgetMonthExistsAsync(budgetMonthId, userId);
 
@@ -324,91 +325,115 @@ public class BudgetService
   }
 
   /*===========================================================
-  // UpdateExpenseAsync:
-  => Updates an existing expense record.
-  => Updates category, name, amount, expense date, and notes.
-  => Only updates the record if it belongs to the user.
+    UpdateExpenseAsync:
+    => Updates an existing expense record.
+    => Only updates the expense if it belongs to the logged-in user.
+    => Returns true if a matching expense record was found.
   ===========================================================*/
   public async Task<bool> UpdateExpenseAsync(
-      string expenseId,
-      UpdateExpenseRequest request,
-      string userId)
+    string expenseId,
+    UpdateExpenseRequest request,
+    string userId)
   {
     var update = Builders<ExpenseRecord>.Update
-        .Set(e => e.Category, request.Category)
-        .Set(e => e.Name, request.Name)
-        .Set(e => e.Amount, request.Amount)
-        .Set(e => e.ExpenseDate, request.ExpenseDate)
-        .Set(e => e.Notes, request.Notes);
+      .Set(e => e.Category, request.Category)
+      .Set(e => e.Name, request.Name)
+      .Set(e => e.Amount, request.Amount)
+      .Set(e => e.ExpenseDate, request.ExpenseDate)
+      .Set(e => e.Notes, request.Notes);
 
     var result = await _expenseRecords.UpdateOneAsync(
-        e => e.Id == expenseId && e.UserId == userId,
-        update);
+      e => e.Id == expenseId && e.UserId == userId,
+      update);
 
     return result.MatchedCount > 0;
   }
 
   /*===========================================================
-  // DeleteExpenseAsync:
-  => Deletes one expense record.
-  => Only deletes it if it belongs to the logged-in user.
-  => Returns true if the expense record was deleted.
+    DeleteExpenseAsync:
+    => Deletes one expense record.
+    => Only deletes the expense if it belongs to the logged-in user.
+    => Returns true if the expense record was deleted.
   ===========================================================*/
-  public async Task<bool> DeleteExpenseAsync(string expenseId, string userId)
+  public async Task<ExpenseResponse?> DeleteExpenseAsync(
+  string expenseId,
+  string userId)
   {
-    var result = await _expenseRecords.DeleteOneAsync(
-        e => e.Id == expenseId && e.UserId == userId);
+    var expense = await _expenseRecords
+      .Find(e => e.Id == expenseId && e.UserId == userId)
+      .FirstOrDefaultAsync();
 
-    return result.DeletedCount > 0;
+    if (expense == null)
+    {
+      return null;
+    }
+
+    await _expenseRecords.DeleteOneAsync(
+      e => e.Id == expenseId && e.UserId == userId);
+
+    return MapExpenseResponse(expense);
   }
 
   /*===========================================================
-  // BudgetMonthExistsAsync:
-  => Helper method used before adding categories, income, or expenses.
-  => Checks whether the budget month exists and belongs to the user.
-  => Helps prevent records from being added to someone else's budget.
+    BudgetMonthExistsAsync:
+    => Checks if a budget month exists for the logged-in user.
+    => Used before adding income, expenses, or categories.
+    => Prevents users from adding records to someone else's budget month.
   ===========================================================*/
   private async Task<bool> BudgetMonthExistsAsync(string budgetMonthId, string userId)
   {
     var budgetMonth = await _budgetMonths
-        .Find(b => b.Id == budgetMonthId && b.UserId == userId)
-        .FirstOrDefaultAsync();
+      .Find(b => b.Id == budgetMonthId && b.UserId == userId)
+      .FirstOrDefaultAsync();
 
     return budgetMonth != null;
   }
 
   /*===========================================================
-  // BuildBudgetMonthResponseAsync:
-  => Builds the full response for one budget month.
-  => Gets categories, income records, and expense records.
-  => Calculates total income, total expenses, planned expenses,
-     remaining balance, and remaining planned budget.
-  => Converts database models into response DTOs.
+    BuildBudgetMonthResponseAsync:
+    => Builds the full budget month response.
+    => Loads categories, income records, and expense records.
+    => Calculates actual totals and zero-based budgeting numbers.
   ===========================================================*/
   private async Task<BudgetMonthResponse> BuildBudgetMonthResponseAsync(BudgetMonth budgetMonth)
   {
     var budgetCategories = await _budgetCategories
-        .Find(c => c.BudgetMonthId == budgetMonth.Id && c.UserId == budgetMonth.UserId)
-        .SortBy(c => c.Name)
-        .ToListAsync();
+      .Find(c => c.BudgetMonthId == budgetMonth.Id && c.UserId == budgetMonth.UserId)
+      .SortBy(c => c.Name)
+      .ToListAsync();
 
     var incomeRecords = await _incomeRecords
-        .Find(i => i.BudgetMonthId == budgetMonth.Id && i.UserId == budgetMonth.UserId)
-        .SortByDescending(i => i.IncomeDate)
-        .ToListAsync();
+      .Find(i => i.BudgetMonthId == budgetMonth.Id && i.UserId == budgetMonth.UserId)
+      .SortByDescending(i => i.IncomeDate)
+      .ToListAsync();
 
     var expenseRecords = await _expenseRecords
-        .Find(e => e.BudgetMonthId == budgetMonth.Id && e.UserId == budgetMonth.UserId)
-        .SortByDescending(e => e.ExpenseDate)
-        .ToListAsync();
+      .Find(e => e.BudgetMonthId == budgetMonth.Id && e.UserId == budgetMonth.UserId)
+      .SortByDescending(e => e.ExpenseDate)
+      .ToListAsync();
 
     var totalIncome = incomeRecords.Sum(i => i.Amount);
     var totalExpenses = expenseRecords.Sum(e => e.Amount);
-    var totalPlannedExpenses = budgetCategories.Sum(c => c.PlannedAmount);
+
+    var totalPlannedExpenses = budgetCategories
+      .Where(c => c.Type.Equals("Expense", StringComparison.OrdinalIgnoreCase))
+      .Sum(c => c.PlannedAmount);
+
+    var totalPlannedSavings = budgetCategories
+      .Where(c => c.Type.Equals("Savings", StringComparison.OrdinalIgnoreCase))
+      .Sum(c => c.PlannedAmount);
+
+    var totalPlannedDebt = budgetCategories
+      .Where(c => c.Type.Equals("Debt", StringComparison.OrdinalIgnoreCase))
+      .Sum(c => c.PlannedAmount);
+
+    var totalAssigned = budgetCategories.Sum(c => c.PlannedAmount);
+
+    var remainingPlannedExpenseBudget = totalPlannedExpenses - totalExpenses;
 
     var categoryResponses = budgetCategories
-        .Select(category => MapBudgetCategoryResponse(category, expenseRecords))
-        .ToList();
+      .Select(category => MapBudgetCategoryResponse(category, expenseRecords))
+      .ToList();
 
     return new BudgetMonthResponse
     {
@@ -416,11 +441,18 @@ public class BudgetService
       Month = budgetMonth.Month,
       Year = budgetMonth.Year,
       PlannedIncome = budgetMonth.PlannedIncome,
+
       TotalIncome = totalIncome,
       TotalExpenses = totalExpenses,
       RemainingBalance = totalIncome - totalExpenses,
+
       TotalPlannedExpenses = totalPlannedExpenses,
-      RemainingPlannedExpenseBudget = totalPlannedExpenses - totalExpenses,
+      TotalPlannedSavings = totalPlannedSavings,
+      TotalPlannedDebt = totalPlannedDebt,
+      TotalAssigned = totalAssigned,
+      LeftToAssign = budgetMonth.PlannedIncome - totalAssigned,
+      RemainingPlannedExpenseBudget = remainingPlannedExpenseBudget,
+
       BudgetCategories = categoryResponses,
       IncomeRecords = incomeRecords.Select(MapIncomeResponse).ToList(),
       ExpenseRecords = expenseRecords.Select(MapExpenseResponse).ToList(),
@@ -429,27 +461,28 @@ public class BudgetService
   }
 
   /*===========================================================
-  // MapBudgetCategoryResponse:
-  => Converts a BudgetCategory database model into a response DTO.
-  => Finds expenses that match the category name.
-  => Calculates spent amount and remaining amount for that category.
+    MapBudgetCategoryResponse:
+    => Converts a BudgetCategory database model into a BudgetCategoryResponse DTO.
+    => Calculates how much was spent in that category.
+    => Calculates how much budget is remaining for that category.
   ===========================================================*/
   private static BudgetCategoryResponse MapBudgetCategoryResponse(
-      BudgetCategory category,
-      List<ExpenseRecord> expenseRecords)
+    BudgetCategory category,
+    List<ExpenseRecord> expenseRecords)
   {
     var spentAmount = expenseRecords
-        .Where(e => string.Equals(
-            e.Category,
-            category.Name,
-            StringComparison.OrdinalIgnoreCase))
-        .Sum(e => e.Amount);
+      .Where(e => string.Equals(
+        e.Category,
+        category.Name,
+        StringComparison.OrdinalIgnoreCase))
+      .Sum(e => e.Amount);
 
     return new BudgetCategoryResponse
     {
       Id = category.Id,
       BudgetMonthId = category.BudgetMonthId,
       Name = category.Name,
+      Type = category.Type,
       PlannedAmount = category.PlannedAmount,
       SpentAmount = spentAmount,
       RemainingAmount = category.PlannedAmount - spentAmount,
@@ -458,9 +491,9 @@ public class BudgetService
   }
 
   /*===========================================================
-  // MapIncomeResponse:
-  => Converts an IncomeRecord database model into an IncomeResponse DTO.
-  => Keeps the API response clean and separate from the database model.
+    MapIncomeResponse:
+    => Converts an IncomeRecord database model into an IncomeResponse DTO.
+    => Keeps the API response clean and separate from the database model.
   ===========================================================*/
   private static IncomeResponse MapIncomeResponse(IncomeRecord incomeRecord)
   {
@@ -477,9 +510,9 @@ public class BudgetService
   }
 
   /*===========================================================
-  // MapExpenseResponse:
-  => Converts an ExpenseRecord database model into an ExpenseResponse DTO.
-  => Keeps the API response clean and separate from the database model.
+    MapExpenseResponse:
+    => Converts an ExpenseRecord database model into an ExpenseResponse DTO.
+    => Keeps the API response clean and separate from the database model.
   ===========================================================*/
   private static ExpenseResponse MapExpenseResponse(ExpenseRecord expenseRecord)
   {

@@ -112,14 +112,34 @@ public sealed record BudgetMonthResponse
 
   public decimal PlannedIncome { get; set; }
 
+  // Actual money that came in
+
   public decimal TotalIncome { get; set; }
+
+  // Actual money spent
 
   public decimal TotalExpenses { get; set; }
 
+  // Actual income minus actual expenses
+
   public decimal RemainingBalance { get; set; }
 
+  // Planned expense categories only
   public decimal TotalPlannedExpenses { get; set; }
 
+  // Planned savings categories only
+  public decimal TotalPlannedSavings { get; set; }
+
+  // Planned debt categories only
+  public decimal TotalPlannedDebt { get; set; }
+
+  // Expense + Savings + Debt planned amounts
+  public decimal TotalAssigned { get; set; }
+
+  // Zero-based budget number
+  public decimal LeftToAssign { get; set; }
+
+  // Expense budget left after actual spending
   public decimal RemainingPlannedExpenseBudget { get; set; }
 
   public IReadOnlyList<BudgetCategoryResponse> BudgetCategories { get; set; } = [];
@@ -135,12 +155,16 @@ public sealed record CreateBudgetCategoryRequest
 {
   public string Name { get; set; } = string.Empty;
 
+  public string Type { get; set; } = "Expense";
+
   public decimal PlannedAmount { get; set; }
 }
 
 public sealed record UpdateBudgetCategoryRequest
 {
   public string Name { get; set; } = string.Empty;
+
+  public string Type { get; set; } = "Expense";
 
   public decimal PlannedAmount { get; set; }
 }
@@ -152,6 +176,8 @@ public class BudgetCategoryResponse
   public string BudgetMonthId { get; set; } = string.Empty;
 
   public string Name { get; set; } = string.Empty;
+
+  public string Type { get; set; } = string.Empty;
 
   public decimal PlannedAmount { get; set; }
 
