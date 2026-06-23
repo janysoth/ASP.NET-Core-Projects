@@ -209,12 +209,30 @@ public class BudgetService
     => Only deletes the category if it belongs to the logged-in user.
     => Does not delete actual expense records.
   ===========================================================*/
-  public async Task<bool> DeleteBudgetCategoryAsync(string categoryId, string userId)
+  public async Task<BudgetCategoryResponse?> DeleteBudgetCategoryAsync(
+    string categoryId,
+    string userId)
   {
-    var result = await _budgetCategories.DeleteOneAsync(
+    var category = await _budgetCategories
+      .Find(c => c.Id == categoryId && c.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    if (category == null)
+    {
+      return null;
+    }
+
+    await _budgetCategories.DeleteOneAsync(
       c => c.Id == categoryId && c.UserId == userId);
 
-    return result.DeletedCount > 0;
+    var expenses = await _expenseRecords
+      .Find(e =>
+        e.BudgetMonthId == category.BudgetMonthId &&
+        e.UserId == userId &&
+        e.Category.ToLower() == category.Name.ToLower())
+      .ToListAsync();
+
+    return MapBudgetCategoryResponse(category, expenses);
   }
 
   /*===========================================================
@@ -281,12 +299,23 @@ public class BudgetService
     => Only deletes the income if it belongs to the logged-in user.
     => Returns true if the income record was deleted.
   ===========================================================*/
-  public async Task<bool> DeleteIncomeAsync(string incomeId, string userId)
+  public async Task<IncomeResponse?> DeleteIncomeAsync(
+    string incomeId,
+    string userId)
   {
-    var result = await _incomeRecords.DeleteOneAsync(
+    var income = await _incomeRecords
+      .Find(i => i.Id == incomeId && i.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    if (income == null)
+    {
+      return null;
+    }
+
+    await _incomeRecords.DeleteOneAsync(
       i => i.Id == incomeId && i.UserId == userId);
 
-    return result.DeletedCount > 0;
+    return MapIncomeResponse(income);
   }
 
   /*===========================================================

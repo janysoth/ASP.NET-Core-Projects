@@ -268,7 +268,8 @@ public class BudgetController : ControllerBase
     => Returns 404 if the category is not found.
   ===========================================================*/
   [HttpDelete("categories/{categoryId}")]
-  public async Task<IActionResult> DeleteBudgetCategory(string categoryId)
+  public async Task<ActionResult<BudgetCategoryResponse>> DeleteBudgetCategory(
+  string categoryId)
   {
     var userId = GetUserId();
 
@@ -277,14 +278,16 @@ public class BudgetController : ControllerBase
       return Unauthorized();
     }
 
-    var deleted = await _budgetService.DeleteBudgetCategoryAsync(categoryId, userId);
+    var deletedCategory = await _budgetService.DeleteBudgetCategoryAsync(
+      categoryId,
+      userId);
 
-    if (!deleted)
+    if (deletedCategory == null)
     {
       return NotFound("Budget category not found.");
     }
 
-    return NoContent();
+    return Ok(deletedCategory);
   }
 
   /*===========================================================
@@ -370,7 +373,7 @@ public class BudgetController : ControllerBase
     => Returns 404 if the income record is not found.
   ===========================================================*/
   [HttpDelete("income/{incomeId}")]
-  public async Task<IActionResult> DeleteIncome(string incomeId)
+  public async Task<ActionResult<IncomeResponse>> DeleteIncome(string incomeId)
   {
     var userId = GetUserId();
 
@@ -379,14 +382,14 @@ public class BudgetController : ControllerBase
       return Unauthorized();
     }
 
-    var deleted = await _budgetService.DeleteIncomeAsync(incomeId, userId);
+    var deletedIncome = await _budgetService.DeleteIncomeAsync(incomeId, userId);
 
-    if (!deleted)
+    if (deletedIncome == null)
     {
       return NotFound("Income record not found.");
     }
 
-    return NoContent();
+    return Ok(deletedIncome);
   }
 
   /*===========================================================
