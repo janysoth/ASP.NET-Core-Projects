@@ -13,6 +13,8 @@ public class ExpenseRecord
 
   public string BudgetMonthId { get; set; } = string.Empty;
 
+  public string AccountId { get; set; } = string.Empty;
+
   public string Category { get; set; } = string.Empty;
 
   public string Name { get; set; } = string.Empty;

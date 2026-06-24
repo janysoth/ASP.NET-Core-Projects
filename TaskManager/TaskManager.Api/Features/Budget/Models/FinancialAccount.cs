@@ -3,7 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace TaskManager.Api.Features.Budget.Models;
 
-public class IncomeRecord
+public class FinancialAccount
 {
   [BsonId]
   [BsonRepresentation(BsonType.ObjectId)]
@@ -11,17 +11,12 @@ public class IncomeRecord
 
   public string UserId { get; set; } = string.Empty;
 
-  public string BudgetMonthId { get; set; } = string.Empty;
+  public string Name { get; set; } = string.Empty;
 
-  public string AccountId { get; set; } = string.Empty;
+  // Allowed values: Checking, Savings, CreditCard
+  public string Type { get; set; } = "Checking";
 
-  public string Source { get; set; } = string.Empty;
-
-  public decimal Amount { get; set; }
-
-  public DateTime IncomeDate { get; set; }
-
-  public string? Notes { get; set; }
+  public decimal StartingBalance { get; set; }
 
   public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

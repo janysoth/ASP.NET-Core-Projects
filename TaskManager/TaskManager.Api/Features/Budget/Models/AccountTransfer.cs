@@ -3,7 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace TaskManager.Api.Features.Budget.Models;
 
-public class IncomeRecord
+public class AccountTransfer
 {
   [BsonId]
   [BsonRepresentation(BsonType.ObjectId)]
@@ -11,15 +11,13 @@ public class IncomeRecord
 
   public string UserId { get; set; } = string.Empty;
 
-  public string BudgetMonthId { get; set; } = string.Empty;
+  public string FromAccountId { get; set; } = string.Empty;
 
-  public string AccountId { get; set; } = string.Empty;
-
-  public string Source { get; set; } = string.Empty;
+  public string ToAccountId { get; set; } = string.Empty;
 
   public decimal Amount { get; set; }
 
-  public DateTime IncomeDate { get; set; }
+  public DateTime TransferDate { get; set; }
 
   public string? Notes { get; set; }
 
