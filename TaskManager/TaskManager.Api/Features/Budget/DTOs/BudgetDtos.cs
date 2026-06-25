@@ -20,6 +20,8 @@ public sealed record UpdateBudgetMonthRequest
 
 public sealed record CreateIncomeRequest
 {
+  public string AccountId { get; set; } = string.Empty;
+
   public string Source { get; set; } = string.Empty;
 
   public decimal Amount { get; set; }
@@ -31,6 +33,8 @@ public sealed record CreateIncomeRequest
 
 public sealed record UpdateIncomeRequest
 {
+  public string AccountId { get; set; } = string.Empty;
+
   public string Source { get; set; } = string.Empty;
 
   public decimal Amount { get; set; }
@@ -40,8 +44,29 @@ public sealed record UpdateIncomeRequest
   public string? Notes { get; set; }
 }
 
+public sealed record IncomeResponse
+{
+  public string Id { get; set; } = string.Empty;
+
+  public string BudgetMonthId { get; set; } = string.Empty;
+
+  public string AccountId { get; set; } = string.Empty;
+
+  public string Source { get; set; } = string.Empty;
+
+  public decimal Amount { get; set; }
+
+  public DateTime IncomeDate { get; set; }
+
+  public string? Notes { get; set; }
+
+  public DateTime CreatedAtUtc { get; set; }
+}
+
 public sealed record CreateExpenseRequest
 {
+  public string AccountId { get; set; } = string.Empty;
+
   public string Category { get; set; } = string.Empty;
 
   public string Name { get; set; } = string.Empty;
@@ -55,6 +80,8 @@ public sealed record CreateExpenseRequest
 
 public sealed record UpdateExpenseRequest
 {
+  public string AccountId { get; set; } = string.Empty;
+
   public string Category { get; set; } = string.Empty;
 
   public string Name { get; set; } = string.Empty;
@@ -66,28 +93,13 @@ public sealed record UpdateExpenseRequest
   public string? Notes { get; set; }
 }
 
-public sealed record IncomeResponse
-{
-  public string Id { get; set; } = string.Empty;
-
-  public string BudgetMonthId { get; set; } = string.Empty;
-
-  public string Source { get; set; } = string.Empty;
-
-  public decimal Amount { get; set; }
-
-  public DateTime IncomeDate { get; set; }
-
-  public string? Notes { get; set; }
-
-  public DateTime CreatedAtUtc { get; set; }
-}
-
 public sealed record ExpenseResponse
 {
   public string Id { get; set; } = string.Empty;
 
   public string BudgetMonthId { get; set; } = string.Empty;
+
+  public string AccountId { get; set; } = string.Empty;
 
   public string Category { get; set; } = string.Empty;
 
@@ -187,3 +199,67 @@ public class BudgetCategoryResponse
 
   public DateTime CreatedAtUtc { get; set; }
 }
+
+public sealed record CreateFinancialAccountRequest
+{
+  public string Name { get; set; } = string.Empty;
+
+  public string Type { get; set; } = "Checking";
+
+  public decimal StartingBalance { get; set; }
+}
+
+public sealed record UpdateFinancialAccountRequest
+{
+  public string Name { get; set; } = string.Empty;
+
+  public string Type { get; set; } = "Checking";
+
+  public decimal StartingBalance { get; set; }
+}
+
+public sealed record FinancialAccountResponse
+{
+  public string Id { get; set; } = string.Empty;
+
+  public string Name { get; set; } = string.Empty;
+
+  public string Type { get; set; } = string.Empty;
+
+  public decimal StartingBalance { get; set; }
+
+  public decimal CurrentBalance { get; set; }
+
+  public DateTime CreatedAtUtc { get; set; }
+}
+
+public sealed record CreateAccountTransferRequest
+{
+  public string FromAccountId { get; set; } = string.Empty;
+
+  public string ToAccountId { get; set; } = string.Empty;
+
+  public decimal Amount { get; set; }
+
+  public DateTime TransferDate { get; set; }
+
+  public string? Notes { get; set; }
+}
+
+public sealed record AccountTransferResponse
+{
+  public string Id { get; set; } = string.Empty;
+
+  public string FromAccountId { get; set; } = string.Empty;
+
+  public string ToAccountId { get; set; } = string.Empty;
+
+  public decimal Amount { get; set; }
+
+  public DateTime TransferDate { get; set; }
+
+  public string? Notes { get; set; }
+
+  public DateTime CreatedAtUtc { get; set; }
+}
+

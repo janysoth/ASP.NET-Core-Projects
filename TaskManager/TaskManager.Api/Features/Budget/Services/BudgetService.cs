@@ -10,12 +10,14 @@ public class BudgetService
   private readonly IMongoCollection<BudgetCategory> _budgetCategories;
   private readonly IMongoCollection<IncomeRecord> _incomeRecords;
   private readonly IMongoCollection<ExpenseRecord> _expenseRecords;
+  private readonly IMongoCollection<FinancialAccount> _financialAccounts;
+  private readonly IMongoCollection<AccountTransfer> _accountTransfers;
 
   /*===========================================================
     BudgetService Constructor:
     => Receives the MongoDB database from Program.cs dependency injection.
-    => Connects this service to the BudgetMonths, BudgetCategories,
-       IncomeRecords, and ExpenseRecords collections.
+    => Connects this service to budget, income, expense,
+       financial account, and transfer collections.
   ===========================================================*/
   public BudgetService(IMongoDatabase database)
   {
@@ -23,6 +25,187 @@ public class BudgetService
     _budgetCategories = database.GetCollection<BudgetCategory>("BudgetCategories");
     _incomeRecords = database.GetCollection<IncomeRecord>("IncomeRecords");
     _expenseRecords = database.GetCollection<ExpenseRecord>("ExpenseRecords");
+    _financialAccounts = database.GetCollection<FinancialAccount>("FinancialAccounts");
+    _accountTransfers = database.GetCollection<AccountTransfer>("AccountTransfers");
+  }
+
+  /*===========================================================
+    GetAccountsAsync:
+    => Gets all financial accounts that belong to the logged-in user.
+    => Sorts accounts by account name.
+    => Builds full account responses with current balances.
+  ===========================================================*/
+  public async Task<List<FinancialAccountResponse>> GetAccountsAsync(string userId)
+  {
+    var accounts = await _financialAccounts
+      .Find(a => a.UserId == userId)
+      .SortBy(a => a.Name)
+      .ToListAsync();
+
+    var responses = new List<FinancialAccountResponse>();
+
+    foreach (var account in accounts)
+    {
+      responses.Add(await BuildFinancialAccountResponseAsync(account));
+    }
+
+    return responses;
+  }
+
+  /*===========================================================
+    CreateAccountAsync:
+    => Creates a new financial account for the logged-in user.
+    => Examples: Checking, Savings, Visa Card, Discover Card.
+    => Returns the created account with calculated current balance.
+  ===========================================================*/
+  public async Task<FinancialAccountResponse?> CreateAccountAsync(
+    CreateFinancialAccountRequest request,
+    string userId)
+  {
+    var account = new FinancialAccount
+    {
+      UserId = userId,
+      Name = request.Name,
+      Type = request.Type,
+      StartingBalance = request.StartingBalance,
+      CreatedAtUtc = DateTime.UtcNow
+    };
+
+    await _financialAccounts.InsertOneAsync(account);
+
+    return await BuildFinancialAccountResponseAsync(account);
+  }
+
+  /*===========================================================
+    UpdateAccountAsync:
+    => Updates an existing financial account.
+    => Allows changing account name, type, and starting balance.
+    => Only updates the account if it belongs to the logged-in user.
+  ===========================================================*/
+  public async Task<FinancialAccountResponse?> UpdateAccountAsync(
+    string accountId,
+    UpdateFinancialAccountRequest request,
+    string userId)
+  {
+    var update = Builders<FinancialAccount>.Update
+      .Set(a => a.Name, request.Name)
+      .Set(a => a.Type, request.Type)
+      .Set(a => a.StartingBalance, request.StartingBalance);
+
+    var result = await _financialAccounts.UpdateOneAsync(
+      a => a.Id == accountId && a.UserId == userId,
+      update);
+
+    if (result.MatchedCount == 0)
+    {
+      return null;
+    }
+
+    var account = await _financialAccounts
+      .Find(a => a.Id == accountId && a.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    return account == null ? null : await BuildFinancialAccountResponseAsync(account);
+  }
+
+  /*===========================================================
+    DeleteAccountAsync:
+    => Deletes one financial account.
+    => Only deletes the account if it belongs to the logged-in user.
+    => Returns the deleted account information.
+  ===========================================================*/
+  public async Task<FinancialAccountResponse?> DeleteAccountAsync(
+    string accountId,
+    string userId)
+  {
+    var account = await _financialAccounts
+      .Find(a => a.Id == accountId && a.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    if (account == null)
+    {
+      return null;
+    }
+
+    await _financialAccounts.DeleteOneAsync(
+      a => a.Id == accountId && a.UserId == userId);
+
+    return await BuildFinancialAccountResponseAsync(account);
+  }
+
+  /*===========================================================
+    GetTransfersAsync:
+    => Gets all account transfers for the logged-in user.
+    => Sorts transfers by newest transfer date first.
+    => Returns clean transfer response DTOs.
+  ===========================================================*/
+  public async Task<List<AccountTransferResponse>> GetTransfersAsync(string userId)
+  {
+    var transfers = await _accountTransfers
+      .Find(t => t.UserId == userId)
+      .SortByDescending(t => t.TransferDate)
+      .ToListAsync();
+
+    return transfers.Select(MapAccountTransferResponse).ToList();
+  }
+
+  /*===========================================================
+    CreateTransferAsync:
+    => Creates a transfer between two financial accounts.
+    => Examples: Checking to Savings, Checking to Credit Card.
+    => Verifies both accounts belong to the logged-in user.
+  ===========================================================*/
+  public async Task<AccountTransferResponse?> CreateTransferAsync(
+    CreateAccountTransferRequest request,
+    string userId)
+  {
+    var fromAccountExists = await AccountExistsAsync(request.FromAccountId, userId);
+    var toAccountExists = await AccountExistsAsync(request.ToAccountId, userId);
+
+    if (!fromAccountExists || !toAccountExists)
+    {
+      return null;
+    }
+
+    var transfer = new AccountTransfer
+    {
+      UserId = userId,
+      FromAccountId = request.FromAccountId,
+      ToAccountId = request.ToAccountId,
+      Amount = request.Amount,
+      TransferDate = request.TransferDate,
+      Notes = request.Notes,
+      CreatedAtUtc = DateTime.UtcNow
+    };
+
+    await _accountTransfers.InsertOneAsync(transfer);
+
+    return MapAccountTransferResponse(transfer);
+  }
+
+  /*===========================================================
+    DeleteTransferAsync:
+    => Deletes one account transfer.
+    => Only deletes the transfer if it belongs to the logged-in user.
+    => Returns the deleted transfer information.
+  ===========================================================*/
+  public async Task<AccountTransferResponse?> DeleteTransferAsync(
+    string transferId,
+    string userId)
+  {
+    var transfer = await _accountTransfers
+      .Find(t => t.Id == transferId && t.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    if (transfer == null)
+    {
+      return null;
+    }
+
+    await _accountTransfers.DeleteOneAsync(
+      t => t.Id == transferId && t.UserId == userId);
+
+    return MapAccountTransferResponse(transfer);
   }
 
   /*===========================================================
@@ -53,7 +236,7 @@ public class BudgetService
     GetBudgetMonthByIdAsync:
     => Gets one budget month by ID.
     => Makes sure the budget month belongs to the logged-in user.
-    => Returns null if the budget month does not exist or is not owned by the user.
+    => Returns null if the budget month does not exist.
   ===========================================================*/
   public async Task<BudgetMonthResponse?> GetBudgetMonthByIdAsync(string id, string userId)
   {
@@ -143,7 +326,7 @@ public class BudgetService
   /*===========================================================
     AddBudgetCategoryAsync:
     => Creates a planned budget category for a budget month.
-    => Examples: Mortgage, Groceries, Emergency Fund, Student Loan Extra.
+    => Examples: Mortgage, Groceries, Emergency Fund, Student Loan.
     => Verifies that the budget month belongs to the logged-in user.
   ===========================================================*/
   public async Task<BudgetCategoryResponse?> AddBudgetCategoryAsync(
@@ -238,8 +421,8 @@ public class BudgetService
   /*===========================================================
     AddIncomeAsync:
     => Creates a new income record for a budget month.
-    => Verifies that the budget month belongs to the logged-in user.
-    => Saves the income into MongoDB.
+    => Verifies the budget month and account belong to the user.
+    => Adds the income amount to the selected financial account.
   ===========================================================*/
   public async Task<IncomeResponse?> AddIncomeAsync(
     string budgetMonthId,
@@ -247,8 +430,9 @@ public class BudgetService
     string userId)
   {
     var budgetMonthExists = await BudgetMonthExistsAsync(budgetMonthId, userId);
+    var accountExists = await AccountExistsAsync(request.AccountId, userId);
 
-    if (!budgetMonthExists)
+    if (!budgetMonthExists || !accountExists)
     {
       return null;
     }
@@ -257,6 +441,7 @@ public class BudgetService
     {
       UserId = userId,
       BudgetMonthId = budgetMonthId,
+      AccountId = request.AccountId,
       Source = request.Source,
       Amount = request.Amount,
       IncomeDate = request.IncomeDate,
@@ -272,7 +457,7 @@ public class BudgetService
   /*===========================================================
     UpdateIncomeAsync:
     => Updates an existing income record.
-    => Only updates the income if it belongs to the logged-in user.
+    => Verifies the selected account belongs to the user.
     => Returns true if a matching income record was found.
   ===========================================================*/
   public async Task<bool> UpdateIncomeAsync(
@@ -280,7 +465,15 @@ public class BudgetService
     UpdateIncomeRequest request,
     string userId)
   {
+    var accountExists = await AccountExistsAsync(request.AccountId, userId);
+
+    if (!accountExists)
+    {
+      return false;
+    }
+
     var update = Builders<IncomeRecord>.Update
+      .Set(i => i.AccountId, request.AccountId)
       .Set(i => i.Source, request.Source)
       .Set(i => i.Amount, request.Amount)
       .Set(i => i.IncomeDate, request.IncomeDate)
@@ -297,7 +490,7 @@ public class BudgetService
     DeleteIncomeAsync:
     => Deletes one income record.
     => Only deletes the income if it belongs to the logged-in user.
-    => Returns true if the income record was deleted.
+    => Returns the deleted income information.
   ===========================================================*/
   public async Task<IncomeResponse?> DeleteIncomeAsync(
     string incomeId,
@@ -321,8 +514,8 @@ public class BudgetService
   /*===========================================================
     AddExpenseAsync:
     => Creates a new expense record for a budget month.
-    => Verifies that the budget month belongs to the logged-in user.
-    => Saves the expense into MongoDB.
+    => Verifies the budget month and account belong to the user.
+    => Subtracts the expense amount from the selected account.
   ===========================================================*/
   public async Task<ExpenseResponse?> AddExpenseAsync(
     string budgetMonthId,
@@ -330,8 +523,9 @@ public class BudgetService
     string userId)
   {
     var budgetMonthExists = await BudgetMonthExistsAsync(budgetMonthId, userId);
+    var accountExists = await AccountExistsAsync(request.AccountId, userId);
 
-    if (!budgetMonthExists)
+    if (!budgetMonthExists || !accountExists)
     {
       return null;
     }
@@ -340,6 +534,7 @@ public class BudgetService
     {
       UserId = userId,
       BudgetMonthId = budgetMonthId,
+      AccountId = request.AccountId,
       Category = request.Category,
       Name = request.Name,
       Amount = request.Amount,
@@ -356,7 +551,7 @@ public class BudgetService
   /*===========================================================
     UpdateExpenseAsync:
     => Updates an existing expense record.
-    => Only updates the expense if it belongs to the logged-in user.
+    => Verifies the selected account belongs to the user.
     => Returns true if a matching expense record was found.
   ===========================================================*/
   public async Task<bool> UpdateExpenseAsync(
@@ -364,7 +559,15 @@ public class BudgetService
     UpdateExpenseRequest request,
     string userId)
   {
+    var accountExists = await AccountExistsAsync(request.AccountId, userId);
+
+    if (!accountExists)
+    {
+      return false;
+    }
+
     var update = Builders<ExpenseRecord>.Update
+      .Set(e => e.AccountId, request.AccountId)
       .Set(e => e.Category, request.Category)
       .Set(e => e.Name, request.Name)
       .Set(e => e.Amount, request.Amount)
@@ -382,11 +585,11 @@ public class BudgetService
     DeleteExpenseAsync:
     => Deletes one expense record.
     => Only deletes the expense if it belongs to the logged-in user.
-    => Returns true if the expense record was deleted.
+    => Returns the deleted expense information.
   ===========================================================*/
   public async Task<ExpenseResponse?> DeleteExpenseAsync(
-  string expenseId,
-  string userId)
+    string expenseId,
+    string userId)
   {
     var expense = await _expenseRecords
       .Find(e => e.Id == expenseId && e.UserId == userId)
@@ -407,7 +610,7 @@ public class BudgetService
     BudgetMonthExistsAsync:
     => Checks if a budget month exists for the logged-in user.
     => Used before adding income, expenses, or categories.
-    => Prevents users from adding records to someone else's budget month.
+    => Prevents users from adding records to someone else's budget.
   ===========================================================*/
   private async Task<bool> BudgetMonthExistsAsync(string budgetMonthId, string userId)
   {
@@ -416,6 +619,65 @@ public class BudgetService
       .FirstOrDefaultAsync();
 
     return budgetMonth != null;
+  }
+
+  /*===========================================================
+    AccountExistsAsync:
+    => Checks if a financial account exists for the logged-in user.
+    => Used before adding income, expenses, or transfers.
+    => Prevents users from using someone else's account ID.
+  ===========================================================*/
+  private async Task<bool> AccountExistsAsync(string accountId, string userId)
+  {
+    var account = await _financialAccounts
+      .Find(a => a.Id == accountId && a.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    return account != null;
+  }
+
+  /*===========================================================
+    BuildFinancialAccountResponseAsync:
+    => Builds a full financial account response.
+    => Calculates current balance using income, expenses,
+       transfers out, and transfers in.
+    => Keeps balance calculation inside the service layer.
+  ===========================================================*/
+  private async Task<FinancialAccountResponse> BuildFinancialAccountResponseAsync(
+    FinancialAccount account)
+  {
+    var incomeTotal = await _incomeRecords
+      .Find(i => i.AccountId == account.Id && i.UserId == account.UserId)
+      .ToListAsync();
+
+    var expenseTotal = await _expenseRecords
+      .Find(e => e.AccountId == account.Id && e.UserId == account.UserId)
+      .ToListAsync();
+
+    var transfersOut = await _accountTransfers
+      .Find(t => t.FromAccountId == account.Id && t.UserId == account.UserId)
+      .ToListAsync();
+
+    var transfersIn = await _accountTransfers
+      .Find(t => t.ToAccountId == account.Id && t.UserId == account.UserId)
+      .ToListAsync();
+
+    var currentBalance =
+      account.StartingBalance
+      + incomeTotal.Sum(i => i.Amount)
+      - expenseTotal.Sum(e => e.Amount)
+      - transfersOut.Sum(t => t.Amount)
+      + transfersIn.Sum(t => t.Amount);
+
+    return new FinancialAccountResponse
+    {
+      Id = account.Id,
+      Name = account.Name,
+      Type = account.Type,
+      StartingBalance = account.StartingBalance,
+      CurrentBalance = currentBalance,
+      CreatedAtUtc = account.CreatedAtUtc
+    };
   }
 
   /*===========================================================
@@ -458,8 +720,6 @@ public class BudgetService
 
     var totalAssigned = budgetCategories.Sum(c => c.PlannedAmount);
 
-    var remainingPlannedExpenseBudget = totalPlannedExpenses - totalExpenses;
-
     var categoryResponses = budgetCategories
       .Select(category => MapBudgetCategoryResponse(category, expenseRecords))
       .ToList();
@@ -480,7 +740,7 @@ public class BudgetService
       TotalPlannedDebt = totalPlannedDebt,
       TotalAssigned = totalAssigned,
       LeftToAssign = budgetMonth.PlannedIncome - totalAssigned,
-      RemainingPlannedExpenseBudget = remainingPlannedExpenseBudget,
+      RemainingPlannedExpenseBudget = totalPlannedExpenses - totalExpenses,
 
       BudgetCategories = categoryResponses,
       IncomeRecords = incomeRecords.Select(MapIncomeResponse).ToList(),
@@ -491,9 +751,9 @@ public class BudgetService
 
   /*===========================================================
     MapBudgetCategoryResponse:
-    => Converts a BudgetCategory database model into a BudgetCategoryResponse DTO.
+    => Converts a BudgetCategory database model into a DTO.
     => Calculates how much was spent in that category.
-    => Calculates how much budget is remaining for that category.
+    => Calculates how much budget is remaining.
   ===========================================================*/
   private static BudgetCategoryResponse MapBudgetCategoryResponse(
     BudgetCategory category,
@@ -522,7 +782,8 @@ public class BudgetService
   /*===========================================================
     MapIncomeResponse:
     => Converts an IncomeRecord database model into an IncomeResponse DTO.
-    => Keeps the API response clean and separate from the database model.
+    => Includes the financial account ID connected to this income.
+    => Keeps API response data separate from MongoDB models.
   ===========================================================*/
   private static IncomeResponse MapIncomeResponse(IncomeRecord incomeRecord)
   {
@@ -530,6 +791,7 @@ public class BudgetService
     {
       Id = incomeRecord.Id,
       BudgetMonthId = incomeRecord.BudgetMonthId,
+      AccountId = incomeRecord.AccountId,
       Source = incomeRecord.Source,
       Amount = incomeRecord.Amount,
       IncomeDate = incomeRecord.IncomeDate,
@@ -541,7 +803,8 @@ public class BudgetService
   /*===========================================================
     MapExpenseResponse:
     => Converts an ExpenseRecord database model into an ExpenseResponse DTO.
-    => Keeps the API response clean and separate from the database model.
+    => Includes the financial account ID connected to this expense.
+    => Keeps API response data separate from MongoDB models.
   ===========================================================*/
   private static ExpenseResponse MapExpenseResponse(ExpenseRecord expenseRecord)
   {
@@ -549,12 +812,34 @@ public class BudgetService
     {
       Id = expenseRecord.Id,
       BudgetMonthId = expenseRecord.BudgetMonthId,
+      AccountId = expenseRecord.AccountId,
       Category = expenseRecord.Category,
       Name = expenseRecord.Name,
       Amount = expenseRecord.Amount,
       ExpenseDate = expenseRecord.ExpenseDate,
       Notes = expenseRecord.Notes,
       CreatedAtUtc = expenseRecord.CreatedAtUtc
+    };
+  }
+
+  /*===========================================================
+    MapAccountTransferResponse:
+    => Converts an AccountTransfer database model into a DTO.
+    => Keeps transfer API responses clean.
+    => Separates MongoDB models from API response models.
+  ===========================================================*/
+  private static AccountTransferResponse MapAccountTransferResponse(
+    AccountTransfer transfer)
+  {
+    return new AccountTransferResponse
+    {
+      Id = transfer.Id,
+      FromAccountId = transfer.FromAccountId,
+      ToAccountId = transfer.ToAccountId,
+      Amount = transfer.Amount,
+      TransferDate = transfer.TransferDate,
+      Notes = transfer.Notes,
+      CreatedAtUtc = transfer.CreatedAtUtc
     };
   }
 }
