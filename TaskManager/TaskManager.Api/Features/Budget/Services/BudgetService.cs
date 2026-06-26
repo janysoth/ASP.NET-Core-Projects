@@ -842,4 +842,277 @@ public class BudgetService
       CreatedAtUtc = transfer.CreatedAtUtc
     };
   }
+
+  /*===========================================================
+  PatchIncomeAsync:
+  => Updates only the income fields that were sent in the request.
+  => Allows partial updates without requiring the full income object.
+  => Returns the updated income record.
+===========================================================*/
+  public async Task<IncomeResponse?> PatchIncomeAsync(
+    string incomeId,
+    PatchIncomeRequest request,
+    string userId)
+  {
+    var income = await _incomeRecords
+      .Find(i => i.Id == incomeId && i.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    if (income == null)
+    {
+      return null;
+    }
+
+    var updates = new List<UpdateDefinition<IncomeRecord>>();
+
+    if (request.AccountId != null)
+    {
+      var accountExists = await AccountExistsAsync(request.AccountId, userId);
+
+      if (!accountExists)
+      {
+        return null;
+      }
+
+      updates.Add(Builders<IncomeRecord>.Update.Set(i => i.AccountId, request.AccountId));
+    }
+
+    if (request.Source != null)
+    {
+      updates.Add(Builders<IncomeRecord>.Update.Set(i => i.Source, request.Source));
+    }
+
+    if (request.Amount.HasValue)
+    {
+      updates.Add(Builders<IncomeRecord>.Update.Set(i => i.Amount, request.Amount.Value));
+    }
+
+    if (request.IncomeDate.HasValue)
+    {
+      updates.Add(Builders<IncomeRecord>.Update.Set(i => i.IncomeDate, request.IncomeDate.Value));
+    }
+
+    if (request.Notes != null)
+    {
+      updates.Add(Builders<IncomeRecord>.Update.Set(i => i.Notes, request.Notes));
+    }
+
+    if (updates.Count == 0)
+    {
+      return MapIncomeResponse(income);
+    }
+
+    var update = Builders<IncomeRecord>.Update.Combine(updates);
+
+    await _incomeRecords.UpdateOneAsync(
+      i => i.Id == incomeId && i.UserId == userId,
+      update);
+
+    var updatedIncome = await _incomeRecords
+      .Find(i => i.Id == incomeId && i.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    return updatedIncome == null ? null : MapIncomeResponse(updatedIncome);
+  }
+
+  /*===========================================================
+  PatchExpenseAsync:
+  => Updates only the expense fields that were sent in the request.
+  => Allows partial updates without requiring the full expense object.
+  => Returns the updated expense record.
+===========================================================*/
+  public async Task<ExpenseResponse?> PatchExpenseAsync(
+    string expenseId,
+    PatchExpenseRequest request,
+    string userId)
+  {
+    var expense = await _expenseRecords
+      .Find(e => e.Id == expenseId && e.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    if (expense == null)
+    {
+      return null;
+    }
+
+    var updates = new List<UpdateDefinition<ExpenseRecord>>();
+
+    if (request.AccountId != null)
+    {
+      var accountExists = await AccountExistsAsync(request.AccountId, userId);
+
+      if (!accountExists)
+      {
+        return null;
+      }
+
+      updates.Add(Builders<ExpenseRecord>.Update.Set(e => e.AccountId, request.AccountId));
+    }
+
+    if (request.Category != null)
+    {
+      updates.Add(Builders<ExpenseRecord>.Update.Set(e => e.Category, request.Category));
+    }
+
+    if (request.Name != null)
+    {
+      updates.Add(Builders<ExpenseRecord>.Update.Set(e => e.Name, request.Name));
+    }
+
+    if (request.Amount.HasValue)
+    {
+      updates.Add(Builders<ExpenseRecord>.Update.Set(e => e.Amount, request.Amount.Value));
+    }
+
+    if (request.ExpenseDate.HasValue)
+    {
+      updates.Add(Builders<ExpenseRecord>.Update.Set(e => e.ExpenseDate, request.ExpenseDate.Value));
+    }
+
+    if (request.Notes != null)
+    {
+      updates.Add(Builders<ExpenseRecord>.Update.Set(e => e.Notes, request.Notes));
+    }
+
+    if (updates.Count == 0)
+    {
+      return MapExpenseResponse(expense);
+    }
+
+    var update = Builders<ExpenseRecord>.Update.Combine(updates);
+
+    await _expenseRecords.UpdateOneAsync(
+      e => e.Id == expenseId && e.UserId == userId,
+      update);
+
+    var updatedExpense = await _expenseRecords
+      .Find(e => e.Id == expenseId && e.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    return updatedExpense == null ? null : MapExpenseResponse(updatedExpense);
+  }
+
+  /*===========================================================
+  PatchTransferAsync:
+  => Updates only the transfer fields that were sent in the request.
+  => Used for partial edits to credit card payments or account transfers.
+  => Returns the updated transfer record.
+===========================================================*/
+  public async Task<AccountTransferResponse?> PatchTransferAsync(
+    string transferId,
+    PatchAccountTransferRequest request,
+    string userId)
+  {
+    var transfer = await _accountTransfers
+      .Find(t => t.Id == transferId && t.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    if (transfer == null)
+    {
+      return null;
+    }
+
+    var updates = new List<UpdateDefinition<AccountTransfer>>();
+
+    if (request.FromAccountId != null)
+    {
+      var fromAccountExists = await AccountExistsAsync(request.FromAccountId, userId);
+
+      if (!fromAccountExists)
+      {
+        return null;
+      }
+
+      updates.Add(Builders<AccountTransfer>.Update.Set(t => t.FromAccountId, request.FromAccountId));
+    }
+
+    if (request.ToAccountId != null)
+    {
+      var toAccountExists = await AccountExistsAsync(request.ToAccountId, userId);
+
+      if (!toAccountExists)
+      {
+        return null;
+      }
+
+      updates.Add(Builders<AccountTransfer>.Update.Set(t => t.ToAccountId, request.ToAccountId));
+    }
+
+    var newFromAccountId = request.FromAccountId ?? transfer.FromAccountId;
+    var newToAccountId = request.ToAccountId ?? transfer.ToAccountId;
+
+    if (newFromAccountId == newToAccountId)
+    {
+      return null;
+    }
+
+    if (request.Amount.HasValue)
+    {
+      updates.Add(Builders<AccountTransfer>.Update.Set(t => t.Amount, request.Amount.Value));
+    }
+
+    if (request.TransferDate.HasValue)
+    {
+      updates.Add(Builders<AccountTransfer>.Update.Set(t => t.TransferDate, request.TransferDate.Value));
+    }
+
+    if (request.Notes != null)
+    {
+      updates.Add(Builders<AccountTransfer>.Update.Set(t => t.Notes, request.Notes));
+    }
+
+    if (updates.Count == 0)
+    {
+      return MapAccountTransferResponse(transfer);
+    }
+
+    var update = Builders<AccountTransfer>.Update.Combine(updates);
+
+    await _accountTransfers.UpdateOneAsync(
+      t => t.Id == transferId && t.UserId == userId,
+      update);
+
+    var updatedTransfer = await _accountTransfers
+      .Find(t => t.Id == transferId && t.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    return updatedTransfer == null ? null : MapAccountTransferResponse(updatedTransfer);
+  }
+
+  /*===========================================================
+  DeleteAllBudgetDataAsync:
+  => Deletes all finance and budget data for the logged-in user.
+  => Deletes accounts, transfers, budget months, categories, income, and expenses.
+  => Returns the number of records deleted from each collection.
+===========================================================*/
+  public async Task<CleanSlateResponse> DeleteAllBudgetDataAsync(string userId)
+  {
+    var deletedTransfers = await _accountTransfers.DeleteManyAsync(
+      t => t.UserId == userId);
+
+    var deletedAccounts = await _financialAccounts.DeleteManyAsync(
+      a => a.UserId == userId);
+
+    var deletedBudgetCategories = await _budgetCategories.DeleteManyAsync(
+      c => c.UserId == userId);
+
+    var deletedIncomeRecords = await _incomeRecords.DeleteManyAsync(
+      i => i.UserId == userId);
+
+    var deletedExpenseRecords = await _expenseRecords.DeleteManyAsync(
+      e => e.UserId == userId);
+
+    var deletedBudgetMonths = await _budgetMonths.DeleteManyAsync(
+      b => b.UserId == userId);
+
+    return new CleanSlateResponse
+    {
+      DeletedAccounts = deletedAccounts.DeletedCount,
+      DeletedTransfers = deletedTransfers.DeletedCount,
+      DeletedBudgetMonths = deletedBudgetMonths.DeletedCount,
+      DeletedBudgetCategories = deletedBudgetCategories.DeletedCount,
+      DeletedIncomeRecords = deletedIncomeRecords.DeletedCount,
+      DeletedExpenseRecords = deletedExpenseRecords.DeletedCount
+    };
+  }
 }

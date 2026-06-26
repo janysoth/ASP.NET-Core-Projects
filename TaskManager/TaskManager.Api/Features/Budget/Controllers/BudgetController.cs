@@ -803,4 +803,180 @@ public class BudgetController : ControllerBase
 
     return allowedTypes.Contains(type, StringComparer.OrdinalIgnoreCase);
   }
+
+  /*===========================================================
+  PatchIncome:
+  => Partially updates an income record.
+  => Only fields sent in the request body are changed.
+  => Returns the updated income record.
+===========================================================*/
+  [HttpPatch("income/{incomeId}")]
+  public async Task<ActionResult<IncomeResponse>> PatchIncome(
+    string incomeId,
+    PatchIncomeRequest request)
+  {
+    var userId = GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (request.Source != null && string.IsNullOrWhiteSpace(request.Source))
+    {
+      return BadRequest("Income source cannot be empty.");
+    }
+
+    if (request.AccountId != null && string.IsNullOrWhiteSpace(request.AccountId))
+    {
+      return BadRequest("Account cannot be empty.");
+    }
+
+    if (request.Amount.HasValue && request.Amount.Value <= 0)
+    {
+      return BadRequest("Income amount must be greater than 0.");
+    }
+
+    var updatedIncome = await _budgetService.PatchIncomeAsync(
+      incomeId,
+      request,
+      userId);
+
+    if (updatedIncome == null)
+    {
+      return NotFound("Income record or account not found.");
+    }
+
+    return Ok(updatedIncome);
+  }
+
+  /*===========================================================
+  PatchExpense:
+  => Partially updates an expense record.
+  => Only fields sent in the request body are changed.
+  => Returns the updated expense record.
+===========================================================*/
+  [HttpPatch("expense/{expenseId}")]
+  public async Task<ActionResult<ExpenseResponse>> PatchExpense(
+    string expenseId,
+    PatchExpenseRequest request)
+  {
+    var userId = GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (request.AccountId != null && string.IsNullOrWhiteSpace(request.AccountId))
+    {
+      return BadRequest("Account cannot be empty.");
+    }
+
+    if (request.Category != null && string.IsNullOrWhiteSpace(request.Category))
+    {
+      return BadRequest("Expense category cannot be empty.");
+    }
+
+    if (request.Name != null && string.IsNullOrWhiteSpace(request.Name))
+    {
+      return BadRequest("Expense name cannot be empty.");
+    }
+
+    if (request.Amount.HasValue && request.Amount.Value <= 0)
+    {
+      return BadRequest("Expense amount must be greater than 0.");
+    }
+
+    var updatedExpense = await _budgetService.PatchExpenseAsync(
+      expenseId,
+      request,
+      userId);
+
+    if (updatedExpense == null)
+    {
+      return NotFound("Expense record or account not found.");
+    }
+
+    return Ok(updatedExpense);
+  }
+
+  /*===========================================================
+  PatchTransfer:
+  => Partially updates an account transfer.
+  => Useful for editing credit card payments or savings transfers.
+  => Returns the updated transfer record.
+===========================================================*/
+  [HttpPatch("transfers/{transferId}")]
+  public async Task<ActionResult<AccountTransferResponse>> PatchTransfer(
+    string transferId,
+    PatchAccountTransferRequest request)
+  {
+    var userId = GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (request.FromAccountId != null && string.IsNullOrWhiteSpace(request.FromAccountId))
+    {
+      return BadRequest("From account cannot be empty.");
+    }
+
+    if (request.ToAccountId != null && string.IsNullOrWhiteSpace(request.ToAccountId))
+    {
+      return BadRequest("To account cannot be empty.");
+    }
+
+    if (request.Amount.HasValue && request.Amount.Value <= 0)
+    {
+      return BadRequest("Transfer amount must be greater than 0.");
+    }
+
+    var updatedTransfer = await _budgetService.PatchTransferAsync(
+      transferId,
+      request,
+      userId);
+
+    if (updatedTransfer == null)
+    {
+      return NotFound("Transfer or account not found.");
+    }
+
+    return Ok(updatedTransfer);
+  }
+
+  /*===========================================================
+  DeleteAllBudgetData:
+  => Deletes all budget and finance data for the logged-in user.
+  => Uses POST because this is a dangerous action that needs a body.
+  => Requires confirmation text to prevent accidental deletion.
+  ===========================================================*/
+
+  [HttpPost("delete-all")]
+  public async Task<ActionResult<CleanSlateResponse>> DeleteAllBudgetData(
+    [FromBody] DeleteAllBudgetDataRequest? request)
+  {
+    var userId = GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (request == null || string.IsNullOrWhiteSpace(request.Confirmation))
+    {
+      return BadRequest("Please confirm this action by sending { \"confirmation\": \"DELETE ALL\" }.");
+    }
+
+    if (request.Confirmation != "DELETE ALL")
+    {
+      return BadRequest("Confirmation text must be exactly DELETE ALL.");
+    }
+
+    var result = await _budgetService.DeleteAllBudgetDataAsync(userId);
+
+    return Ok(result);
+  }
 }

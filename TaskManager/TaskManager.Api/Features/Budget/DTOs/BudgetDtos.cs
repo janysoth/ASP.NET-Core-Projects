@@ -263,3 +263,65 @@ public sealed record AccountTransferResponse
   public DateTime CreatedAtUtc { get; set; }
 }
 
+public sealed record PatchIncomeRequest
+{
+  public string? AccountId { get; set; }
+
+  public string? Source { get; set; }
+
+  public decimal? Amount { get; set; }
+
+  public DateTime? IncomeDate { get; set; }
+
+  public string? Notes { get; set; }
+}
+
+public sealed record PatchExpenseRequest
+{
+  public string? AccountId { get; set; }
+
+  public string? Category { get; set; }
+
+  public string? Name { get; set; }
+
+  public decimal? Amount { get; set; }
+
+  public DateTime? ExpenseDate { get; set; }
+
+  public string? Notes { get; set; }
+}
+
+public sealed record PatchAccountTransferRequest
+{
+  public string? FromAccountId { get; set; }
+
+  public string? ToAccountId { get; set; }
+
+  public decimal? Amount { get; set; }
+
+  public DateTime? TransferDate { get; set; }
+
+  public string? Notes { get; set; }
+}
+
+public sealed record CleanSlateResponse
+
+{
+  public long DeletedAccounts { get; set; }
+
+  public long DeletedTransfers { get; set; }
+
+  public long DeletedBudgetMonths { get; set; }
+
+  public long DeletedBudgetCategories { get; set; }
+
+  public long DeletedIncomeRecords { get; set; }
+
+  public long DeletedExpenseRecords { get; set; }
+}
+
+public sealed record DeleteAllBudgetDataRequest
+
+{
+  public string Confirmation { get; set; } = string.Empty;
+}
