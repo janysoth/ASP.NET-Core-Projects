@@ -282,7 +282,7 @@ public class BudgetService
     => Only updates the record if it belongs to the logged-in user.
     => Returns true if a matching budget month was found.
   ===========================================================*/
-  public async Task<bool> UpdateBudgetMonthAsync(
+  public async Task<BudgetMonthResponse?> UpdateBudgetMonthAsync(
     string id,
     UpdateBudgetMonthRequest request,
     string userId)
@@ -294,16 +294,23 @@ public class BudgetService
       b => b.Id == id && b.UserId == userId,
       update);
 
-    return result.MatchedCount > 0;
+    if (result.MatchedCount == 0)
+    {
+      return null;
+    }
+
+    return await GetBudgetMonthByIdAsync(id, userId);
   }
 
   /*===========================================================
-    DeleteBudgetMonthAsync:
-    => Deletes a budget month that belongs to the logged-in user.
-    => Also deletes related categories, income records, and expense records.
-    => Prevents orphaned budget data from staying in MongoDB.
-  ===========================================================*/
-  public async Task<bool> DeleteBudgetMonthAsync(string id, string userId)
+  DeleteBudgetMonthAsync:
+  => Deletes a budget month that belongs to the logged-in user.
+  => Also deletes related categories, income records, and expense records.
+  => Returns the deleted budget month response.
+===========================================================*/
+  public async Task<BudgetMonthResponse?> DeleteBudgetMonthAsync(
+    string id,
+    string userId)
   {
     var budgetMonth = await _budgetMonths
       .Find(b => b.Id == id && b.UserId == userId)
@@ -311,16 +318,29 @@ public class BudgetService
 
     if (budgetMonth == null)
     {
-      return false;
+      return null;
     }
 
-    await _budgetCategories.DeleteManyAsync(c => c.BudgetMonthId == id && c.UserId == userId);
-    await _incomeRecords.DeleteManyAsync(i => i.BudgetMonthId == id && i.UserId == userId);
-    await _expenseRecords.DeleteManyAsync(e => e.BudgetMonthId == id && e.UserId == userId);
+    var deletedBudgetMonth = await BuildBudgetMonthResponseAsync(budgetMonth);
 
-    var result = await _budgetMonths.DeleteOneAsync(b => b.Id == id && b.UserId == userId);
+    await _budgetCategories.DeleteManyAsync(
+      c => c.BudgetMonthId == id && c.UserId == userId);
 
-    return result.DeletedCount > 0;
+    await _incomeRecords.DeleteManyAsync(
+      i => i.BudgetMonthId == id && i.UserId == userId);
+
+    await _expenseRecords.DeleteManyAsync(
+      e => e.BudgetMonthId == id && e.UserId == userId);
+
+    var deleteResult = await _budgetMonths.DeleteOneAsync(
+      b => b.Id == id && b.UserId == userId);
+
+    if (deleteResult.DeletedCount == 0)
+    {
+      return null;
+    }
+
+    return deletedBudgetMonth;
   }
 
   /*===========================================================
@@ -369,7 +389,7 @@ public class BudgetService
     => Only updates the category if it belongs to the logged-in user.
     => Returns true if a matching category was found.
   ===========================================================*/
-  public async Task<bool> UpdateBudgetCategoryAsync(
+  public async Task<BudgetCategoryResponse?> UpdateBudgetCategoryAsync(
     string categoryId,
     UpdateBudgetCategoryRequest request,
     string userId)
@@ -383,7 +403,28 @@ public class BudgetService
       c => c.Id == categoryId && c.UserId == userId,
       update);
 
-    return result.MatchedCount > 0;
+    if (result.MatchedCount == 0)
+    {
+      return null;
+    }
+
+    var category = await _budgetCategories
+      .Find(c => c.Id == categoryId && c.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    if (category == null)
+    {
+      return null;
+    }
+
+    var expenses = await _expenseRecords
+      .Find(e =>
+        e.BudgetMonthId == category.BudgetMonthId &&
+        e.UserId == userId &&
+        e.Category.ToLower() == category.Name.ToLower())
+      .ToListAsync();
+
+    return MapBudgetCategoryResponse(category, expenses);
   }
 
   /*===========================================================
@@ -460,7 +501,7 @@ public class BudgetService
     => Verifies the selected account belongs to the user.
     => Returns true if a matching income record was found.
   ===========================================================*/
-  public async Task<bool> UpdateIncomeAsync(
+  public async Task<IncomeResponse?> UpdateIncomeAsync(
     string incomeId,
     UpdateIncomeRequest request,
     string userId)
@@ -469,7 +510,7 @@ public class BudgetService
 
     if (!accountExists)
     {
-      return false;
+      return null;
     }
 
     var update = Builders<IncomeRecord>.Update
@@ -483,7 +524,16 @@ public class BudgetService
       i => i.Id == incomeId && i.UserId == userId,
       update);
 
-    return result.MatchedCount > 0;
+    if (result.MatchedCount == 0)
+    {
+      return null;
+    }
+
+    var updatedIncome = await _incomeRecords
+      .Find(i => i.Id == incomeId && i.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    return updatedIncome == null ? null : MapIncomeResponse(updatedIncome);
   }
 
   /*===========================================================
@@ -554,7 +604,7 @@ public class BudgetService
     => Verifies the selected account belongs to the user.
     => Returns true if a matching expense record was found.
   ===========================================================*/
-  public async Task<bool> UpdateExpenseAsync(
+  public async Task<ExpenseResponse?> UpdateExpenseAsync(
     string expenseId,
     UpdateExpenseRequest request,
     string userId)
@@ -563,7 +613,7 @@ public class BudgetService
 
     if (!accountExists)
     {
-      return false;
+      return null;
     }
 
     var update = Builders<ExpenseRecord>.Update
@@ -578,7 +628,16 @@ public class BudgetService
       e => e.Id == expenseId && e.UserId == userId,
       update);
 
-    return result.MatchedCount > 0;
+    if (result.MatchedCount == 0)
+    {
+      return null;
+    }
+
+    var updatedExpense = await _expenseRecords
+      .Find(e => e.Id == expenseId && e.UserId == userId)
+      .FirstOrDefaultAsync();
+
+    return updatedExpense == null ? null : MapExpenseResponse(updatedExpense);
   }
 
   /*===========================================================

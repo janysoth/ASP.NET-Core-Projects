@@ -338,7 +338,7 @@ public class BudgetController : ControllerBase
     => Returns 404 if the budget month is not found.
   ===========================================================*/
   [HttpPut("{id}")]
-  public async Task<IActionResult> UpdateBudgetMonth(
+  public async Task<ActionResult<BudgetMonthResponse>> UpdateBudgetMonth(
     string id,
     UpdateBudgetMonthRequest request)
   {
@@ -354,27 +354,27 @@ public class BudgetController : ControllerBase
       return BadRequest("Planned income cannot be negative.");
     }
 
-    var updated = await _budgetService.UpdateBudgetMonthAsync(
+    var updatedBudgetMonth = await _budgetService.UpdateBudgetMonthAsync(
       id,
       request,
       userId);
 
-    if (!updated)
+    if (updatedBudgetMonth == null)
     {
       return NotFound("Budget month not found.");
     }
 
-    return NoContent();
+    return Ok(updatedBudgetMonth);
   }
 
   /*===========================================================
-    DeleteBudgetMonth:
-    => Deletes a budget month for the logged-in user.
-    => Also deletes related categories, income records, and expense records.
-    => Returns 404 if the budget month is not found.
-  ===========================================================*/
+  DeleteBudgetMonth:
+  => Deletes a budget month for the logged-in user.
+  => Also deletes related categories, income records, and expense records.
+  => Returns the deleted budget month information.
+===========================================================*/
   [HttpDelete("{id}")]
-  public async Task<IActionResult> DeleteBudgetMonth(string id)
+  public async Task<ActionResult<BudgetMonthResponse>> DeleteBudgetMonth(string id)
   {
     var userId = GetUserId();
 
@@ -383,16 +383,15 @@ public class BudgetController : ControllerBase
       return Unauthorized();
     }
 
-    var deleted = await _budgetService.DeleteBudgetMonthAsync(id, userId);
+    var deletedBudgetMonth = await _budgetService.DeleteBudgetMonthAsync(id, userId);
 
-    if (!deleted)
+    if (deletedBudgetMonth == null)
     {
       return NotFound("Budget month not found.");
     }
 
-    return NoContent();
+    return Ok(deletedBudgetMonth);
   }
-
   /*===========================================================
     AddBudgetCategory:
     => Creates a planned budget category.
@@ -446,9 +445,9 @@ public class BudgetController : ControllerBase
     => Returns 404 if the category is not found.
   ===========================================================*/
   [HttpPut("categories/{categoryId}")]
-  public async Task<IActionResult> UpdateBudgetCategory(
-    string categoryId,
-    UpdateBudgetCategoryRequest request)
+  public async Task<ActionResult<BudgetCategoryResponse>> UpdateBudgetCategory(
+  string categoryId,
+  UpdateBudgetCategoryRequest request)
   {
     var userId = GetUserId();
 
@@ -472,17 +471,17 @@ public class BudgetController : ControllerBase
       return BadRequest("Planned amount cannot be negative.");
     }
 
-    var updated = await _budgetService.UpdateBudgetCategoryAsync(
+    var updatedCategory = await _budgetService.UpdateBudgetCategoryAsync(
       categoryId,
       request,
       userId);
 
-    if (!updated)
+    if (updatedCategory == null)
     {
       return NotFound("Budget category not found.");
     }
 
-    return NoContent();
+    return Ok(updatedCategory);
   }
 
   /*===========================================================
@@ -567,9 +566,9 @@ public class BudgetController : ControllerBase
     => Returns 404 if the income record or account is not found.
   ===========================================================*/
   [HttpPut("income/{incomeId}")]
-  public async Task<IActionResult> UpdateIncome(
-    string incomeId,
-    UpdateIncomeRequest request)
+  public async Task<ActionResult<IncomeResponse>> UpdateIncome(
+  string incomeId,
+  UpdateIncomeRequest request)
   {
     var userId = GetUserId();
 
@@ -593,17 +592,17 @@ public class BudgetController : ControllerBase
       return BadRequest("Income amount must be greater than 0.");
     }
 
-    var updated = await _budgetService.UpdateIncomeAsync(
+    var updatedIncome = await _budgetService.UpdateIncomeAsync(
       incomeId,
       request,
       userId);
 
-    if (!updated)
+    if (updatedIncome == null)
     {
       return NotFound("Income record or account not found.");
     }
 
-    return NoContent();
+    return Ok(updatedIncome);
   }
 
   /*===========================================================
@@ -692,9 +691,9 @@ public class BudgetController : ControllerBase
     => Returns 404 if the expense record or account is not found.
   ===========================================================*/
   [HttpPut("expense/{expenseId}")]
-  public async Task<IActionResult> UpdateExpense(
-    string expenseId,
-    UpdateExpenseRequest request)
+  public async Task<ActionResult<ExpenseResponse>> UpdateExpense(
+  string expenseId,
+  UpdateExpenseRequest request)
   {
     var userId = GetUserId();
 
@@ -723,17 +722,17 @@ public class BudgetController : ControllerBase
       return BadRequest("Expense amount must be greater than 0.");
     }
 
-    var updated = await _budgetService.UpdateExpenseAsync(
+    var updatedExpense = await _budgetService.UpdateExpenseAsync(
       expenseId,
       request,
       userId);
 
-    if (!updated)
+    if (updatedExpense == null)
     {
       return NotFound("Expense record or account not found.");
     }
 
-    return NoContent();
+    return Ok(updatedExpense);
   }
 
   /*===========================================================
