@@ -71,7 +71,15 @@ builder.Services.AddSingleton<EmailService>();
 
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<TodoService>();
-builder.Services.AddSingleton<BudgetService>();
+
+// Budget App Services
+builder.Services.AddSingleton<BudgetMonthService>();
+builder.Services.AddSingleton<BudgetCategoryService>();
+builder.Services.AddSingleton<IncomeService>();
+builder.Services.AddSingleton<ExpenseService>();
+builder.Services.AddSingleton<AccountService>();
+builder.Services.AddSingleton<TransferService>();
+builder.Services.AddSingleton<BudgetAdminService>();
 
 builder.Services.AddSingleton<FileStorageService>();
 
