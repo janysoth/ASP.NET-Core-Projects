@@ -27,10 +27,6 @@ public abstract class BudgetBaseService
 
   /*===========================================================
     BudgetMonthExistsAsync
-  -------------------------------------------------------------
-    Purpose:
-      => Checks whether a budget month exists for the current 
-          user.
   ===========================================================*/
   protected async Task<bool> BudgetMonthExistsAsync(
     string budgetMonthId,
@@ -45,10 +41,6 @@ public abstract class BudgetBaseService
 
   /*===========================================================
     AccountExistsAsync
-  -------------------------------------------------------------
-    Purpose:
-      => Checks whether a financial account exists for the
-         current user.
   ===========================================================*/
   protected async Task<bool> AccountExistsAsync(
     string accountId,
