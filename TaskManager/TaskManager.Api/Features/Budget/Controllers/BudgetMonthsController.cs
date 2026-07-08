@@ -97,7 +97,8 @@ public class BudgetMonthsController : BudgetControllerBase
       return Unauthorized();
     }
 
-    // Validate that month is between January and December
+    // Validate that the month is between January (1)
+    // and December (12)
     if (request.Month < 1 || request.Month > 12)
     {
       return BadRequest("Month must be between 1 and 12.");
@@ -115,12 +116,20 @@ public class BudgetMonthsController : BudgetControllerBase
       return BadRequest("Planned income cannot be negative.");
     }
 
-    // Create the budget month
+    // Create the new budget month
     var createdBudgetMonth = await _budgetMonthService.CreateBudgetMonthAsync(
       request,
       userId);
 
-    // Return HTTP 201 Created with a link to the new budget month
+    // Return 409 if a budget month already exists
+    // for the same month and year
+    if (createdBudgetMonth == null)
+    {
+      return Conflict("A budget month already exists for this month and year.");
+    }
+
+    // Return HTTP 201 Created with the location
+    // of the newly created budget month
     return CreatedAtAction(
       nameof(GetBudgetMonthById),
       new { id = createdBudgetMonth.Id },

@@ -120,28 +120,68 @@ public class AccountService : BudgetBaseService
     string userId)
   {
     /*---------------------------------------------------------
-      Find account before deleting
+      Find the account and make sure it belongs
+      to the current user.
     ---------------------------------------------------------*/
     var account = await FinancialAccounts
       .Find(a => a.Id == accountId && a.UserId == userId)
       .FirstOrDefaultAsync();
 
+
+    /*---------------------------------------------------------
+      Return null if the account does not exist
+    ---------------------------------------------------------*/
     if (account == null)
     {
       return null;
     }
 
     /*---------------------------------------------------------
-      Build response before account is removed
+      Check if this account is used by any income records
+    ---------------------------------------------------------*/
+    var incomeCount = await IncomeRecords.CountDocumentsAsync(
+      i => i.AccountId == accountId && i.UserId == userId);
+
+    /*---------------------------------------------------------
+      Check if this account is used by any expense records
+    ---------------------------------------------------------*/
+    var expenseCount = await ExpenseRecords.CountDocumentsAsync(
+      e => e.AccountId == accountId && e.UserId == userId);
+
+    /*---------------------------------------------------------
+      Check if this account is used in any transfers,
+      either as the source account or destination account
+    ---------------------------------------------------------*/
+    var transferCount = await AccountTransfers.CountDocumentsAsync(
+      t =>
+        t.UserId == userId &&
+        (t.FromAccountId == accountId || t.ToAccountId == accountId));
+
+    /*---------------------------------------------------------      
+      Prevent deleting the account if it is still
+      referenced by income, expenses, or transfers
+    ---------------------------------------------------------*/
+    if (incomeCount > 0 || expenseCount > 0 || transferCount > 0)
+    {
+      throw new InvalidOperationException(
+        "This account cannot be deleted because it is used by income, expenses, or transfers.");
+    }
+
+    /*---------------------------------------------------------
+      Build the response before deleting the account,
+      since the account will no longer exist afterward
     ---------------------------------------------------------*/
     var deletedAccount = await BuildFinancialAccountResponseAsync(account);
 
     /*---------------------------------------------------------
-      Delete account from MongoDB
+      Delete the account from the database  
     ---------------------------------------------------------*/
     await FinancialAccounts.DeleteOneAsync(
       a => a.Id == accountId && a.UserId == userId);
 
+    /*---------------------------------------------------------
+      Return the deleted account information
+    ---------------------------------------------------------*/
     return deletedAccount;
   }
 

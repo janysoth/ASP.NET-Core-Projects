@@ -8,7 +8,9 @@ namespace TaskManager.Api.Features.Budget.Mappers;
 public static class IncomeMapper
 {
   // Converts an IncomeRecord model into a response DTO.
-  public static IncomeResponse ToResponse(IncomeRecord income)
+  public static IncomeResponse ToResponse(
+    IncomeRecord income,
+    FinancialAccount? account = null)
   {
     // Create and return a response object
     return new IncomeResponse
@@ -21,6 +23,9 @@ public static class IncomeMapper
 
       // Copy the financial account ID where the income was deposited
       AccountId = income.AccountId,
+
+      // Copy the Account Name
+      AccountName = account?.Name ?? string.Empty,
 
       // Copy the income source
       Source = income.Source,

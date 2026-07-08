@@ -52,4 +52,16 @@ public abstract class BudgetBaseService
 
     return account != null;
   }
+
+  /*===========================================================
+    GetAccountByIdAsync
+  ===========================================================*/
+  protected async Task<FinancialAccount?> GetAccountByIdAsync(
+  string accountId,
+  string userId)
+  {
+    return await FinancialAccounts
+      .Find(a => a.Id == accountId && a.UserId == userId)
+      .FirstOrDefaultAsync();
+  }
 }

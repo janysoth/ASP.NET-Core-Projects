@@ -65,10 +65,22 @@ public class BudgetMonthService : BudgetBaseService
   /*===========================================================
     CreateBudgetMonthAsync
   ===========================================================*/
-  public async Task<BudgetMonthResponse> CreateBudgetMonthAsync(
+  public async Task<BudgetMonthResponse?> CreateBudgetMonthAsync(
     CreateBudgetMonthRequest request,
     string userId)
   {
+    var existingBudgetMonth = await BudgetMonths
+      .Find(b =>
+        b.UserId == userId &&
+        b.Month == request.Month &&
+        b.Year == request.Year)
+      .FirstOrDefaultAsync();
+
+    if (existingBudgetMonth != null)
+    {
+      return null;
+    }
+
     var budgetMonth = new BudgetMonth
     {
       UserId = userId,
@@ -232,11 +244,11 @@ public class BudgetMonthService : BudgetBaseService
         .ToList(),
 
       IncomeRecords = incomeRecords
-        .Select(IncomeMapper.ToResponse)
+        .Select(i => IncomeMapper.ToResponse(i))
         .ToList(),
 
       ExpenseRecords = expenseRecords
-        .Select(ExpenseMapper.ToResponse)
+        .Select(e => ExpenseMapper.ToResponse(e))
         .ToList(),
 
       CreatedAtUtc = budgetMonth.CreatedAtUtc

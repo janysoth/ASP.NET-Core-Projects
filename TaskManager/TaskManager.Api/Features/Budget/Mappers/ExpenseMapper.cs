@@ -8,7 +8,9 @@ namespace TaskManager.Api.Features.Budget.Mappers;
 public static class ExpenseMapper
 {
   // Converts an ExpenseRecord model into a response DTO.
-  public static ExpenseResponse ToResponse(ExpenseRecord expense)
+  public static ExpenseResponse ToResponse(
+    ExpenseRecord expense,
+    FinancialAccount? account = null)
   {
     // Create and return a response object
     return new ExpenseResponse
@@ -21,6 +23,9 @@ public static class ExpenseMapper
 
       // Copy the financial account ID used for this expense
       AccountId = expense.AccountId,
+
+      // Copy the Account Name
+      AccountName = account?.Name ?? string.Empty,
 
       // Copy the expense category
       Category = expense.Category,

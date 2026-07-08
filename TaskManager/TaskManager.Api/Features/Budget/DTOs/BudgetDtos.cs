@@ -52,6 +52,8 @@ public sealed record IncomeResponse
 
   public string AccountId { get; set; } = string.Empty;
 
+  public string AccountName { get; set; } = string.Empty;
+
   public string Source { get; set; } = string.Empty;
 
   public decimal Amount { get; set; }
@@ -100,6 +102,8 @@ public sealed record ExpenseResponse
   public string BudgetMonthId { get; set; } = string.Empty;
 
   public string AccountId { get; set; } = string.Empty;
+
+  public string AccountName { get; set; } = string.Empty;
 
   public string Category { get; set; } = string.Empty;
 
@@ -252,7 +256,11 @@ public sealed record AccountTransferResponse
 
   public string FromAccountId { get; set; } = string.Empty;
 
+  public string FromAccountName { get; set; } = string.Empty;
+
   public string ToAccountId { get; set; } = string.Empty;
+
+  public string ToAccountName { get; set; } = string.Empty;
 
   public decimal Amount { get; set; }
 

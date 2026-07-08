@@ -33,7 +33,7 @@ public class TransferService : BudgetBaseService
       Map and return response list
     ---------------------------------------------------------*/
     return transfers
-      .Select(TransferMapper.ToResponse)
+      .Select(t => TransferMapper.ToResponse(t))
       .ToList();
   }
 
