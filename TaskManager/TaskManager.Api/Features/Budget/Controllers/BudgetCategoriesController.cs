@@ -78,10 +78,10 @@ public class BudgetCategoriesController : BudgetControllerBase
   }
 
   // ==========================================
-  // PUT: api/budget/categories/{categoryId}
+  // PUT: api/budget/months/categories/{categoryId}
   // Updates an existing budget category.
   // ==========================================
-  [HttpPut("categories/{categoryId}")]
+  [HttpPut("months/categories/{categoryId}")]
   public async Task<ActionResult<BudgetCategoryResponse>> UpdateBudgetCategory(
     string categoryId,
     UpdateBudgetCategoryRequest request)
@@ -134,7 +134,7 @@ public class BudgetCategoriesController : BudgetControllerBase
   // DELETE: api/budget/categories/{categoryId}
   // Deletes an existing budget category.
   // ==========================================
-  [HttpDelete("categories/{categoryId}")]
+  [HttpDelete("months/categories/{categoryId}")]
   public async Task<ActionResult<BudgetCategoryResponse>> DeleteBudgetCategory(
     string categoryId)
   {

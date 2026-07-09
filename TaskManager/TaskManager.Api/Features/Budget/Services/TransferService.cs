@@ -16,6 +16,19 @@ public class TransferService : BudgetBaseService
   }
 
   /*===========================================================
+    Helper Function -- BuildTransferResponseAsync
+  ===========================================================*/
+  private async Task<AccountTransferResponse> BuildTransferResponseAsync(
+  AccountTransfer transfer,
+  string userId)
+  {
+    var fromAccount = await GetAccountByIdAsync(transfer.FromAccountId, userId);
+    var toAccount = await GetAccountByIdAsync(transfer.ToAccountId, userId);
+
+    return TransferMapper.ToResponse(transfer, fromAccount, toAccount);
+  }
+
+  /*===========================================================
     GetTransfersAsync
   ===========================================================*/
   public async Task<List<AccountTransferResponse>> GetTransfersAsync(
@@ -32,9 +45,14 @@ public class TransferService : BudgetBaseService
     /*---------------------------------------------------------
       Map and return response list
     ---------------------------------------------------------*/
-    return transfers
-      .Select(t => TransferMapper.ToResponse(t))
-      .ToList();
+    var responses = new List<AccountTransferResponse>();
+
+    foreach (var transfer in transfers)
+    {
+      responses.Add(await BuildTransferResponseAsync(transfer, userId));
+    }
+
+    return responses;
   }
 
   /*===========================================================
@@ -82,7 +100,7 @@ public class TransferService : BudgetBaseService
     /*---------------------------------------------------------
       Return response
     ---------------------------------------------------------*/
-    return TransferMapper.ToResponse(transfer);
+    return await BuildTransferResponseAsync(transfer, userId);
   }
 
   /*===========================================================
@@ -187,7 +205,7 @@ public class TransferService : BudgetBaseService
     ---------------------------------------------------------*/
     if (updates.Count == 0)
     {
-      return TransferMapper.ToResponse(transfer);
+      return await BuildTransferResponseAsync(transfer, userId);
     }
 
     /*---------------------------------------------------------
@@ -237,6 +255,6 @@ public class TransferService : BudgetBaseService
     /*---------------------------------------------------------
       Return deleted transfer response
     ---------------------------------------------------------*/
-    return TransferMapper.ToResponse(transfer);
+    return await BuildTransferResponseAsync(transfer, userId);
   }
 }

@@ -63,7 +63,9 @@ public class ExpenseService : BudgetBaseService
     /*---------------------------------------------------------
       Return response
     ---------------------------------------------------------*/
-    return ExpenseMapper.ToResponse(expense);
+    var account = await GetAccountByIdAsync(expense.AccountId, userId);
+
+    return ExpenseMapper.ToResponse(expense, account);
   }
 
   /*===========================================================
@@ -116,9 +118,14 @@ public class ExpenseService : BudgetBaseService
       .Find(e => e.Id == expenseId && e.UserId == userId)
       .FirstOrDefaultAsync();
 
-    return updatedExpense == null
-      ? null
-      : ExpenseMapper.ToResponse(updatedExpense);
+    if (updatedExpense == null)
+    {
+      return null;
+    }
+
+    var account = await GetAccountByIdAsync(updatedExpense.AccountId, userId);
+
+    return ExpenseMapper.ToResponse(updatedExpense, account);
   }
 
   /*===========================================================
@@ -225,9 +232,14 @@ public class ExpenseService : BudgetBaseService
       .Find(e => e.Id == expenseId && e.UserId == userId)
       .FirstOrDefaultAsync();
 
-    return updatedExpense == null
-      ? null
-      : ExpenseMapper.ToResponse(updatedExpense);
+    if (updatedExpense == null)
+    {
+      return null;
+    }
+
+    var account = await GetAccountByIdAsync(updatedExpense.AccountId, userId);
+
+    return ExpenseMapper.ToResponse(updatedExpense, account);
   }
 
   /*===========================================================
@@ -258,6 +270,8 @@ public class ExpenseService : BudgetBaseService
     /*---------------------------------------------------------
       Return deleted expense response
     ---------------------------------------------------------*/
-    return ExpenseMapper.ToResponse(expense);
+    var account = await GetAccountByIdAsync(expense.AccountId, userId);
+
+    return ExpenseMapper.ToResponse(expense, account);
   }
 }

@@ -62,7 +62,9 @@ public class IncomeService : BudgetBaseService
     /*---------------------------------------------------------
       Return response
     ---------------------------------------------------------*/
-    return IncomeMapper.ToResponse(income);
+    var account = await GetAccountByIdAsync(income.AccountId, userId);
+
+    return IncomeMapper.ToResponse(income, account);
   }
 
   /*===========================================================
@@ -114,9 +116,14 @@ public class IncomeService : BudgetBaseService
       .Find(i => i.Id == incomeId && i.UserId == userId)
       .FirstOrDefaultAsync();
 
-    return updatedIncome == null
-      ? null
-      : IncomeMapper.ToResponse(updatedIncome);
+    if (updatedIncome == null)
+    {
+      return null;
+    }
+
+    var account = await GetAccountByIdAsync(updatedIncome.AccountId, userId);
+
+    return IncomeMapper.ToResponse(updatedIncome, account);
   }
 
   /*===========================================================
@@ -215,9 +222,14 @@ public class IncomeService : BudgetBaseService
       .Find(i => i.Id == incomeId && i.UserId == userId)
       .FirstOrDefaultAsync();
 
-    return updatedIncome == null
-      ? null
-      : IncomeMapper.ToResponse(updatedIncome);
+    if (updatedIncome == null)
+    {
+      return null;
+    }
+
+    var account = await GetAccountByIdAsync(updatedIncome.AccountId, userId);
+
+    return IncomeMapper.ToResponse(updatedIncome, account);
   }
 
   /*===========================================================
@@ -248,6 +260,8 @@ public class IncomeService : BudgetBaseService
     /*---------------------------------------------------------
       Return deleted income response
     ---------------------------------------------------------*/
-    return IncomeMapper.ToResponse(income);
+    var account = await GetAccountByIdAsync(income.AccountId, userId);
+
+    return IncomeMapper.ToResponse(income, account);
   }
 }
