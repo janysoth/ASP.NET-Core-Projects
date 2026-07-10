@@ -80,6 +80,8 @@ builder.Services.AddSingleton<ExpenseService>();
 builder.Services.AddSingleton<AccountService>();
 builder.Services.AddSingleton<TransferService>();
 builder.Services.AddSingleton<BudgetAdminService>();
+builder.Services.AddSingleton<DashboardService>();
+builder.Services.AddSingleton<BudgetIndexService>();
 
 builder.Services.AddSingleton<FileStorageService>();
 
@@ -166,6 +168,16 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<IMongoDatabase>();
     var result = db.RunCommand<BsonDocument>(new BsonDocument("ping", 1));
     Console.WriteLine("MongoDB connection OK: " + result.ToJson());
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var budgetIndexService = scope.ServiceProvider
+      .GetRequiredService<BudgetIndexService>();
+
+    await budgetIndexService.CreateIndexesAsync();
+
+    Console.WriteLine("Budget indexes created successfully.");
 }
 
 
