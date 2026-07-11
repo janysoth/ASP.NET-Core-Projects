@@ -1,0 +1,10 @@
+global using TaskManager.Api.Features.Budget.DTOs.Accounts;
+global using TaskManager.Api.Features.Budget.DTOs.Admin;
+global using TaskManager.Api.Features.Budget.DTOs.Bills;
+global using TaskManager.Api.Features.Budget.DTOs.BudgetCategories;
+global using TaskManager.Api.Features.Budget.DTOs.BudgetMonths;
+global using TaskManager.Api.Features.Budget.DTOs.Dashboard;
+global using TaskManager.Api.Features.Budget.DTOs.Expenses;
+global using TaskManager.Api.Features.Budget.DTOs.Income;
+global using TaskManager.Api.Features.Budget.DTOs.Transactions;
+global using TaskManager.Api.Features.Budget.DTOs.Transfers;
