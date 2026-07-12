@@ -1,3 +1,6 @@
+// Makes all Budget DTO types available throughout the project
+// without repeating DTO using statements in every file.
+
 global using TaskManager.Api.Features.Budget.DTOs.Accounts;
 global using TaskManager.Api.Features.Budget.DTOs.Admin;
 global using TaskManager.Api.Features.Budget.DTOs.Bills;
