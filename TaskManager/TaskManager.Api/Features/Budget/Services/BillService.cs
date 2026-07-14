@@ -75,7 +75,7 @@ public class BillService : BudgetBaseService
   /*===========================================================
     CreateBillAsync:
     => Creates a bill for a budget month.
-    => Requires a category from the same budget month.
+    => Requires the category and due date to match that budget month.
     => Does not create an expense until the bill is marked paid.
   ===========================================================*/
   public async Task<BillResponse?> CreateBillAsync(
@@ -83,13 +83,24 @@ public class BillService : BudgetBaseService
     CreateBillRequest request,
     string userId)
   {
-    var budgetMonthExists = await BudgetMonthExistsAsync(
-      budgetMonthId,
-      userId);
+    var budgetMonth = await BudgetMonths
+      .Find(b =>
+        b.Id == budgetMonthId &&
+        b.UserId == userId)
+      .FirstOrDefaultAsync();
 
-    if (!budgetMonthExists)
+    if (budgetMonth == null)
     {
       return null;
+    }
+
+    if (!IsDateInsideBudgetMonth(
+      request.DueDate,
+      budgetMonth.Month,
+      budgetMonth.Year))
+    {
+      throw new ArgumentException(
+        $"The bill due date must be within {budgetMonth.Month}/{budgetMonth.Year}.");
     }
 
     var category = await GetCategoryByIdAsync(
@@ -147,6 +158,26 @@ public class BillService : BudgetBaseService
     if (bill == null)
     {
       return null;
+    }
+
+    var budgetMonth = await BudgetMonths
+    .Find(b =>
+      b.Id == bill.BudgetMonthId &&
+      b.UserId == userId)
+    .FirstOrDefaultAsync();
+
+    if (budgetMonth == null)
+    {
+      return null;
+    }
+
+    if (!IsDateInsideBudgetMonth(
+      request.DueDate,
+      budgetMonth.Month,
+      budgetMonth.Year))
+    {
+      throw new ArgumentException(
+        $"The bill due date must be within {budgetMonth.Month}/{budgetMonth.Year}.");
     }
 
     var category = await GetCategoryByIdAsync(
@@ -447,5 +478,19 @@ public class BillService : BudgetBaseService
     return budgetMonths
       .Select(b => b.Id)
       .ToList();
+  }
+
+  /*===========================================================
+    IsDateInsideBudgetMonth:
+    => Checks whether a date belongs to the selected budget month.
+    => Compares the date's month and year to the budget month.
+  ===========================================================*/
+  private static bool IsDateInsideBudgetMonth(
+    DateTime date,
+    int budgetMonth,
+    int budgetYear)
+  {
+    return date.Month == budgetMonth &&
+           date.Year == budgetYear;
   }
 }

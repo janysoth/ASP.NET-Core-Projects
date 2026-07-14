@@ -127,8 +127,7 @@ public class BillsController : BudgetControllerBase
 
     if (request.ExpectedAmount <= 0)
     {
-      return BadRequest(
-        "Expected amount must be greater than 0.");
+      return BadRequest("Expected amount must be greater than 0.");
     }
 
     if (request.DueDate == default)
@@ -136,21 +135,28 @@ public class BillsController : BudgetControllerBase
       return BadRequest("Due date is required.");
     }
 
-    var bill = await _billService.CreateBillAsync(
-      budgetMonthId,
-      request,
-      userId);
-
-    if (bill == null)
+    try
     {
-      return NotFound(
-        "Budget month or valid expense/debt category not found.");
-    }
+      var bill = await _billService.CreateBillAsync(
+        budgetMonthId,
+        request,
+        userId);
 
-    return CreatedAtAction(
-      nameof(GetBillById),
-      new { billId = bill.Id },
-      bill);
+      if (bill == null)
+      {
+        return NotFound(
+          "Budget month or valid expense/debt category not found.");
+      }
+
+      return CreatedAtAction(
+        nameof(GetBillById),
+        new { billId = bill.Id },
+        bill);
+    }
+    catch (ArgumentException ex)
+    {
+      return BadRequest(ex.Message);
+    }
   }
 
   /*===========================================================
@@ -161,8 +167,8 @@ public class BillsController : BudgetControllerBase
   ===========================================================*/
   [HttpPut("bills/{billId}")]
   public async Task<ActionResult<BillResponse>> UpdateBill(
-    string billId,
-    UpdateBillRequest request)
+  string billId,
+  UpdateBillRequest request)
   {
     var userId = GetUserId();
 
@@ -183,8 +189,7 @@ public class BillsController : BudgetControllerBase
 
     if (request.ExpectedAmount <= 0)
     {
-      return BadRequest(
-        "Expected amount must be greater than 0.");
+      return BadRequest("Expected amount must be greater than 0.");
     }
 
     if (request.DueDate == default)
@@ -192,18 +197,25 @@ public class BillsController : BudgetControllerBase
       return BadRequest("Due date is required.");
     }
 
-    var updatedBill = await _billService.UpdateBillAsync(
-      billId,
-      request,
-      userId);
-
-    if (updatedBill == null)
+    try
     {
-      return NotFound(
-        "Bill or valid expense/debt category not found.");
-    }
+      var updatedBill = await _billService.UpdateBillAsync(
+        billId,
+        request,
+        userId);
 
-    return Ok(updatedBill);
+      if (updatedBill == null)
+      {
+        return NotFound(
+          "Bill or valid expense/debt category not found.");
+      }
+
+      return Ok(updatedBill);
+    }
+    catch (ArgumentException ex)
+    {
+      return BadRequest(ex.Message);
+    }
   }
 
   /*===========================================================
