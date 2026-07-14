@@ -11,6 +11,7 @@ public abstract class BudgetBaseService
   protected readonly IMongoCollection<ExpenseRecord> ExpenseRecords;
   protected readonly IMongoCollection<FinancialAccount> FinancialAccounts;
   protected readonly IMongoCollection<AccountTransfer> AccountTransfers;
+  protected readonly IMongoCollection<Bill> Bills;
 
   /*===========================================================
     BudgetBaseService Constructor
@@ -23,45 +24,64 @@ public abstract class BudgetBaseService
     ExpenseRecords = database.GetCollection<ExpenseRecord>("ExpenseRecords");
     FinancialAccounts = database.GetCollection<FinancialAccount>("FinancialAccounts");
     AccountTransfers = database.GetCollection<AccountTransfer>("AccountTransfers");
+    Bills = database.GetCollection<Bill>("Bills");
   }
 
   /*===========================================================
-    BudgetMonthExistsAsync
+    BudgetMonthExistsAsync:
+    => Checks whether a budget month exists for the current user.
+    => Prevents records from being attached to another user's budget.
   ===========================================================*/
   protected async Task<bool> BudgetMonthExistsAsync(
     string budgetMonthId,
     string userId)
   {
-    var budgetMonth = await BudgetMonths
-      .Find(b => b.Id == budgetMonthId && b.UserId == userId)
-      .FirstOrDefaultAsync();
+    var count = await BudgetMonths.CountDocumentsAsync(
+      b => b.Id == budgetMonthId && b.UserId == userId);
 
-    return budgetMonth != null;
+    return count > 0;
   }
 
   /*===========================================================
-    AccountExistsAsync
+    AccountExistsAsync:
+    => Checks whether an account exists for the current user.
+    => Used before recording income, expenses, or transfers.
   ===========================================================*/
   protected async Task<bool> AccountExistsAsync(
     string accountId,
     string userId)
   {
-    var account = await FinancialAccounts
-      .Find(a => a.Id == accountId && a.UserId == userId)
-      .FirstOrDefaultAsync();
+    var count = await FinancialAccounts.CountDocumentsAsync(
+      a => a.Id == accountId && a.UserId == userId);
 
-    return account != null;
+    return count > 0;
   }
 
   /*===========================================================
-    GetAccountByIdAsync
+    GetAccountByIdAsync:
+    => Gets one financial account owned by the current user.
+    => Returns null when the account does not exist.
   ===========================================================*/
   protected async Task<FinancialAccount?> GetAccountByIdAsync(
-  string accountId,
-  string userId)
+    string accountId,
+    string userId)
   {
     return await FinancialAccounts
       .Find(a => a.Id == accountId && a.UserId == userId)
+      .FirstOrDefaultAsync();
+  }
+
+  /*===========================================================
+    GetCategoryByIdAsync:
+    => Gets one budget category owned by the current user.
+    => Returns null when the category does not exist.
+  ===========================================================*/
+  protected async Task<BudgetCategory?> GetCategoryByIdAsync(
+    string categoryId,
+    string userId)
+  {
+    return await BudgetCategories
+      .Find(c => c.Id == categoryId && c.UserId == userId)
       .FirstOrDefaultAsync();
   }
 }

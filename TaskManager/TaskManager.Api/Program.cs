@@ -83,6 +83,7 @@ builder.Services.AddSingleton<BudgetAdminService>();
 builder.Services.AddSingleton<DashboardService>();
 builder.Services.AddSingleton<BudgetIndexService>();
 builder.Services.AddSingleton<TransactionService>();
+builder.Services.AddSingleton<BillService>();
 
 builder.Services.AddSingleton<FileStorageService>();
 

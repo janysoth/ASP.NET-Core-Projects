@@ -71,5 +71,16 @@ public class BudgetIndexService : BudgetBaseService
         Builders<AccountTransfer>.IndexKeys
           .Ascending(t => t.UserId)
           .Ascending(t => t.TransferDate)));
+
+    await Bills.Indexes.CreateOneAsync(
+      new CreateIndexModel<Bill>(
+        Builders<Bill>.IndexKeys
+          .Ascending(b => b.UserId)
+          .Ascending(b => b.BudgetMonthId)
+          .Ascending(b => b.DueDate),
+        new CreateIndexOptions
+        {
+          Name = "IX_Bills_User_BudgetMonth_DueDate"
+        }));
   }
 }

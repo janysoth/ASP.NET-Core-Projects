@@ -145,6 +145,10 @@ public class BudgetMonthService : BudgetBaseService
     /*---------------------------------------------------------
       Delete related child records first
     ---------------------------------------------------------*/
+
+    await Bills.DeleteManyAsync(
+      b => b.BudgetMonthId == id && b.UserId == userId);
+
     await BudgetCategories.DeleteManyAsync(
       c => c.BudgetMonthId == id && c.UserId == userId);
 

@@ -1,54 +1,65 @@
 using MongoDB.Driver;
 // using TaskManager.Api.Features.Budget.DTOs;
+// using TaskManager.Api.Features.Budget.Mappers;
 
 namespace TaskManager.Api.Features.Budget.Services;
 
-// Service responsible for building dashboard summary data.
-// It combines account totals and current budget month totals
-// into one response for the frontend dashboard.
 public class DashboardService : BudgetBaseService
 {
-  // Service used to get financial accounts and current balances
   private readonly AccountService _accountService;
-
-  // Service used to get budget month details and totals
   private readonly BudgetMonthService _budgetMonthService;
+  private readonly BillService _billService;
 
-  // Constructor used for Dependency Injection (DI)
   public DashboardService(
     IMongoDatabase database,
     AccountService accountService,
-    BudgetMonthService budgetMonthService) : base(database)
+    BudgetMonthService budgetMonthService,
+    BillService billService) : base(database)
   {
     _accountService = accountService;
     _budgetMonthService = budgetMonthService;
+    _billService = billService;
   }
 
-  // Builds the dashboard summary for the selected month and year
+  /*===========================================================
+    GetDashboardSummaryAsync:
+    => Builds the finance dashboard for one month.
+    => Includes account balances, budget comparisons, and bill totals.
+    => Returns empty monthly values when no budget month exists.
+  ===========================================================*/
   public async Task<DashboardSummaryResponse> GetDashboardSummaryAsync(
     string userId,
     int month,
     int year)
   {
-    // Get all financial accounts for the current user
     var accounts = await _accountService.GetAccountsAsync(userId);
 
-    // Add up all checking and savings account balances
     var totalCash = accounts
       .Where(a =>
-        a.Type.Equals("Checking", StringComparison.OrdinalIgnoreCase) ||
-        a.Type.Equals("Savings", StringComparison.OrdinalIgnoreCase))
+        a.Type.Equals(
+          "Checking",
+          StringComparison.OrdinalIgnoreCase) ||
+        a.Type.Equals(
+          "Savings",
+          StringComparison.OrdinalIgnoreCase))
       .Sum(a => a.CurrentBalance);
 
-    // Add up all credit card balances
     var totalCreditCardDebt = accounts
-      .Where(a => a.Type.Equals("CreditCard", StringComparison.OrdinalIgnoreCase))
+      .Where(a =>
+        a.Type.Equals(
+          "CreditCard",
+          StringComparison.OrdinalIgnoreCase))
       .Sum(a => a.CurrentBalance);
 
-    // Calculate net worth using cash minus credit card debt
     var netWorth = totalCash - totalCreditCardDebt;
 
-    // Try to find the selected budget month
+    var dashboard = new DashboardSummaryResponse
+    {
+      TotalCash = totalCash,
+      TotalCreditCardDebt = totalCreditCardDebt,
+      NetWorth = netWorth
+    };
+
     var budgetMonth = await BudgetMonths
       .Find(b =>
         b.UserId == userId &&
@@ -56,50 +67,68 @@ public class DashboardService : BudgetBaseService
         b.Year == year)
       .FirstOrDefaultAsync();
 
-    // If there is no budget month yet, still return
-    // the account summary totals
     if (budgetMonth == null)
     {
-      return new DashboardSummaryResponse
-      {
-        TotalCash = totalCash,
-        TotalCreditCardDebt = totalCreditCardDebt,
-        NetWorth = netWorth
-      };
+      return dashboard;
     }
 
-    // Get the full budget month response with calculated totals
-    var budgetMonthResponse = await _budgetMonthService.GetBudgetMonthByIdAsync(
-      budgetMonth.Id,
-      userId);
+    var budgetResponse =
+      await _budgetMonthService.GetBudgetMonthByIdAsync(
+        budgetMonth.Id,
+        userId);
 
-    // If the budget month response cannot be built,
-    // still return the account summary totals
-    if (budgetMonthResponse == null)
+    if (budgetResponse == null)
     {
-      return new DashboardSummaryResponse
-      {
-        TotalCash = totalCash,
-        TotalCreditCardDebt = totalCreditCardDebt,
-        NetWorth = netWorth
-      };
+      return dashboard;
     }
 
-    // Return the full dashboard summary
-    return new DashboardSummaryResponse
-    {
-      // Account summary totals
-      TotalCash = totalCash,
-      TotalCreditCardDebt = totalCreditCardDebt,
-      NetWorth = netWorth,
+    var bills = await _billService.GetBillsAsync(
+      userId,
+      month,
+      year);
 
-      // Current budget month totals
-      CurrentMonthPlannedIncome = budgetMonthResponse.PlannedIncome,
-      CurrentMonthTotalIncome = budgetMonthResponse.TotalIncome,
-      CurrentMonthTotalExpenses = budgetMonthResponse.TotalExpenses,
-      CurrentMonthLeftToAssign = budgetMonthResponse.LeftToAssign,
-      CurrentMonthRemainingExpenseBudget =
-        budgetMonthResponse.RemainingPlannedExpenseBudget
-    };
+    var today = DateTime.UtcNow.Date;
+
+    dashboard.CurrentMonthPlannedIncome =
+      budgetResponse.PlannedIncome;
+
+    dashboard.CurrentMonthTotalIncome =
+      budgetResponse.TotalIncome;
+
+    dashboard.CurrentMonthTotalExpenses =
+      budgetResponse.TotalExpenses;
+
+    dashboard.CurrentMonthLeftToAssign =
+      budgetResponse.LeftToAssign;
+
+    dashboard.CurrentMonthRemainingExpenseBudget =
+      budgetResponse.RemainingPlannedExpenseBudget;
+
+    dashboard.TotalBills = bills.Count;
+
+    dashboard.PaidBills = bills.Count(b => b.IsPaid);
+
+    dashboard.UnpaidBills = bills.Count(b => !b.IsPaid);
+
+    dashboard.OverdueBills = bills.Count(b =>
+      !b.IsPaid && b.DueDate.Date < today);
+
+    dashboard.ExpectedBillsTotal = bills.Sum(
+      b => b.ExpectedAmount);
+
+    dashboard.PaidBillsTotal = bills
+      .Where(b => b.IsPaid)
+      .Sum(b => b.ActualAmount ?? 0);
+
+    dashboard.CategoryComparisons =
+      budgetResponse.BudgetCategories.ToList();
+
+    dashboard.UpcomingBills = bills
+      .Where(b => !b.IsPaid)
+      .OrderBy(b => b.DueDate)
+      .Take(5)
+      .ToList();
+
+    return dashboard;
   }
 }
