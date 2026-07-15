@@ -12,6 +12,8 @@ public abstract class BudgetBaseService
   protected readonly IMongoCollection<FinancialAccount> FinancialAccounts;
   protected readonly IMongoCollection<AccountTransfer> AccountTransfers;
   protected readonly IMongoCollection<Bill> Bills;
+  protected readonly IMongoCollection<RecurringBillTemplate>
+  RecurringBillTemplates;
 
   /*===========================================================
     BudgetBaseService Constructor
@@ -25,6 +27,8 @@ public abstract class BudgetBaseService
     FinancialAccounts = database.GetCollection<FinancialAccount>("FinancialAccounts");
     AccountTransfers = database.GetCollection<AccountTransfer>("AccountTransfers");
     Bills = database.GetCollection<Bill>("Bills");
+    RecurringBillTemplates = database.GetCollection<RecurringBillTemplate>(
+    "RecurringBillTemplates");
   }
 
   /*===========================================================

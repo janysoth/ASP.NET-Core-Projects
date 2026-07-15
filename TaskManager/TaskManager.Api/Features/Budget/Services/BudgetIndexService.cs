@@ -82,5 +82,28 @@ public class BudgetIndexService : BudgetBaseService
         {
           Name = "IX_Bills_User_BudgetMonth_DueDate"
         }));
+
+    await RecurringBillTemplates.Indexes.CreateOneAsync(
+      new CreateIndexModel<RecurringBillTemplate>(
+        Builders<RecurringBillTemplate>.IndexKeys
+          .Ascending(t => t.UserId)
+          .Ascending(t => t.Name),
+        new CreateIndexOptions
+        {
+          Name = "IX_RecurringBillTemplates_User_Name"
+        }));
+
+    await Bills.Indexes.CreateOneAsync(
+      new CreateIndexModel<Bill>(
+        Builders<Bill>.IndexKeys
+          .Ascending(b => b.UserId)
+          .Ascending(b => b.BudgetMonthId)
+          .Ascending(b => b.RecurringBillTemplateId),
+        new CreateIndexOptions
+        {
+          Unique = true,
+          Sparse = true,
+          Name = "UX_Bills_User_Month_Template"
+        }));
   }
 }

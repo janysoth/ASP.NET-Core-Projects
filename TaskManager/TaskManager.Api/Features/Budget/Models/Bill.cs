@@ -15,6 +15,10 @@ public class Bill
 
   public string BudgetCategoryId { get; set; } = string.Empty;
 
+  // Set when this bill was generated from a recurring template.
+  // Manually created bills can leave this null.
+  public string? RecurringBillTemplateId { get; set; }
+
   public string Name { get; set; } = string.Empty;
 
   public decimal ExpectedAmount { get; set; }

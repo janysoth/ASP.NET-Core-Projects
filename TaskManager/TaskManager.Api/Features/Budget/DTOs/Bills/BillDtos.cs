@@ -71,3 +71,84 @@ public sealed record BillResponse
 
   public DateTime CreatedAtUtc { get; set; }
 }
+
+public sealed record CreateRecurringBillTemplateRequest
+{
+  public string Name { get; set; } = string.Empty;
+
+  public string CategoryName { get; set; } = string.Empty;
+
+  public string CategoryType { get; set; } = "Expense";
+
+  public decimal ExpectedAmount { get; set; }
+
+  public int DueDay { get; set; }
+
+  public bool IsActive { get; set; } = true;
+
+  public string? Notes { get; set; }
+}
+
+public sealed record UpdateRecurringBillTemplateRequest
+{
+  public string Name { get; set; } = string.Empty;
+
+  public string CategoryName { get; set; } = string.Empty;
+
+  public string CategoryType { get; set; } = "Expense";
+
+  public decimal ExpectedAmount { get; set; }
+
+  public int DueDay { get; set; }
+
+  public bool IsActive { get; set; }
+
+  public string? Notes { get; set; }
+}
+
+public sealed record RecurringBillTemplateResponse
+{
+  public string Id { get; set; } = string.Empty;
+
+  public string Name { get; set; } = string.Empty;
+
+  public string CategoryName { get; set; } = string.Empty;
+
+  public string CategoryType { get; set; } = string.Empty;
+
+  public decimal ExpectedAmount { get; set; }
+
+  public int DueDay { get; set; }
+
+  public bool IsActive { get; set; }
+
+  public string? Notes { get; set; }
+
+  public DateTime CreatedAtUtc { get; set; }
+}
+
+public sealed record GenerateBillsRequest
+{
+  public int Month { get; set; }
+
+  public int Year { get; set; }
+}
+
+public sealed record GenerateBillsResponse
+{
+  public int TargetMonth { get; set; }
+
+  public int TargetYear { get; set; }
+
+  public int TotalTemplates { get; set; }
+
+  public int CreatedBills { get; set; }
+
+  public int SkippedExistingBills { get; set; }
+
+  public int SkippedMissingCategories { get; set; }
+
+  public List<BillResponse> Bills { get; set; } = [];
+
+  public List<string> Messages { get; set; } = [];
+}

@@ -42,6 +42,10 @@ public class BudgetAdminService : BudgetBaseService
     var deletedBudgetMonths = await BudgetMonths.DeleteManyAsync(
       b => b.UserId == userId);
 
+    var deletedRecurringBillTemplates =
+      await RecurringBillTemplates.DeleteManyAsync(
+        t => t.UserId == userId);
+
     return new CleanSlateResponse
     {
       DeletedAccounts = deletedAccounts.DeletedCount,
@@ -50,7 +54,8 @@ public class BudgetAdminService : BudgetBaseService
       DeletedBudgetCategories = deletedBudgetCategories.DeletedCount,
       DeletedIncomeRecords = deletedIncomeRecords.DeletedCount,
       DeletedExpenseRecords = deletedExpenseRecords.DeletedCount,
-      DeletedBills = deletedBills.DeletedCount
+      DeletedBills = deletedBills.DeletedCount,
+      DeletedRecurringBillTemplates = deletedRecurringBillTemplates.DeletedCount
     };
   }
 }

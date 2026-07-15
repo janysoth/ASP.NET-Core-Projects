@@ -20,4 +20,6 @@ public sealed record CleanSlateResponse
   public long DeletedExpenseRecords { get; set; }
 
   public long DeletedBills { get; set; }
+
+  public long DeletedRecurringBillTemplates { get; set; }
 }

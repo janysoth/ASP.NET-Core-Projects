@@ -84,6 +84,7 @@ builder.Services.AddSingleton<DashboardService>();
 builder.Services.AddSingleton<BudgetIndexService>();
 builder.Services.AddSingleton<TransactionService>();
 builder.Services.AddSingleton<BillService>();
+builder.Services.AddSingleton<RecurringBillTemplateService>();
 
 builder.Services.AddSingleton<FileStorageService>();
 
