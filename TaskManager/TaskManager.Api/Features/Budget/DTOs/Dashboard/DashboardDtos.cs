@@ -18,6 +18,18 @@ public sealed record DashboardSummaryResponse
 
   public decimal CurrentMonthRemainingExpenseBudget { get; set; }
 
+  public decimal PlannedFixedExpenses { get; set; }
+
+  public decimal ActualFixedExpenses { get; set; }
+
+  public decimal RemainingFixedExpenseBudget { get; set; }
+
+  public decimal PlannedVariableExpenses { get; set; }
+
+  public decimal ActualVariableExpenses { get; set; }
+
+  public decimal RemainingVariableExpenseBudget { get; set; }
+
   public int TotalBills { get; set; }
 
   public int PaidBills { get; set; }
@@ -30,7 +42,23 @@ public sealed record DashboardSummaryResponse
 
   public decimal PaidBillsTotal { get; set; }
 
-  public List<BudgetCategoryResponse> CategoryComparisons { get; set; } = [];
+  public List<BudgetCategoryResponse>
+    FixedExpenseComparisons
+  { get; set; } = [];
 
-  public List<BillResponse> UpcomingBills { get; set; } = [];
+  public List<BudgetCategoryResponse>
+    VariableExpenseComparisons
+  { get; set; } = [];
+
+  public List<BudgetCategoryResponse>
+    SavingsComparisons
+  { get; set; } = [];
+
+  public List<BudgetCategoryResponse>
+    DebtComparisons
+  { get; set; } = [];
+
+  public List<BillResponse>
+    UpcomingBills
+  { get; set; } = [];
 }

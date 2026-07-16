@@ -28,38 +28,62 @@ public sealed record BudgetMonthResponse
 
   public decimal PlannedIncome { get; set; }
 
-  // Actual money received during the budget month
+  // Actual income received during the budget month.
   public decimal TotalIncome { get; set; }
 
-  // Actual money spent during the budget month
+  // All actual expenses.
   public decimal TotalExpenses { get; set; }
 
-  // Actual income minus actual expenses
+  // Actual income minus actual expenses.
   public decimal RemainingBalance { get; set; }
 
-  // Total planned amount for Expense categories
+  // All planned Expense categories.
   public decimal TotalPlannedExpenses { get; set; }
 
-  // Total planned amount for Savings categories
+  // Planned Expense categories classified as Fixed.
+  public decimal TotalPlannedFixedExpenses { get; set; }
+
+  // Planned Expense categories classified as Variable.
+  public decimal TotalPlannedVariableExpenses { get; set; }
+
+  // Actual spending in Fixed categories.
+  public decimal TotalFixedExpenses { get; set; }
+
+  // Actual spending in Variable categories.
+  public decimal TotalVariableExpenses { get; set; }
+
+  // Fixed planned budget minus actual fixed spending.
+  public decimal RemainingFixedExpenseBudget { get; set; }
+
+  // Variable planned budget minus actual variable spending.
+  public decimal RemainingVariableExpenseBudget { get; set; }
+
+  // All planned Savings categories.
   public decimal TotalPlannedSavings { get; set; }
 
-  // Total planned amount for Debt categories
+  // All planned Debt categories.
   public decimal TotalPlannedDebt { get; set; }
 
-  // Expense + Savings + Debt planned amounts
+  // Expenses + Savings + Debt.
   public decimal TotalAssigned { get; set; }
 
-  // Planned income minus total assigned
+  // PlannedIncome minus TotalAssigned.
   public decimal LeftToAssign { get; set; }
 
-  // Planned expense budget minus actual expenses
+  // Total planned expenses minus total actual expenses.
   public decimal RemainingPlannedExpenseBudget { get; set; }
 
-  public IReadOnlyList<BudgetCategoryResponse> BudgetCategories { get; set; } = [];
+  public IReadOnlyList<BudgetCategoryResponse>
+    BudgetCategories
+  { get; set; } = [];
 
-  public IReadOnlyList<IncomeResponse> IncomeRecords { get; set; } = [];
+  public IReadOnlyList<IncomeResponse>
+    IncomeRecords
+  { get; set; } = [];
 
-  public IReadOnlyList<ExpenseResponse> ExpenseRecords { get; set; } = [];
+  public IReadOnlyList<ExpenseResponse>
+    ExpenseRecords
+  { get; set; } = [];
 
   public DateTime CreatedAtUtc { get; set; }
 }

@@ -173,58 +173,146 @@ public class BudgetMonthService : BudgetBaseService
   }
 
   /*===========================================================
-    BuildBudgetMonthResponseAsync
-  ===========================================================*/
-  private async Task<BudgetMonthResponse> BuildBudgetMonthResponseAsync(
-    BudgetMonth budgetMonth)
+  BuildBudgetMonthResponseAsync:
+  => Loads all categories, incomes, and expenses for one month.
+  => Calculates zero-based budget totals.
+  => Separates Fixed and Variable planned-versus-actual totals.
+===========================================================*/
+  private async Task<BudgetMonthResponse>
+    BuildBudgetMonthResponseAsync(
+      BudgetMonth budgetMonth)
   {
-    /*---------------------------------------------------------
-      Get related records
-    ---------------------------------------------------------*/
     var budgetCategories = await BudgetCategories
-      .Find(c => c.BudgetMonthId == budgetMonth.Id &&
-                 c.UserId == budgetMonth.UserId)
+      .Find(c =>
+        c.BudgetMonthId == budgetMonth.Id &&
+        c.UserId == budgetMonth.UserId)
       .SortBy(c => c.Name)
       .ToListAsync();
 
     var incomeRecords = await IncomeRecords
-      .Find(i => i.BudgetMonthId == budgetMonth.Id &&
-                 i.UserId == budgetMonth.UserId)
+      .Find(i =>
+        i.BudgetMonthId == budgetMonth.Id &&
+        i.UserId == budgetMonth.UserId)
       .SortByDescending(i => i.IncomeDate)
       .ToListAsync();
 
     var expenseRecords = await ExpenseRecords
-      .Find(e => e.BudgetMonthId == budgetMonth.Id &&
-                 e.UserId == budgetMonth.UserId)
+      .Find(e =>
+        e.BudgetMonthId == budgetMonth.Id &&
+        e.UserId == budgetMonth.UserId)
       .SortByDescending(e => e.ExpenseDate)
       .ToListAsync();
 
-    /*---------------------------------------------------------
-      Calculate actual totals
-    ---------------------------------------------------------*/
-    var totalIncome = incomeRecords.Sum(i => i.Amount);
-    var totalExpenses = expenseRecords.Sum(e => e.Amount);
+    var totalIncome =
+      incomeRecords.Sum(i => i.Amount);
 
-    /*---------------------------------------------------------
-      Calculate planned category totals
-    ---------------------------------------------------------*/
-    var totalPlannedExpenses = budgetCategories
-      .Where(c => c.Type.Equals("Expense", StringComparison.OrdinalIgnoreCase))
-      .Sum(c => c.PlannedAmount);
+    var totalExpenses =
+      expenseRecords.Sum(e => e.Amount);
+
+    var expenseCategories = budgetCategories
+      .Where(c => c.Type.Equals(
+        "Expense",
+        StringComparison.OrdinalIgnoreCase))
+      .ToList();
+
+    var fixedCategories = expenseCategories
+      .Where(c => c.ExpenseType?.Equals(
+        "Fixed",
+        StringComparison.OrdinalIgnoreCase) == true)
+      .ToList();
+
+    var variableCategories = expenseCategories
+      .Where(c => c.ExpenseType?.Equals(
+        "Variable",
+        StringComparison.OrdinalIgnoreCase) == true)
+      .ToList();
+
+    var totalPlannedFixedExpenses =
+      fixedCategories.Sum(c => c.PlannedAmount);
+
+    var totalPlannedVariableExpenses =
+      variableCategories.Sum(c => c.PlannedAmount);
+
+    var totalPlannedExpenses =
+      totalPlannedFixedExpenses +
+      totalPlannedVariableExpenses;
+
+    var fixedCategoryNames = fixedCategories
+      .Select(c => c.Name)
+      .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    var variableCategoryNames = variableCategories
+      .Select(c => c.Name)
+      .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    var totalFixedExpenses = expenseRecords
+      .Where(e => fixedCategoryNames.Contains(e.Category))
+      .Sum(e => e.Amount);
+
+    var totalVariableExpenses = expenseRecords
+      .Where(e => variableCategoryNames.Contains(e.Category))
+      .Sum(e => e.Amount);
 
     var totalPlannedSavings = budgetCategories
-      .Where(c => c.Type.Equals("Savings", StringComparison.OrdinalIgnoreCase))
+      .Where(c => c.Type.Equals(
+        "Savings",
+        StringComparison.OrdinalIgnoreCase))
       .Sum(c => c.PlannedAmount);
 
     var totalPlannedDebt = budgetCategories
-      .Where(c => c.Type.Equals("Debt", StringComparison.OrdinalIgnoreCase))
+      .Where(c => c.Type.Equals(
+        "Debt",
+        StringComparison.OrdinalIgnoreCase))
       .Sum(c => c.PlannedAmount);
 
-    var totalAssigned = budgetCategories.Sum(c => c.PlannedAmount);
+    var totalAssigned =
+      budgetCategories.Sum(c => c.PlannedAmount);
 
-    /*---------------------------------------------------------
-      Build and return response
-    ---------------------------------------------------------*/
+    var categoryResponses = budgetCategories
+      .Select(category =>
+        BudgetCategoryMapper.ToResponse(
+          category,
+          expenseRecords))
+      .ToList();
+
+    /*
+      Load accounts once so account names can be included
+      without one query for every income and expense.
+    */
+    var accounts = await FinancialAccounts
+      .Find(a => a.UserId == budgetMonth.UserId)
+      .ToListAsync();
+
+    var accountLookup = accounts.ToDictionary(
+      a => a.Id,
+      a => a);
+
+    var incomeResponses = incomeRecords
+      .Select(income =>
+      {
+        accountLookup.TryGetValue(
+          income.AccountId,
+          out var account);
+
+        return IncomeMapper.ToResponse(
+          income,
+          account);
+      })
+      .ToList();
+
+    var expenseResponses = expenseRecords
+      .Select(expense =>
+      {
+        accountLookup.TryGetValue(
+          expense.AccountId,
+          out var account);
+
+        return ExpenseMapper.ToResponse(
+          expense,
+          account);
+      })
+      .ToList();
+
     return new BudgetMonthResponse
     {
       Id = budgetMonth.Id,
@@ -234,28 +322,60 @@ public class BudgetMonthService : BudgetBaseService
 
       TotalIncome = totalIncome,
       TotalExpenses = totalExpenses,
-      RemainingBalance = totalIncome - totalExpenses,
+      RemainingBalance =
+        totalIncome - totalExpenses,
 
-      TotalPlannedExpenses = totalPlannedExpenses,
-      TotalPlannedSavings = totalPlannedSavings,
-      TotalPlannedDebt = totalPlannedDebt,
-      TotalAssigned = totalAssigned,
-      LeftToAssign = budgetMonth.PlannedIncome - totalAssigned,
-      RemainingPlannedExpenseBudget = totalPlannedExpenses - totalExpenses,
+      TotalPlannedExpenses =
+        totalPlannedExpenses,
 
-      BudgetCategories = budgetCategories
-        .Select(c => BudgetCategoryMapper.ToResponse(c, expenseRecords))
-        .ToList(),
+      TotalPlannedFixedExpenses =
+        totalPlannedFixedExpenses,
 
-      IncomeRecords = incomeRecords
-        .Select(i => IncomeMapper.ToResponse(i))
-        .ToList(),
+      TotalPlannedVariableExpenses =
+        totalPlannedVariableExpenses,
 
-      ExpenseRecords = expenseRecords
-        .Select(e => ExpenseMapper.ToResponse(e))
-        .ToList(),
+      TotalFixedExpenses =
+        totalFixedExpenses,
 
-      CreatedAtUtc = budgetMonth.CreatedAtUtc
+      TotalVariableExpenses =
+        totalVariableExpenses,
+
+      RemainingFixedExpenseBudget =
+        totalPlannedFixedExpenses -
+        totalFixedExpenses,
+
+      RemainingVariableExpenseBudget =
+        totalPlannedVariableExpenses -
+        totalVariableExpenses,
+
+      TotalPlannedSavings =
+        totalPlannedSavings,
+
+      TotalPlannedDebt =
+        totalPlannedDebt,
+
+      TotalAssigned =
+        totalAssigned,
+
+      LeftToAssign =
+        budgetMonth.PlannedIncome -
+        totalAssigned,
+
+      RemainingPlannedExpenseBudget =
+        totalPlannedExpenses -
+        totalExpenses,
+
+      BudgetCategories =
+        categoryResponses,
+
+      IncomeRecords =
+        incomeResponses,
+
+      ExpenseRecords =
+        expenseResponses,
+
+      CreatedAtUtc =
+        budgetMonth.CreatedAtUtc
     };
   }
 }

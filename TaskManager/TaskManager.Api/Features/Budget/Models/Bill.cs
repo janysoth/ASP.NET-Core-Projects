@@ -15,8 +15,14 @@ public class Bill
 
   public string BudgetCategoryId { get; set; } = string.Empty;
 
-  // Set when this bill was generated from a recurring template.
-  // Manually created bills can leave this null.
+  /*===========================================================
+    RecurringBillTemplateId:
+    => Stores the recurring template that generated this bill.
+    => Remains null for bills created manually.
+    => BsonIgnoreIfNull prevents null values from being stored.
+  ===========================================================*/
+  [BsonRepresentation(BsonType.ObjectId)]
+  [BsonIgnoreIfNull]
   public string? RecurringBillTemplateId { get; set; }
 
   public string Name { get; set; } = string.Empty;
@@ -27,10 +33,14 @@ public class Bill
 
   public bool IsPaid { get; set; }
 
+  [BsonRepresentation(BsonType.ObjectId)]
+  [BsonIgnoreIfNull]
   public string? ExpenseRecordId { get; set; }
 
+  [BsonIgnoreIfNull]
   public DateTime? PaidDate { get; set; }
 
+  [BsonIgnoreIfNull]
   public string? Notes { get; set; }
 
   public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;

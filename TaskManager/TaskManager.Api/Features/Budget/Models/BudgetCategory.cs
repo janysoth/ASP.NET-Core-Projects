@@ -15,8 +15,19 @@ public class BudgetCategory
 
   public string Name { get; set; } = string.Empty;
 
-  // Examples: Expense, Savings, Debt, Giving
+  // Allowed values:
+  // Expense
+  // Savings
+  // Debt
   public string Type { get; set; } = "Expense";
+
+  // Used only when Type is Expense.
+  // Allowed values:
+  // Fixed
+  // Variable
+  //
+  // Savings and Debt categories should store null.
+  public string? ExpenseType { get; set; }
 
   public decimal PlannedAmount { get; set; }
 
