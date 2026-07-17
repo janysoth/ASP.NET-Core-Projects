@@ -145,7 +145,7 @@ public class BillsController : BudgetControllerBase
       if (bill == null)
       {
         return BadRequest(
-          "The bill must use an Expense or Debt category from the selected budget month. Savings categories cannot be linked to bills.");
+          "The bill must use an Expense category from the selected budget month. Savings categories cannot be linked to bills.");
       }
 
       return CreatedAtAction(
@@ -207,7 +207,7 @@ public class BillsController : BudgetControllerBase
       if (updatedBill == null)
       {
         return BadRequest(
-          "The bill must use an Expense or Debt category from the same budget month. Savings categories cannot be linked to bills.");
+          "The bill must use an Expense category from the selected budget month. Savings categories cannot be linked to bills.");
       }
 
       return Ok(updatedBill);

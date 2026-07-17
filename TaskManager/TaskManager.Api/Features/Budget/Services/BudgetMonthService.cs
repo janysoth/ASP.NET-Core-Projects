@@ -173,11 +173,11 @@ public class BudgetMonthService : BudgetBaseService
   }
 
   /*===========================================================
-  BuildBudgetMonthResponseAsync:
-  => Loads all categories, incomes, and expenses for one month.
-  => Calculates zero-based budget totals.
-  => Separates Fixed and Variable planned-versus-actual totals.
-===========================================================*/
+   BuildBudgetMonthResponseAsync:
+   => Loads categories, incomes, and expenses for one month.
+   => Calculates zero-based budgeting totals.
+   => Separates Fixed and Variable expense comparisons.
+ ===========================================================*/
   private async Task<BudgetMonthResponse>
     BuildBudgetMonthResponseAsync(
       BudgetMonth budgetMonth)
@@ -259,14 +259,9 @@ public class BudgetMonthService : BudgetBaseService
         StringComparison.OrdinalIgnoreCase))
       .Sum(c => c.PlannedAmount);
 
-    var totalPlannedDebt = budgetCategories
-      .Where(c => c.Type.Equals(
-        "Debt",
-        StringComparison.OrdinalIgnoreCase))
-      .Sum(c => c.PlannedAmount);
-
     var totalAssigned =
-      budgetCategories.Sum(c => c.PlannedAmount);
+      totalPlannedExpenses +
+      totalPlannedSavings;
 
     var categoryResponses = budgetCategories
       .Select(category =>
@@ -275,10 +270,7 @@ public class BudgetMonthService : BudgetBaseService
           expenseRecords))
       .ToList();
 
-    /*
-      Load accounts once so account names can be included
-      without one query for every income and expense.
-    */
+    // Load accounts once for account names.
     var accounts = await FinancialAccounts
       .Find(a => a.UserId == budgetMonth.UserId)
       .ToListAsync();
@@ -350,9 +342,6 @@ public class BudgetMonthService : BudgetBaseService
 
       TotalPlannedSavings =
         totalPlannedSavings,
-
-      TotalPlannedDebt =
-        totalPlannedDebt,
 
       TotalAssigned =
         totalAssigned,

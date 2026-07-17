@@ -22,15 +22,14 @@ public abstract class BudgetControllerBase : ControllerBase
   /*===========================================================
     IsValidCategoryType:
     => Checks whether the main budget category type is allowed.
-    => Allowed values are Expense, Savings, and Debt.
+    => Allowed values are Expense and Savings.
   ===========================================================*/
   protected static bool IsValidCategoryType(string type)
   {
     var allowedTypes = new[]
     {
       "Expense",
-      "Savings",
-      "Debt"
+      "Savings"
     };
 
     return allowedTypes.Contains(
@@ -59,7 +58,7 @@ public abstract class BudgetControllerBase : ControllerBase
   /*===========================================================
     ValidateCategoryClassification:
     => Requires Fixed or Variable when the category is Expense.
-    => Requires ExpenseType to be empty for Savings or Debt.
+    => Requires ExpenseType to be empty for Savings.
     => Returns an error message or null when valid.
   ===========================================================*/
   protected static string? ValidateCategoryClassification(
@@ -85,7 +84,7 @@ public abstract class BudgetControllerBase : ControllerBase
 
     if (!string.IsNullOrWhiteSpace(expenseType))
     {
-      return "Expense type must be empty for Savings and Debt categories.";
+      return "Expense type must be empty for Savings categories.";
     }
 
     return null;

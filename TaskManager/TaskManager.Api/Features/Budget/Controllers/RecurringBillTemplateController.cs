@@ -249,13 +249,10 @@ public class RecurringBillTemplatesController
     }
 
     if (!categoryType.Equals(
-          "Expense",
-          StringComparison.OrdinalIgnoreCase) &&
-        !categoryType.Equals(
-          "Debt",
-          StringComparison.OrdinalIgnoreCase))
+      "Expense",
+      StringComparison.OrdinalIgnoreCase))
     {
-      return "Category type must be Expense or Debt.";
+      return "Recurring bill templates must use an Expense category.";
     }
 
     if (expectedAmount <= 0)

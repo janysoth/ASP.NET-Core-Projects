@@ -395,7 +395,7 @@ public class BudgetController : ControllerBase
   /*===========================================================
     AddBudgetCategory:
     => Creates a planned budget category.
-    => Category type must be Expense, Savings, or Debt.
+    => Category type must be Expense, or Savings.
     => Returns the newly created category.
   ===========================================================*/
   [HttpPost("{budgetMonthId}/categories")]
@@ -417,7 +417,7 @@ public class BudgetController : ControllerBase
 
     if (!IsValidCategoryType(request.Type))
     {
-      return BadRequest("Category type must be Expense, Savings, or Debt.");
+      return BadRequest("Category type must be Expense, or Savings.");
     }
 
     if (request.PlannedAmount < 0)
@@ -463,7 +463,7 @@ public class BudgetController : ControllerBase
 
     if (!IsValidCategoryType(request.Type))
     {
-      return BadRequest("Category type must be Expense, Savings, or Debt.");
+      return BadRequest("Category type must be Expense, or Savings.");
     }
 
     if (request.PlannedAmount < 0)
@@ -780,12 +780,12 @@ public class BudgetController : ControllerBase
   /*===========================================================
     IsValidCategoryType:
     => Checks if the budget category type is allowed.
-    => Allowed types are Expense, Savings, and Debt.
+    => Allowed types are Expense, and Savings.
     => Prevents random or invalid category types from being saved.
   ===========================================================*/
   private static bool IsValidCategoryType(string type)
   {
-    var allowedTypes = new[] { "Expense", "Savings", "Debt" };
+    var allowedTypes = new[] { "Expense", "Savings" };
 
     return allowedTypes.Contains(type, StringComparer.OrdinalIgnoreCase);
   }

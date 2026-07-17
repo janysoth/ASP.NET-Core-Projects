@@ -223,31 +223,22 @@ public class BudgetCategoryService : BudgetBaseService
   /*===========================================================
     NormalizeCategoryType:
     => Converts category types into consistent stored values.
+    => Supported values are Expense and Savings.
   ===========================================================*/
   private static string NormalizeCategoryType(string type)
   {
-    if (type.Equals(
+    return type.Equals(
       "Savings",
-      StringComparison.OrdinalIgnoreCase))
-    {
-      return "Savings";
-    }
-
-    if (type.Equals(
-      "Debt",
-      StringComparison.OrdinalIgnoreCase))
-    {
-      return "Debt";
-    }
-
-    return "Expense";
+      StringComparison.OrdinalIgnoreCase)
+        ? "Savings"
+        : "Expense";
   }
 
   /*===========================================================
-    NormalizeExpenseType:
-    => Stores Fixed or Variable only for Expense categories.
-    => Returns null for Savings and Debt categories.
-  ===========================================================*/
+   NormalizeExpenseType:
+   => Stores Fixed or Variable only for Expense categories.
+   => Returns null for Savings categories.
+ ===========================================================*/
   private static string? NormalizeExpenseType(
     string categoryType,
     string? expenseType)

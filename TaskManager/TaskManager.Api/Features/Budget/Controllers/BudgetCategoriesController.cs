@@ -46,7 +46,7 @@ public class BudgetCategoriesController : BudgetControllerBase
     if (!IsValidCategoryType(request.Type))
     {
       return BadRequest(
-        "Category type must be Expense, Savings, or Debt.");
+        "Category type must be Expense, or Savings.");
     }
 
     var classificationError =
@@ -106,7 +106,7 @@ public class BudgetCategoriesController : BudgetControllerBase
     if (!IsValidCategoryType(request.Type))
     {
       return BadRequest(
-        "Category type must be Expense, Savings, or Debt.");
+        "Category type must be Expense, or Savings.");
     }
 
     var classificationError =

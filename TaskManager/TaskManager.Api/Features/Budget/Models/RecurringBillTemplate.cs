@@ -17,7 +17,7 @@ public class RecurringBillTemplate
   // in the target budget month.
   public string CategoryName { get; set; } = string.Empty;
 
-  // Expense or Debt.
+  // Expense 
   public string CategoryType { get; set; } = "Expense";
 
   public decimal ExpectedAmount { get; set; }

@@ -54,10 +54,6 @@ public sealed record DashboardSummaryResponse
     SavingsComparisons
   { get; set; } = [];
 
-  public List<BudgetCategoryResponse>
-    DebtComparisons
-  { get; set; } = [];
-
   public List<BillResponse>
     UpcomingBills
   { get; set; } = [];

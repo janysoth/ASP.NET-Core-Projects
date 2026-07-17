@@ -1,22 +1,4 @@
-using TaskManager.Api.Features.Budget.DTOs.BudgetCategories;
-using TaskManager.Api.Features.Budget.DTOs.Expenses;
-using TaskManager.Api.Features.Budget.DTOs.Income;
-
 namespace TaskManager.Api.Features.Budget.DTOs.BudgetMonths;
-
-public sealed record CreateBudgetMonthRequest
-{
-  public int Month { get; set; }
-
-  public int Year { get; set; }
-
-  public decimal PlannedIncome { get; set; }
-}
-
-public sealed record UpdateBudgetMonthRequest
-{
-  public decimal PlannedIncome { get; set; }
-}
 
 public sealed record BudgetMonthResponse
 {
@@ -61,16 +43,13 @@ public sealed record BudgetMonthResponse
   // All planned Savings categories.
   public decimal TotalPlannedSavings { get; set; }
 
-  // All planned Debt categories.
-  public decimal TotalPlannedDebt { get; set; }
-
-  // Expenses + Savings + Debt.
+  // Expense categories + Savings categories.
   public decimal TotalAssigned { get; set; }
 
   // PlannedIncome minus TotalAssigned.
   public decimal LeftToAssign { get; set; }
 
-  // Total planned expenses minus total actual expenses.
+  // Total planned expenses minus actual expenses.
   public decimal RemainingPlannedExpenseBudget { get; set; }
 
   public IReadOnlyList<BudgetCategoryResponse>
@@ -86,4 +65,18 @@ public sealed record BudgetMonthResponse
   { get; set; } = [];
 
   public DateTime CreatedAtUtc { get; set; }
+}
+
+public sealed record CreateBudgetMonthRequest
+{
+  public int Month { get; set; }
+
+  public int Year { get; set; }
+
+  public decimal PlannedIncome { get; set; }
+}
+
+public sealed record UpdateBudgetMonthRequest
+{
+  public decimal PlannedIncome { get; set; }
 }

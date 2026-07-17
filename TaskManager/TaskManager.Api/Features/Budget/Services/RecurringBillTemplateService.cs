@@ -298,14 +298,10 @@ public class RecurringBillTemplateService : BudgetBaseService
   /*===========================================================
     NormalizeCategoryType:
     => Stores category types in one consistent format.
-    => Supported values are Expense and Debt.
+    => Supported values is ONLY Expense.
   ===========================================================*/
   private static string NormalizeCategoryType(string type)
   {
-    return type.Equals(
-      "Debt",
-      StringComparison.OrdinalIgnoreCase)
-        ? "Debt"
-        : "Expense";
+    return "Expense";
   }
 }

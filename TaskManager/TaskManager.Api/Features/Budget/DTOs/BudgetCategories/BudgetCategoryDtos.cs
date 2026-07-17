@@ -4,12 +4,14 @@ public sealed record CreateBudgetCategoryRequest
 {
   public string Name { get; set; } = string.Empty;
 
+  // Allowed values:
+  // Expense
+  // Savings
   public string Type { get; set; } = "Expense";
 
-  // Required when Type is Expense.
+  // Required for Expense.
   // Must be Fixed or Variable.
-  //
-  // Should be null for Savings and Debt.
+  // Must be null for Savings.
   public string? ExpenseType { get; set; }
 
   public decimal PlannedAmount { get; set; }
@@ -19,12 +21,14 @@ public sealed record UpdateBudgetCategoryRequest
 {
   public string Name { get; set; } = string.Empty;
 
+  // Allowed values:
+  // Expense
+  // Savings
   public string Type { get; set; } = "Expense";
 
-  // Required when Type is Expense.
+  // Required for Expense.
   // Must be Fixed or Variable.
-  //
-  // Should be null for Savings and Debt.
+  // Must be null for Savings.
   public string? ExpenseType { get; set; }
 
   public decimal PlannedAmount { get; set; }

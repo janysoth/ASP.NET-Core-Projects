@@ -202,16 +202,6 @@ public class DashboardService : BudgetBaseService
         .OrderBy(category => category.Name)
         .ToList();
 
-    // Debt category planned-versus-actual details.
-    dashboard.DebtComparisons =
-      budgetResponse.BudgetCategories
-        .Where(category =>
-          category.Type.Equals(
-            "Debt",
-            StringComparison.OrdinalIgnoreCase))
-        .OrderBy(category => category.Name)
-        .ToList();
-
     // Show the next five unpaid bills by due date.
     dashboard.UpcomingBills = bills
       .Where(bill => !bill.IsPaid)

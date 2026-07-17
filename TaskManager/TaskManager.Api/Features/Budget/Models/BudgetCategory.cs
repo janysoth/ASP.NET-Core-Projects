@@ -18,7 +18,6 @@ public class BudgetCategory
   // Allowed values:
   // Expense
   // Savings
-  // Debt
   public string Type { get; set; } = "Expense";
 
   // Used only when Type is Expense.
@@ -26,7 +25,8 @@ public class BudgetCategory
   // Fixed
   // Variable
   //
-  // Savings and Debt categories should store null.
+  // Savings categories should store null.
+  [BsonIgnoreIfNull]
   public string? ExpenseType { get; set; }
 
   public decimal PlannedAmount { get; set; }

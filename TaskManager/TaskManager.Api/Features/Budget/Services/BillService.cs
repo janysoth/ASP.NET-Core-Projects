@@ -108,10 +108,9 @@ public class BillService : BudgetBaseService
       userId);
 
     if (category == null ||
-        category.BudgetMonthId != budgetMonthId ||
-        category.Type.Equals(
-          "Savings",
-          StringComparison.OrdinalIgnoreCase))
+        !IsValidExpenseBillCategory(
+          category,
+          budgetMonthId))
     {
       return null;
     }
@@ -185,7 +184,9 @@ public class BillService : BudgetBaseService
       userId);
 
     if (category == null ||
-        !IsValidBillCategory(category, bill.BudgetMonthId))
+        !IsValidExpenseBillCategory(
+          category,
+          bill.BudgetMonthId))
     {
       return null;
     }
@@ -492,18 +493,19 @@ public class BillService : BudgetBaseService
   }
 
   /*===========================================================
-    IsValidBillCategory:
-    => Checks whether a category can be linked to a bill.
-    => Allows Expense and Debt categories.
-    => Rejects Savings categories.
+    IsValidExpenseBillCategory:
+    => Checks whether a category can be linked to an expense bill.
+    => Only allows Expense categories from the same budget month.
+    => Savings categories cannot be linked to bills.
   ===========================================================*/
-  private static bool IsValidBillCategory(
+  private static bool IsValidExpenseBillCategory(
     BudgetCategory category,
     string budgetMonthId)
   {
-    return category.BudgetMonthId == budgetMonthId &&
-           !category.Type.Equals(
-             "Savings",
-             StringComparison.OrdinalIgnoreCase);
+    return
+      category.BudgetMonthId == budgetMonthId &&
+      category.Type.Equals(
+        "Expense",
+        StringComparison.OrdinalIgnoreCase);
   }
 }
