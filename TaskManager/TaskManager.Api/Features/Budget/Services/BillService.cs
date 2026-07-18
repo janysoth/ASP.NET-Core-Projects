@@ -504,8 +504,9 @@ public class BillService : BudgetBaseService
   {
     return
       category.BudgetMonthId == budgetMonthId &&
-      category.Type.Equals(
-        "Expense",
+      string.Equals(
+        category.Type,
+        BudgetCategoryTypes.Expense,
         StringComparison.OrdinalIgnoreCase);
   }
 }

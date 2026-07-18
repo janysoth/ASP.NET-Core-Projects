@@ -78,7 +78,7 @@ public sealed record CreateRecurringBillTemplateRequest
 
   public string CategoryName { get; set; } = string.Empty;
 
-  public string CategoryType { get; set; } = "Expense";
+  public string CategoryType { get; set; } = BudgetCategoryTypes.Expense;
 
   public decimal ExpectedAmount { get; set; }
 
@@ -95,7 +95,7 @@ public sealed record UpdateRecurringBillTemplateRequest
 
   public string CategoryName { get; set; } = string.Empty;
 
-  public string CategoryType { get; set; } = "Expense";
+  public string CategoryType { get; set; } = BudgetCategoryTypes.Expense;
 
   public decimal ExpectedAmount { get; set; }
 

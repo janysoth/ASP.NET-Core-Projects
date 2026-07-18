@@ -210,21 +210,24 @@ public class BudgetMonthService : BudgetBaseService
       expenseRecords.Sum(e => e.Amount);
 
     var expenseCategories = budgetCategories
-      .Where(c => c.Type.Equals(
-        "Expense",
+      .Where(c => string.Equals(
+        c.Type,
+        BudgetCategoryTypes.Expense,
         StringComparison.OrdinalIgnoreCase))
       .ToList();
 
     var fixedCategories = expenseCategories
-      .Where(c => c.ExpenseType?.Equals(
-        "Fixed",
-        StringComparison.OrdinalIgnoreCase) == true)
+      .Where(c => string.Equals(
+        c.ExpenseType,
+        ExpenseTypes.Fixed,
+        StringComparison.OrdinalIgnoreCase))
       .ToList();
 
     var variableCategories = expenseCategories
-      .Where(c => c.ExpenseType?.Equals(
-        "Variable",
-        StringComparison.OrdinalIgnoreCase) == true)
+      .Where(c => string.Equals(
+        c.ExpenseType,
+        ExpenseTypes.Variable,
+        StringComparison.OrdinalIgnoreCase))
       .ToList();
 
     var totalPlannedFixedExpenses =
@@ -254,8 +257,9 @@ public class BudgetMonthService : BudgetBaseService
       .Sum(e => e.Amount);
 
     var totalPlannedSavings = budgetCategories
-      .Where(c => c.Type.Equals(
-        "Savings",
+      .Where(c => string.Equals(
+        c.Type,
+        BudgetCategoryTypes.Savings,
         StringComparison.OrdinalIgnoreCase))
       .Sum(c => c.PlannedAmount);
 

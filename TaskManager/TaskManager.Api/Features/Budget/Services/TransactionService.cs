@@ -124,83 +124,83 @@ public class TransactionService : BudgetBaseService
 
     // Convert each income record into a common
     // TransactionResponse object.
-    transactions.AddRange(incomes.Select(i => new TransactionResponse
+    transactions.AddRange(incomes.Select(income => new TransactionResponse
     {
       // Copy the income record ID
-      Id = i.Id,
+      Id = income.Id,
 
       // Identify this transaction as income
-      Type = "Income",
+      Type = TransactionTypes.Income,
 
       // Use the income source as the title
-      Title = i.Source,
+      Title = income.Source,
 
       // Copy the income amount
-      Amount = i.Amount,
+      Amount = income.Amount,
 
       // Use the date the income was received
-      TransactionDate = i.IncomeDate,
+      TransactionDate = income.IncomeDate,
 
       // Copy the account where the income was deposited
-      AccountId = i.AccountId,
+      AccountId = income.AccountId,
 
       // Get the account name from the lookup dictionary.
       // Use an empty string if the account cannot be found.
       AccountName = accountLookup.GetValueOrDefault(
-        i.AccountId,
+        income.AccountId,
         string.Empty),
 
       // Keep the budget month relationship for display
       // or navigation, but do not use it for date filtering.
-      BudgetMonthId = i.BudgetMonthId,
+      BudgetMonthId = income.BudgetMonthId,
 
       // Copy any optional notes
-      Notes = i.Notes,
+      Notes = income.Notes,
 
       // Copy when the record was created
-      CreatedAtUtc = i.CreatedAtUtc
+      CreatedAtUtc = income.CreatedAtUtc
     }));
 
     // Convert each expense record into a common
     // TransactionResponse object.
-    transactions.AddRange(expenses.Select(e => new TransactionResponse
+    transactions.AddRange(expenses.Select(expense => new TransactionResponse
     {
       // Copy the expense record ID
-      Id = e.Id,
+      Id = expense.Id,
 
       // Identify this transaction as an expense
-      Type = "Expense",
+      Type = TransactionTypes.Expense,
 
       // Use the expense name as the title
-      Title = e.Name,
+      Title = expense.Name,
 
       // Copy the expense category
-      Category = e.Category,
+      Category = expense.Category,
 
       // Copy the expense amount
-      Amount = e.Amount,
+      Amount = expense.Amount,
 
       // Use the date the expense occurred
-      TransactionDate = e.ExpenseDate,
+      TransactionDate = expense.ExpenseDate,
 
       // Copy the account used for the expense
-      AccountId = e.AccountId,
+      AccountId = expense.AccountId,
 
       // Get the account name from the lookup dictionary.
       // Use an empty string if the account cannot be found.
       AccountName = accountLookup.GetValueOrDefault(
-        e.AccountId,
+        expense.AccountId,
         string.Empty),
 
       // Keep the budget month relationship for display
       // or navigation, but do not use it for date filtering.
-      BudgetMonthId = e.BudgetMonthId,
+      BudgetMonthId = expense.BudgetMonthId,
 
       // Copy any optional notes
-      Notes = e.Notes,
+      Notes = expense.Notes,
 
       // Copy when the record was created
-      CreatedAtUtc = e.CreatedAtUtc
+      CreatedAtUtc = expense.CreatedAtUtc
     }));
 
     // Convert each transfer into a common
@@ -211,7 +211,7 @@ public class TransactionService : BudgetBaseService
       Id = t.Id,
 
       // Identify this transaction as a transfer
-      Type = "Transfer",
+      Type = TransactionTypes.Transfer,
 
       // Use a standard title for transfers
       Title = "Account Transfer",

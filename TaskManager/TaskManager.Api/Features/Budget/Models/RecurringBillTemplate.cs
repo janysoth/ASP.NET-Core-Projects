@@ -18,7 +18,7 @@ public class RecurringBillTemplate
   public string CategoryName { get; set; } = string.Empty;
 
   // Expense 
-  public string CategoryType { get; set; } = "Expense";
+  public string CategoryType { get; set; } = BudgetCategoryTypes.Expense;
 
   public decimal ExpectedAmount { get; set; }
 

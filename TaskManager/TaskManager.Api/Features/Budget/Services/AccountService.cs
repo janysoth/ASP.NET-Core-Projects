@@ -1,5 +1,4 @@
 using MongoDB.Driver;
-// using TaskManager.Api.Features.Budget.DTOs;
 using TaskManager.Api.Features.Budget.Mappers;
 using TaskManager.Api.Features.Budget.Models;
 
@@ -215,22 +214,25 @@ public class AccountService : BudgetBaseService
     ---------------------------------------------------------*/
     decimal currentBalance;
 
-    if (account.Type.Equals("CreditCard", StringComparison.OrdinalIgnoreCase))
+    if (string.Equals(
+      account.Type,
+      FinancialAccountTypes.CreditCard,
+      StringComparison.OrdinalIgnoreCase))
     {
       currentBalance =
         account.StartingBalance
-        + expenses.Sum(e => e.Amount)
-        - transfersIn.Sum(t => t.Amount)
-        + transfersOut.Sum(t => t.Amount);
+        + expenses.Sum(expense => expense.Amount)
+        - transfersIn.Sum(transfer => transfer.Amount)
+        + transfersOut.Sum(transfer => transfer.Amount);
     }
     else
     {
       currentBalance =
         account.StartingBalance
-        + incomes.Sum(i => i.Amount)
-        - expenses.Sum(e => e.Amount)
-        - transfersOut.Sum(t => t.Amount)
-        + transfersIn.Sum(t => t.Amount);
+        + incomes.Sum(income => income.Amount)
+        - expenses.Sum(expense => expense.Amount)
+        - transfersOut.Sum(transfer => transfer.Amount)
+        + transfersIn.Sum(transfer => transfer.Amount);
     }
 
     /*---------------------------------------------------------

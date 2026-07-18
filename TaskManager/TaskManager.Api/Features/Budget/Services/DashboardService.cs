@@ -44,20 +44,22 @@ public class DashboardService : BudgetBaseService
     // Checking and savings accounts are treated as available cash.
     var totalCash = accounts
       .Where(account =>
-        account.Type.Equals(
-          "Checking",
+        string.Equals(
+          account.Type,
+          FinancialAccountTypes.Checking,
           StringComparison.OrdinalIgnoreCase) ||
-        account.Type.Equals(
-          "Savings",
+        string.Equals(
+          account.Type,
+          FinancialAccountTypes.Savings,
           StringComparison.OrdinalIgnoreCase))
       .Sum(account => account.CurrentBalance);
 
     // Credit card balances are treated as debt.
     var totalCreditCardDebt = accounts
-      .Where(account =>
-        account.Type.Equals(
-          "CreditCard",
-          StringComparison.OrdinalIgnoreCase))
+      .Where(account => string.Equals(
+        account.Type,
+        FinancialAccountTypes.CreditCard,
+        StringComparison.OrdinalIgnoreCase))
       .Sum(account => account.CurrentBalance);
 
     // Simplified current net worth calculation.
@@ -170,12 +172,14 @@ public class DashboardService : BudgetBaseService
     dashboard.FixedExpenseComparisons =
       budgetResponse.BudgetCategories
         .Where(category =>
-          category.Type.Equals(
-            "Expense",
+          string.Equals(
+            category.Type,
+            BudgetCategoryTypes.Expense,
             StringComparison.OrdinalIgnoreCase) &&
-          category.ExpenseType?.Equals(
-            "Fixed",
-            StringComparison.OrdinalIgnoreCase) == true)
+          string.Equals(
+            category.ExpenseType,
+            ExpenseTypes.Fixed,
+            StringComparison.OrdinalIgnoreCase))
         .OrderBy(category => category.Name)
         .ToList();
 
@@ -183,22 +187,24 @@ public class DashboardService : BudgetBaseService
     dashboard.VariableExpenseComparisons =
       budgetResponse.BudgetCategories
         .Where(category =>
-          category.Type.Equals(
-            "Expense",
+          string.Equals(
+            category.Type,
+            BudgetCategoryTypes.Expense,
             StringComparison.OrdinalIgnoreCase) &&
-          category.ExpenseType?.Equals(
-            "Variable",
-            StringComparison.OrdinalIgnoreCase) == true)
+          string.Equals(
+            category.ExpenseType,
+            ExpenseTypes.Variable,
+            StringComparison.OrdinalIgnoreCase))
         .OrderBy(category => category.Name)
         .ToList();
 
     // Savings category planned-versus-actual details.
     dashboard.SavingsComparisons =
       budgetResponse.BudgetCategories
-        .Where(category =>
-          category.Type.Equals(
-            "Savings",
-            StringComparison.OrdinalIgnoreCase))
+        .Where(category => string.Equals(
+          category.Type,
+          BudgetCategoryTypes.Savings,
+          StringComparison.OrdinalIgnoreCase))
         .OrderBy(category => category.Name)
         .ToList();
 

@@ -248,8 +248,9 @@ public class RecurringBillTemplatesController
       return "Category name is required.";
     }
 
-    if (!categoryType.Equals(
-      "Expense",
+    if (!string.Equals(
+      categoryType,
+      BudgetCategoryTypes.Expense,
       StringComparison.OrdinalIgnoreCase))
     {
       return "Recurring bill templates must use an Expense category.";

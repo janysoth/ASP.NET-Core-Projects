@@ -4,7 +4,7 @@ public sealed record CreateFinancialAccountRequest
 {
   public string Name { get; set; } = string.Empty;
 
-  public string Type { get; set; } = "Checking";
+  public string Type { get; set; } = FinancialAccountTypes.Checking;
 
   public decimal StartingBalance { get; set; }
 }
@@ -13,7 +13,7 @@ public sealed record UpdateFinancialAccountRequest
 {
   public string Name { get; set; } = string.Empty;
 
-  public string Type { get; set; } = "Checking";
+  public string Type { get; set; } = FinancialAccountTypes.Checking;
 
   public decimal StartingBalance { get; set; }
 }

@@ -16,9 +16,10 @@ public class BudgetCategory
   public string Name { get; set; } = string.Empty;
 
   // Allowed values:
-  // Expense
-  // Savings
-  public string Type { get; set; } = "Expense";
+  // BudgetCategoryTypes.Expense
+  // BudgetCategoryTypes.Savings
+  public string Type { get; set; } =
+    BudgetCategoryTypes.Expense;
 
   // Used only when Type is Expense.
   // Allowed values:

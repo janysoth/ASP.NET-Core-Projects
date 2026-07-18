@@ -21,62 +21,49 @@ public abstract class BudgetControllerBase : ControllerBase
 
   /*===========================================================
     IsValidCategoryType:
-    => Checks whether the main budget category type is allowed.
+    => Checks whether the category type is supported.
     => Allowed values are Expense and Savings.
   ===========================================================*/
-  protected static bool IsValidCategoryType(string type)
+  protected static bool IsValidCategoryType(string? type)
   {
-    var allowedTypes = new[]
-    {
-      "Expense",
-      "Savings"
-    };
-
-    return allowedTypes.Contains(
-      type,
-      StringComparer.OrdinalIgnoreCase);
+    return BudgetCategoryTypes.IsValid(type);
   }
 
   /*===========================================================
     IsValidExpenseType:
-    => Checks whether an expense classification is allowed.
+    => Checks whether the expense classification is supported.
     => Allowed values are Fixed and Variable.
   ===========================================================*/
-  protected static bool IsValidExpenseType(string expenseType)
+  protected static bool IsValidExpenseType(string? expenseType)
   {
-    var allowedTypes = new[]
-    {
-      "Fixed",
-      "Variable"
-    };
-
-    return allowedTypes.Contains(
-      expenseType,
-      StringComparer.OrdinalIgnoreCase);
+    return ExpenseTypes.IsValid(expenseType);
   }
 
   /*===========================================================
     ValidateCategoryClassification:
-    => Requires Fixed or Variable when the category is Expense.
-    => Requires ExpenseType to be empty for Savings.
+    => Requires Fixed or Variable for Expense categories.
+    => Requires ExpenseType to be empty for Savings categories.
     => Returns an error message or null when valid.
   ===========================================================*/
   protected static string? ValidateCategoryClassification(
     string categoryType,
     string? expenseType)
   {
-    if (categoryType.Equals(
-      "Expense",
+    if (string.Equals(
+      categoryType,
+      BudgetCategoryTypes.Expense,
       StringComparison.OrdinalIgnoreCase))
     {
       if (string.IsNullOrWhiteSpace(expenseType))
       {
-        return "Expense type is required for an Expense category.";
+        return
+          "Expense type is required for an Expense category.";
       }
 
-      if (!IsValidExpenseType(expenseType))
+      if (!ExpenseTypes.IsValid(expenseType))
       {
-        return "Expense type must be Fixed or Variable.";
+        return
+          "Expense type must be Fixed or Variable.";
       }
 
       return null;
@@ -84,7 +71,8 @@ public abstract class BudgetControllerBase : ControllerBase
 
     if (!string.IsNullOrWhiteSpace(expenseType))
     {
-      return "Expense type must be empty for Savings categories.";
+      return
+        "Expense type must be empty for Savings categories.";
     }
 
     return null;
@@ -92,20 +80,11 @@ public abstract class BudgetControllerBase : ControllerBase
 
   /*===========================================================
     IsValidAccountType:
-    => Checks whether the financial account type is allowed.
+    => Checks whether the account type is supported.
     => Allowed values are Checking, Savings, and CreditCard.
   ===========================================================*/
-  protected static bool IsValidAccountType(string type)
+  protected static bool IsValidAccountType(string? type)
   {
-    var allowedTypes = new[]
-    {
-      "Checking",
-      "Savings",
-      "CreditCard"
-    };
-
-    return allowedTypes.Contains(
-      type,
-      StringComparer.OrdinalIgnoreCase);
+    return FinancialAccountTypes.IsValid(type);
   }
 }

@@ -7,7 +7,7 @@ public sealed record CreateBudgetCategoryRequest
   // Allowed values:
   // Expense
   // Savings
-  public string Type { get; set; } = "Expense";
+  public string Type { get; set; } = BudgetCategoryTypes.Expense;
 
   // Required for Expense.
   // Must be Fixed or Variable.
@@ -24,7 +24,7 @@ public sealed record UpdateBudgetCategoryRequest
   // Allowed values:
   // Expense
   // Savings
-  public string Type { get; set; } = "Expense";
+  public string Type { get; set; } = BudgetCategoryTypes.Expense;
 
   // Required for Expense.
   // Must be Fixed or Variable.

@@ -14,7 +14,7 @@ public class FinancialAccount
   public string Name { get; set; } = string.Empty;
 
   // Allowed values: Checking, Savings, CreditCard
-  public string Type { get; set; } = "Checking";
+  public string Type { get; set; } = FinancialAccountTypes.Checking;
 
   public decimal StartingBalance { get; set; }
 

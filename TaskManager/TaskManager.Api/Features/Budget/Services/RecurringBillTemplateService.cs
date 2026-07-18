@@ -302,6 +302,6 @@ public class RecurringBillTemplateService : BudgetBaseService
   ===========================================================*/
   private static string NormalizeCategoryType(string type)
   {
-    return "Expense";
+    return BudgetCategoryTypes.Expense;
   }
 }
