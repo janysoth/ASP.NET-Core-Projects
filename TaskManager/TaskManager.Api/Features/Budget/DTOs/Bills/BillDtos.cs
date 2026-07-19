@@ -2,7 +2,27 @@ namespace TaskManager.Api.Features.Budget.DTOs.Bills;
 
 public sealed record CreateBillRequest
 {
-  public string BudgetCategoryId { get; set; } = string.Empty;
+  /*===========================================================
+    PaymentType:
+    => Expense for normal bills.
+    => Transfer for credit-card payment bills.
+  ===========================================================*/
+  public string PaymentType { get; set; } =
+    BillPaymentTypes.Expense;
+
+  /*===========================================================
+    BudgetCategoryId:
+    => Required when PaymentType is Expense.
+    => Must reference an Expense category in the budget month.
+  ===========================================================*/
+  public string? BudgetCategoryId { get; set; }
+
+  /*===========================================================
+    DestinationAccountId:
+    => Required when PaymentType is Transfer.
+    => Must reference a CreditCard account.
+  ===========================================================*/
+  public string? DestinationAccountId { get; set; }
 
   public string Name { get; set; } = string.Empty;
 
@@ -15,7 +35,12 @@ public sealed record CreateBillRequest
 
 public sealed record UpdateBillRequest
 {
-  public string BudgetCategoryId { get; set; } = string.Empty;
+  public string PaymentType { get; set; } =
+    BillPaymentTypes.Expense;
+
+  public string? BudgetCategoryId { get; set; }
+
+  public string? DestinationAccountId { get; set; }
 
   public string Name { get; set; } = string.Empty;
 
@@ -28,6 +53,11 @@ public sealed record UpdateBillRequest
 
 public sealed record MarkBillPaidRequest
 {
+  /*===========================================================
+    AccountId:
+    => Expense bill: account used to pay the expense.
+    => Transfer bill: source Checking/Savings account.
+  ===========================================================*/
   public string AccountId { get; set; } = string.Empty;
 
   public decimal ActualAmount { get; set; }
@@ -43,9 +73,21 @@ public sealed record BillResponse
 
   public string BudgetMonthId { get; set; } = string.Empty;
 
-  public string BudgetCategoryId { get; set; } = string.Empty;
+  public string PaymentType { get; set; } = string.Empty;
 
-  public string BudgetCategoryName { get; set; } = string.Empty;
+  /*===========================================================
+    Expense bill details:
+  ===========================================================*/
+  public string? BudgetCategoryId { get; set; }
+
+  public string? BudgetCategoryName { get; set; }
+
+  /*===========================================================
+    Transfer bill details:
+  ===========================================================*/
+  public string? DestinationAccountId { get; set; }
+
+  public string? DestinationAccountName { get; set; }
 
   public string Name { get; set; } = string.Empty;
 
@@ -59,8 +101,20 @@ public sealed record BillResponse
 
   public string Status { get; set; } = string.Empty;
 
+  /*===========================================================
+    Created payment record:
+    => ExpenseRecordId is used for Expense bills.
+    => AccountTransferId is used for Transfer bills.
+  ===========================================================*/
   public string? ExpenseRecordId { get; set; }
 
+  public string? AccountTransferId { get; set; }
+
+  /*===========================================================
+    Payment source:
+    => Expense bill: account used for the expense.
+    => Transfer bill: Checking/Savings source account.
+  ===========================================================*/
   public string? AccountId { get; set; }
 
   public string? AccountName { get; set; }
@@ -74,11 +128,16 @@ public sealed record BillResponse
 
 public sealed record CreateRecurringBillTemplateRequest
 {
+  public string PaymentType { get; set; } =
+    BillPaymentTypes.Expense;
+
+  // Required for Expense templates.
+  public string? CategoryName { get; set; }
+
+  // Required for Transfer templates.
+  public string? DestinationAccountId { get; set; }
+
   public string Name { get; set; } = string.Empty;
-
-  public string CategoryName { get; set; } = string.Empty;
-
-  public string CategoryType { get; set; } = BudgetCategoryTypes.Expense;
 
   public decimal ExpectedAmount { get; set; }
 
@@ -91,11 +150,14 @@ public sealed record CreateRecurringBillTemplateRequest
 
 public sealed record UpdateRecurringBillTemplateRequest
 {
+  public string PaymentType { get; set; } =
+    BillPaymentTypes.Expense;
+
+  public string? CategoryName { get; set; }
+
+  public string? DestinationAccountId { get; set; }
+
   public string Name { get; set; } = string.Empty;
-
-  public string CategoryName { get; set; } = string.Empty;
-
-  public string CategoryType { get; set; } = BudgetCategoryTypes.Expense;
 
   public decimal ExpectedAmount { get; set; }
 
@@ -110,11 +172,15 @@ public sealed record RecurringBillTemplateResponse
 {
   public string Id { get; set; } = string.Empty;
 
+  public string PaymentType { get; set; } = string.Empty;
+
+  public string? CategoryName { get; set; }
+
+  public string? DestinationAccountId { get; set; }
+
+  public string? DestinationAccountName { get; set; }
+
   public string Name { get; set; } = string.Empty;
-
-  public string CategoryName { get; set; } = string.Empty;
-
-  public string CategoryType { get; set; } = string.Empty;
 
   public decimal ExpectedAmount { get; set; }
 

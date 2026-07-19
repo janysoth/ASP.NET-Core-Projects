@@ -13,13 +13,39 @@ public class Bill
 
   public string BudgetMonthId { get; set; } = string.Empty;
 
-  public string BudgetCategoryId { get; set; } = string.Empty;
+  /*===========================================================
+    PaymentType:
+    => Determines what happens when the bill is paid.
+    => Expense creates an ExpenseRecord.
+    => Transfer creates an AccountTransfer.
+  ===========================================================*/
+  public string PaymentType { get; set; } =
+    BillPaymentTypes.Expense;
+
+  /*===========================================================
+    BudgetCategoryId:
+    => Used only for Expense bills.
+    => Links the bill to an Expense budget category.
+    => Transfer bills leave this null.
+  ===========================================================*/
+  [BsonRepresentation(BsonType.ObjectId)]
+  [BsonIgnoreIfNull]
+  public string? BudgetCategoryId { get; set; }
+
+  /*===========================================================
+    DestinationAccountId:
+    => Used only for Transfer bills.
+    => Identifies the CreditCard account being paid.
+    => Expense bills leave this null.
+  ===========================================================*/
+  [BsonRepresentation(BsonType.ObjectId)]
+  [BsonIgnoreIfNull]
+  public string? DestinationAccountId { get; set; }
 
   /*===========================================================
     RecurringBillTemplateId:
     => Stores the recurring template that generated this bill.
-    => Remains null for bills created manually.
-    => BsonIgnoreIfNull prevents null values from being stored.
+    => Manual bills leave this null.
   ===========================================================*/
   [BsonRepresentation(BsonType.ObjectId)]
   [BsonIgnoreIfNull]
@@ -33,9 +59,23 @@ public class Bill
 
   public bool IsPaid { get; set; }
 
+  /*===========================================================
+    ExpenseRecordId:
+    => Set only when an Expense bill is paid.
+    => Links to the automatically created ExpenseRecord.
+  ===========================================================*/
   [BsonRepresentation(BsonType.ObjectId)]
   [BsonIgnoreIfNull]
   public string? ExpenseRecordId { get; set; }
+
+  /*===========================================================
+    AccountTransferId:
+    => Set only when a Transfer bill is paid.
+    => Links to the automatically created AccountTransfer.
+  ===========================================================*/
+  [BsonRepresentation(BsonType.ObjectId)]
+  [BsonIgnoreIfNull]
+  public string? AccountTransferId { get; set; }
 
   [BsonIgnoreIfNull]
   public DateTime? PaidDate { get; set; }
@@ -43,5 +83,6 @@ public class Bill
   [BsonIgnoreIfNull]
   public string? Notes { get; set; }
 
-  public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+  public DateTime CreatedAtUtc { get; set; } =
+    DateTime.UtcNow;
 }

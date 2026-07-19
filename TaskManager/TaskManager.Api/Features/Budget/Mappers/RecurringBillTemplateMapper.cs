@@ -1,4 +1,3 @@
-// using TaskManager.Api.Features.Budget.DTOs;
 using TaskManager.Api.Features.Budget.Models;
 
 namespace TaskManager.Api.Features.Budget.Mappers;
@@ -7,18 +6,28 @@ public static class RecurringBillTemplateMapper
 {
   /*===========================================================
     ToResponse:
-    => Converts a recurring bill template model into a response DTO.
-    => Keeps MongoDB fields separate from the public API response.
+    => Converts a recurring template into a response DTO.
+    => Includes the destination CreditCard name for Transfer
+       templates when available.
   ===========================================================*/
   public static RecurringBillTemplateResponse ToResponse(
-    RecurringBillTemplate template)
+    RecurringBillTemplate template,
+    FinancialAccount? destinationAccount = null)
   {
     return new RecurringBillTemplateResponse
     {
       Id = template.Id,
-      Name = template.Name,
+      PaymentType = template.PaymentType,
+
       CategoryName = template.CategoryName,
-      CategoryType = template.CategoryType,
+
+      DestinationAccountId =
+        template.DestinationAccountId,
+
+      DestinationAccountName =
+        destinationAccount?.Name,
+
+      Name = template.Name,
       ExpectedAmount = template.ExpectedAmount,
       DueDay = template.DueDay,
       IsActive = template.IsActive,
