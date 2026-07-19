@@ -1,47 +1,52 @@
-using TaskManager.Api.Features.Budget.DTOs;
 using TaskManager.Api.Features.Budget.Models;
 
 namespace TaskManager.Api.Features.Budget.Mappers;
 
-// Static helper class responsible for converting
-// AccountTransfer models into AccountTransferResponse DTOs.
 public static class TransferMapper
 {
-  // Converts an AccountTransfer model into a response DTO.
+  /*===========================================================
+    ToResponse:
+    => Converts an AccountTransfer into a response DTO.
+    => Includes source and destination account names.
+    => Includes optional BillId when linked to a bill.
+  ===========================================================*/
   public static AccountTransferResponse ToResponse(
     AccountTransfer transfer,
     FinancialAccount? fromAccount = null,
     FinancialAccount? toAccount = null)
   {
-    // Create and return a response object
     return new AccountTransferResponse
     {
-      // Copy the transfer ID
       Id = transfer.Id,
 
-      // Copy the account ID where the money was transferred from
-      FromAccountId = transfer.FromAccountId,
+      FromAccountId =
+        transfer.FromAccountId,
 
-      // Copy the account Name where the money was transferred from
-      FromAccountName = fromAccount?.Name ?? string.Empty,
+      FromAccountName =
+        fromAccount?.Name ??
+        string.Empty,
 
-      // Copy the account ID where the money was transferred to
-      ToAccountId = transfer.ToAccountId,
+      ToAccountId =
+        transfer.ToAccountId,
 
-      // Copy the account Name where the money was transferred to
-      ToAccountName = toAccount?.Name ?? string.Empty,
+      ToAccountName =
+        toAccount?.Name ??
+        string.Empty,
 
-      // Copy the transfer amount
-      Amount = transfer.Amount,
+      BillId =
+        transfer.BillId,
 
-      // Copy the date the transfer occurred
-      TransferDate = transfer.TransferDate,
+      Amount =
+        transfer.Amount,
 
-      // Copy any optional notes
-      Notes = transfer.Notes,
+      TransferDate =
+        transfer.TransferDate,
 
-      // Copy when the transfer record was created
-      CreatedAtUtc = transfer.CreatedAtUtc
+      Notes =
+        transfer.Notes,
+
+      CreatedAtUtc =
+        transfer.CreatedAtUtc
     };
   }
 }

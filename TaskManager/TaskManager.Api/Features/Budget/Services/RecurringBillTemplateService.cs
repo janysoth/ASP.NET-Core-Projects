@@ -497,10 +497,11 @@ public class RecurringBillTemplateService : BudgetBaseService
           bill,
           category: category,
           expense: null,
-          transfer: null,
-          sourceAccount: null,
+          transfers: null,
+          expenseAccount: null,
           destinationAccount:
-            destinationAccount));
+            destinationAccount,
+          accountLookup: null));
     }
 
     return response;

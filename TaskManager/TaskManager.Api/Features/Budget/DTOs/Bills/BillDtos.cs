@@ -121,6 +121,14 @@ public sealed record BillResponse
 
   public DateTime? PaidDate { get; set; }
 
+  public decimal TotalPaid { get; set; }
+
+  public decimal RemainingAmount { get; set; }
+
+  public int PaymentCount { get; set; }
+
+  public List<BillPaymentResponse> Payments { get; set; } = [];
+
   public string? Notes { get; set; }
 
   public DateTime CreatedAtUtc { get; set; }
@@ -218,3 +226,28 @@ public sealed record GenerateBillsResponse
 
   public List<string> Messages { get; set; } = [];
 }
+
+public sealed record BillPaymentResponse
+{
+  public string Id { get; set; } =
+    string.Empty;
+
+  public string FromAccountId { get; set; } =
+    string.Empty;
+
+  public string FromAccountName { get; set; } =
+    string.Empty;
+
+  public string ToAccountId { get; set; } =
+    string.Empty;
+
+  public string ToAccountName { get; set; } =
+    string.Empty;
+
+  public decimal Amount { get; set; }
+
+  public DateTime PaymentDate { get; set; }
+
+  public string? Notes { get; set; }
+}
+

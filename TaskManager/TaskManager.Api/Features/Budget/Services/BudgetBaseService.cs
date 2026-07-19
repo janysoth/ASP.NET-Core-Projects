@@ -88,4 +88,57 @@ public abstract class BudgetBaseService
       .Find(c => c.Id == categoryId && c.UserId == userId)
       .FirstOrDefaultAsync();
   }
+
+  /*===========================================================
+  GetAccountCurrentBalanceAsync:
+  => Calculates the current balance for one account.
+  => Cash accounts treat expenses as money leaving.
+  => Credit cards treat expenses as increasing the amount owed.
+===========================================================*/
+  protected async Task<decimal> GetAccountCurrentBalanceAsync(
+    FinancialAccount account)
+  {
+    var incomes = await IncomeRecords
+      .Find(i =>
+        i.UserId == account.UserId &&
+        i.AccountId == account.Id)
+      .ToListAsync();
+
+    var expenses = await ExpenseRecords
+      .Find(e =>
+        e.UserId == account.UserId &&
+        e.AccountId == account.Id)
+      .ToListAsync();
+
+    var transfersOut = await AccountTransfers
+      .Find(t =>
+        t.UserId == account.UserId &&
+        t.FromAccountId == account.Id)
+      .ToListAsync();
+
+    var transfersIn = await AccountTransfers
+      .Find(t =>
+        t.UserId == account.UserId &&
+        t.ToAccountId == account.Id)
+      .ToListAsync();
+
+    if (string.Equals(
+      account.Type,
+      FinancialAccountTypes.CreditCard,
+      StringComparison.OrdinalIgnoreCase))
+    {
+      return
+        account.StartingBalance
+        + expenses.Sum(e => e.Amount)
+        + transfersOut.Sum(t => t.Amount)
+        - transfersIn.Sum(t => t.Amount);
+    }
+
+    return
+      account.StartingBalance
+      + incomes.Sum(i => i.Amount)
+      - expenses.Sum(e => e.Amount)
+      - transfersOut.Sum(t => t.Amount)
+      + transfersIn.Sum(t => t.Amount);
+  }
 }

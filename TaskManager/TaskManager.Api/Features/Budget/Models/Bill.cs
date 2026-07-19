@@ -70,8 +70,9 @@ public class Bill
 
   /*===========================================================
     AccountTransferId:
-    => Set only when a Transfer bill is paid.
-    => Links to the automatically created AccountTransfer.
+    => Legacy field from the original single-payment design.
+    => New Transfer bills use AccountTransfer.BillId instead.
+    => Can be removed after old data has been migrated.
   ===========================================================*/
   [BsonRepresentation(BsonType.ObjectId)]
   [BsonIgnoreIfNull]

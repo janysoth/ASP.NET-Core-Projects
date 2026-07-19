@@ -49,57 +49,69 @@ public class TransfersController : BudgetControllerBase
     return Ok(transfers);
   }
 
-  // ==========================================
-  // POST: api/budget/transfers
-  // Creates a new transfer between two accounts.
-  // ==========================================
+  /*===========================================================
+   CreateTransfer:
+   => POST: api/budget/transfers
+   => Creates a transfer between two accounts.
+   => Supports direct credit-card payments.
+   => BillId is optional for linking a payment to a Transfer bill.
+ ===========================================================*/
   [HttpPost]
-  public async Task<ActionResult<AccountTransferResponse>> CreateTransfer(
-    CreateAccountTransferRequest request)
+  public async Task<ActionResult<AccountTransferResponse>>
+    CreateTransfer(
+      CreateAccountTransferRequest request)
   {
-    // Get the authenticated user's ID
     var userId = GetUserId();
 
-    // Return 401 if the user is not authenticated
     if (userId == null)
     {
       return Unauthorized();
     }
 
-    // Validate that a source account was selected
-    if (string.IsNullOrWhiteSpace(request.FromAccountId))
+    if (string.IsNullOrWhiteSpace(
+      request.FromAccountId))
     {
-      return BadRequest("From account is required.");
+      return BadRequest(
+        "Source account is required.");
     }
 
-    // Validate that a destination account was selected
-    if (string.IsNullOrWhiteSpace(request.ToAccountId))
+    if (string.IsNullOrWhiteSpace(
+      request.ToAccountId))
     {
-      return BadRequest("To account is required.");
+      return BadRequest(
+        "Destination account is required.");
     }
 
-    // Prevent transferring money to the same account
-    if (request.FromAccountId == request.ToAccountId)
+    if (request.FromAccountId ==
+        request.ToAccountId)
     {
-      return BadRequest("From account and to account cannot be the same.");
+      return BadRequest(
+        "Source and destination accounts cannot be the same.");
     }
 
-    // Validate that the transfer amount is greater than zero
     if (request.Amount <= 0)
     {
-      return BadRequest("Transfer amount must be greater than 0.");
+      return BadRequest(
+        "Transfer amount must be greater than 0.");
     }
 
-    // Create the account transfer
-    var transfer = await _transferService.CreateTransferAsync(request, userId);
+    if (request.TransferDate == default)
+    {
+      return BadRequest(
+        "Transfer date is required.");
+    }
 
-    // Return 404 if one or both accounts were not found
+    var transfer =
+      await _transferService.CreateTransferAsync(
+        request,
+        userId);
+
     if (transfer == null)
     {
-      return NotFound("One or both accounts were not found.");
+      return BadRequest(
+        "The transfer could not be created. Check the accounts, credit-card balance, payment amount, or linked bill.");
     }
 
-    // Return the newly created transfer
     return Ok(transfer);
   }
 
