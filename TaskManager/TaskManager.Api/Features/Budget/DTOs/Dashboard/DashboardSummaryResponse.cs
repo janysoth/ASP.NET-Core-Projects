@@ -42,8 +42,8 @@ public sealed record DashboardSummaryResponse
     Accounts:
     => Contains all current financial accounts and balances.
   ===========================================================*/
-  public List<FinancialAccountResponse> Accounts { get; set; } =
-    [];
+  public AccountSummaryResponse Accounts { get; set; } =
+    new();
 
   /*===========================================================
     RecentTransactions:

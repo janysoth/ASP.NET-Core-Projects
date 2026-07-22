@@ -60,18 +60,27 @@ public class DashboardService : BudgetBaseService
       Total cash:
       Checking + Savings balances.
     */
-    var totalCash = accounts
+    var totalChecking = accounts
       .Where(account =>
         string.Equals(
           account.Type,
           FinancialAccountTypes.Checking,
-          StringComparison.OrdinalIgnoreCase) ||
+          StringComparison.OrdinalIgnoreCase))
+      .Sum(account =>
+        account.CurrentBalance);
+
+    var totalSavings = accounts
+      .Where(account =>
         string.Equals(
           account.Type,
           FinancialAccountTypes.Savings,
           StringComparison.OrdinalIgnoreCase))
       .Sum(account =>
         account.CurrentBalance);
+
+    var totalCash =
+      totalChecking +
+      totalSavings;
 
     /*
       Total credit-card debt:
@@ -117,7 +126,25 @@ public class DashboardService : BudgetBaseService
           },
 
         Accounts =
-          accounts
+          new AccountSummaryResponse
+          {
+            TotalChecking =
+              totalChecking,
+
+            TotalSavings =
+              totalSavings,
+
+            TotalCreditCardDebt =
+              totalCreditCardDebt,
+
+            Accounts =
+              accounts
+                .OrderBy(account =>
+                  account.Type)
+                .ThenBy(account =>
+                  account.Name)
+                .ToList()
+          }
       };
 
     /*
