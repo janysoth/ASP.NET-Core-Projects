@@ -122,53 +122,34 @@ public class TransfersController : BudgetControllerBase
   // the request will be updated.
   // ==========================================
   [HttpPatch("{transferId}")]
-  public async Task<ActionResult<AccountTransferResponse>> PatchTransfer(
+  public async Task<ActionResult<AccountTransferResponse>>
+  PatchTransfer(
     string transferId,
     PatchAccountTransferRequest request)
   {
-    // Get the authenticated user's ID
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
-    // Return 401 if the user is not authenticated
     if (userId == null)
     {
       return Unauthorized();
     }
 
-    // Validate the source account if it was supplied
-    if (request.FromAccountId != null &&
-        string.IsNullOrWhiteSpace(request.FromAccountId))
-    {
-      return BadRequest("From account cannot be empty.");
-    }
+    var updatedTransfer =
+      await _transferService
+        .PatchTransferAsync(
+          transferId,
+          request,
+          userId);
 
-    // Validate the destination account if it was supplied
-    if (request.ToAccountId != null &&
-        string.IsNullOrWhiteSpace(request.ToAccountId))
-    {
-      return BadRequest("To account cannot be empty.");
-    }
-
-    // Validate the transfer amount if it was supplied
-    if (request.Amount.HasValue && request.Amount.Value <= 0)
-    {
-      return BadRequest("Transfer amount must be greater than 0.");
-    }
-
-    // Update only the supplied fields
-    var updatedTransfer = await _transferService.PatchTransferAsync(
-      transferId,
-      request,
-      userId);
-
-    // Return 404 if the transfer or account was not found
     if (updatedTransfer == null)
     {
-      return NotFound("Transfer or account not found.");
+      return BadRequest(
+        "The transfer could not be updated. Check the accounts, amount, bill, and payment limits.");
     }
 
-    // Return the updated transfer
-    return Ok(updatedTransfer);
+    return Ok(
+      updatedTransfer);
   }
 
   // ==========================================

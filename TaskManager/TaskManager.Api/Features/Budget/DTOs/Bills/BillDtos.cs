@@ -104,11 +104,8 @@ public sealed record BillResponse
   /*===========================================================
     Created payment record:
     => ExpenseRecordId is used for Expense bills.
-    => AccountTransferId is used for Transfer bills.
   ===========================================================*/
   public string? ExpenseRecordId { get; set; }
-
-  public string? AccountTransferId { get; set; }
 
   /*===========================================================
     Payment source:

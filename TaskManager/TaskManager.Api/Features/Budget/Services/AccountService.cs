@@ -185,35 +185,109 @@ public class AccountService : BudgetBaseService
   }
 
   /*===========================================================
-    BuildFinancialAccountResponseAsync
+    BuildFinancialAccountResponseAsync:
+    => Calculates the current balance for one account.
+    => Includes income, expenses, transfers in, and transfers out.
+    => Uses different balance rules for cash and credit-card accounts.
   ===========================================================*/
-  private async Task<FinancialAccountResponse> BuildFinancialAccountResponseAsync(
-    FinancialAccount account)
+  private async Task<FinancialAccountResponse>
+    BuildFinancialAccountResponseAsync(
+      FinancialAccount account)
   {
+    /*
+      Use the beginning of tomorrow as the cutoff.
+
+      This includes:
+      - past transactions;
+      - every transaction dated today.
+
+      It excludes:
+      - future-dated transactions.
+    */
+    var transactionCutoffUtc =
+      DateTime.UtcNow.Date.AddDays(1);
+
     /*---------------------------------------------------------
-      Get records connected to this account
+      Load income records posted through today.
     ---------------------------------------------------------*/
     var incomes = await IncomeRecords
-      .Find(i => i.AccountId == account.Id && i.UserId == account.UserId)
-      .ToListAsync();
-
-    var expenses = await ExpenseRecords
-      .Find(e => e.AccountId == account.Id && e.UserId == account.UserId)
-      .ToListAsync();
-
-    var transfersOut = await AccountTransfers
-      .Find(t => t.FromAccountId == account.Id && t.UserId == account.UserId)
-      .ToListAsync();
-
-    var transfersIn = await AccountTransfers
-      .Find(t => t.ToAccountId == account.Id && t.UserId == account.UserId)
+      .Find(income =>
+        income.UserId == account.UserId &&
+        income.AccountId == account.Id &&
+        income.IncomeDate < transactionCutoffUtc)
       .ToListAsync();
 
     /*---------------------------------------------------------
-      Calculate current account balance
+      Load expense records posted through today.
     ---------------------------------------------------------*/
+    var expenses = await ExpenseRecords
+      .Find(expense =>
+        expense.UserId == account.UserId &&
+        expense.AccountId == account.Id &&
+        expense.ExpenseDate < transactionCutoffUtc)
+      .ToListAsync();
+
+    /*---------------------------------------------------------
+      Load all posted transfers for the user.
+
+      We filter incoming and outgoing transfers in memory.
+      This avoids separate MongoDB field queries returning
+      inconsistent results with older transfer documents.
+    ---------------------------------------------------------*/
+    var userTransfers = await AccountTransfers
+      .Find(transfer =>
+        transfer.UserId == account.UserId &&
+        transfer.TransferDate < transactionCutoffUtc)
+      .ToListAsync();
+
+    var transfersOut = userTransfers
+      .Where(transfer =>
+        string.Equals(
+          transfer.FromAccountId,
+          account.Id,
+          StringComparison.Ordinal))
+      .ToList();
+
+    var transfersIn = userTransfers
+      .Where(transfer =>
+        string.Equals(
+          transfer.ToAccountId,
+          account.Id,
+          StringComparison.Ordinal))
+      .ToList();
+
+    /*---------------------------------------------------------
+      Calculate totals separately for readability.
+    ---------------------------------------------------------*/
+    var totalIncome =
+      incomes.Sum(income =>
+        income.Amount);
+
+    var totalExpenses =
+      expenses.Sum(expense =>
+        expense.Amount);
+
+    var totalTransfersOut =
+      transfersOut.Sum(transfer =>
+        transfer.Amount);
+
+    var totalTransfersIn =
+      transfersIn.Sum(transfer =>
+        transfer.Amount);
+
     decimal currentBalance;
 
+    /*---------------------------------------------------------
+      Credit-card balance:
+
+      Starting debt
+      + purchases
+      + transfers out
+      - payments received
+
+      A transfer into a credit card represents a payment,
+      so it reduces the balance owed.
+    ---------------------------------------------------------*/
     if (string.Equals(
       account.Type,
       FinancialAccountTypes.CreditCard,
@@ -221,23 +295,31 @@ public class AccountService : BudgetBaseService
     {
       currentBalance =
         account.StartingBalance
-        + expenses.Sum(expense => expense.Amount)
-        - transfersIn.Sum(transfer => transfer.Amount)
-        + transfersOut.Sum(transfer => transfer.Amount);
+        + totalExpenses
+        + totalTransfersOut
+        - totalTransfersIn;
     }
     else
     {
+      /*-------------------------------------------------------
+        Checking/Savings balance:
+
+        Starting balance
+        + income
+        + transfers received
+        - expenses
+        - transfers sent
+      -------------------------------------------------------*/
       currentBalance =
         account.StartingBalance
-        + incomes.Sum(income => income.Amount)
-        - expenses.Sum(expense => expense.Amount)
-        - transfersOut.Sum(transfer => transfer.Amount)
-        + transfersIn.Sum(transfer => transfer.Amount);
+        + totalIncome
+        + totalTransfersIn
+        - totalExpenses
+        - totalTransfersOut;
     }
 
-    /*---------------------------------------------------------
-      Map and return response
-    ---------------------------------------------------------*/
-    return AccountMapper.ToResponse(account, currentBalance);
+    return AccountMapper.ToResponse(
+      account,
+      currentBalance);
   }
 }

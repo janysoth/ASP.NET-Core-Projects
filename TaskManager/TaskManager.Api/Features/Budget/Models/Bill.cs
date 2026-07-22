@@ -68,16 +68,6 @@ public class Bill
   [BsonIgnoreIfNull]
   public string? ExpenseRecordId { get; set; }
 
-  /*===========================================================
-    AccountTransferId:
-    => Legacy field from the original single-payment design.
-    => New Transfer bills use AccountTransfer.BillId instead.
-    => Can be removed after old data has been migrated.
-  ===========================================================*/
-  [BsonRepresentation(BsonType.ObjectId)]
-  [BsonIgnoreIfNull]
-  public string? AccountTransferId { get; set; }
-
   [BsonIgnoreIfNull]
   public DateTime? PaidDate { get; set; }
 

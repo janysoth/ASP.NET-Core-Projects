@@ -209,7 +209,6 @@ public class BillService : BudgetBaseService
       IsPaid = false,
 
       ExpenseRecordId = null,
-      AccountTransferId = null,
       PaidDate = null,
 
       Notes = request.Notes,
@@ -703,9 +702,6 @@ public class BillService : BudgetBaseService
 
     /*
       Mark the bill as paid and link the created ExpenseRecord.
-
-      AccountTransferId is left untouched because new Transfer bills
-      no longer use this method.
     */
     var billUpdate =
       Builders<Bill>.Update
@@ -836,9 +832,6 @@ public class BillService : BudgetBaseService
         .Set(
           b => b.ExpenseRecordId,
           expense.Id)
-        .Set(
-          b => b.AccountTransferId,
-          null)
         .Set(
           b => b.PaidDate,
           request.PaidDate);

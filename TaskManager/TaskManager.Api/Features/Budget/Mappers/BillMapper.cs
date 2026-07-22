@@ -204,15 +204,10 @@ public static class BillMapper
       /*
         Expense bills still use ExpenseRecordId.
 
-        AccountTransferId is a legacy single-payment field.
-        New Transfer bills use AccountTransfer.BillId and the
-        Payments collection instead.
       */
       ExpenseRecordId =
         bill.ExpenseRecordId,
 
-      AccountTransferId =
-        bill.AccountTransferId,
 
       /*
         For an Expense bill, this is the account that paid

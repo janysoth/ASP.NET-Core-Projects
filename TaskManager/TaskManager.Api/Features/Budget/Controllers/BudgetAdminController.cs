@@ -1,68 +1,386 @@
 using Microsoft.AspNetCore.Mvc;
-// using TaskManager.Api.Features.Budget.DTOs;
+using TaskManager.Api.Features.Budget.DTOs.Admin;
 using TaskManager.Api.Features.Budget.Services;
 
 namespace TaskManager.Api.Features.Budget.Controllers;
 
-// Marks this class as an API controller.
-// Enables automatic model binding and validation.
 [ApiController]
-
-// Base route for all budget administration endpoints.
-// Example:
-// POST /api/budget/admin/delete-all
 [Route("api/budget/admin")]
-public class BudgetAdminController : BudgetControllerBase
+public class BudgetAdminController
+  : BudgetControllerBase
 {
-  // Service responsible for budget administration tasks
-  private readonly BudgetAdminService _budgetAdminService;
+  private readonly BudgetAdminService
+    _budgetAdminService;
 
-  // Constructor used for Dependency Injection (DI)
-  public BudgetAdminController(BudgetAdminService budgetAdminService)
+  /*===========================================================
+    BudgetAdminController Constructor
+  ===========================================================*/
+  public BudgetAdminController(
+    BudgetAdminService budgetAdminService)
   {
-    _budgetAdminService = budgetAdminService;
+    _budgetAdminService =
+      budgetAdminService;
   }
 
-  // ==========================================
-  // POST: api/budget/admin/delete-all
-  // Deletes ALL budget-related data that belongs
-  // to the currently logged-in user.
-  //
-  // This is a destructive operation and requires
-  // a confirmation message before continuing.
-  // ==========================================
-  [HttpPost("delete-all")]
-  public async Task<ActionResult<CleanSlateResponse>> DeleteAllBudgetData(
-    [FromBody] DeleteAllBudgetDataRequest? request)
+  /*===========================================================
+    DeleteAllTransactions
+  ===========================================================*/
+  [HttpPost("delete-all-transactions")]
+  public async Task<ActionResult<
+    DeleteBudgetGroupResponse>>
+    DeleteAllTransactions(
+      [FromBody]
+      DeleteBudgetGroupRequest request)
   {
-    // Get the authenticated user's ID
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
-    // Return 401 if the user is not authenticated
     if (userId == null)
     {
       return Unauthorized();
     }
 
-    // Ensure a confirmation request was provided.
-    // This helps prevent accidental deletion.
-    if (request == null || string.IsNullOrWhiteSpace(request.Confirmation))
+    if (!IsConfirmed(
+      request,
+      "DELETE ALL TRANSACTIONS"))
     {
       return BadRequest(
-        "Please confirm this action by sending { \"confirmation\": \"DELETE ALL\" }.");
+        "Confirmation must be exactly: DELETE ALL TRANSACTIONS");
     }
 
-    // Require the exact confirmation text before
-    // allowing all budget data to be deleted.
-    if (request.Confirmation != "DELETE ALL")
-    {
-      return BadRequest("Confirmation text must be exactly DELETE ALL.");
-    }
+    var result =
+      await _budgetAdminService
+        .DeleteAllTransactionsAsync(
+          userId);
 
-    // Delete all budget-related data for this user
-    var result = await _budgetAdminService.DeleteAllBudgetDataAsync(userId);
-
-    // Return a summary of what was deleted
     return Ok(result);
+  }
+
+  /*===========================================================
+    DeleteAllTransfers
+  ===========================================================*/
+  [HttpPost("delete-all-transfers")]
+  public async Task<ActionResult<
+    DeleteBudgetGroupResponse>>
+    DeleteAllTransfers(
+      [FromBody]
+      DeleteBudgetGroupRequest request)
+  {
+    var userId =
+      GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (!IsConfirmed(
+      request,
+      "DELETE ALL TRANSFERS"))
+    {
+      return BadRequest(
+        "Confirmation must be exactly: DELETE ALL TRANSFERS");
+    }
+
+    var result =
+      await _budgetAdminService
+        .DeleteAllTransfersAsync(
+          userId);
+
+    return Ok(result);
+  }
+
+  /*===========================================================
+    DeleteAllIncome
+  ===========================================================*/
+  [HttpPost("delete-all-income")]
+  public async Task<ActionResult<
+    DeleteBudgetGroupResponse>>
+    DeleteAllIncome(
+      [FromBody]
+      DeleteBudgetGroupRequest request)
+  {
+    var userId =
+      GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (!IsConfirmed(
+      request,
+      "DELETE ALL INCOME"))
+    {
+      return BadRequest(
+        "Confirmation must be exactly: DELETE ALL INCOME");
+    }
+
+    var result =
+      await _budgetAdminService
+        .DeleteAllIncomeAsync(
+          userId);
+
+    return Ok(result);
+  }
+
+  /*===========================================================
+    DeleteAllExpenses
+  ===========================================================*/
+  [HttpPost("delete-all-expenses")]
+  public async Task<ActionResult<
+    DeleteBudgetGroupResponse>>
+    DeleteAllExpenses(
+      [FromBody]
+      DeleteBudgetGroupRequest request)
+  {
+    var userId =
+      GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (!IsConfirmed(
+      request,
+      "DELETE ALL EXPENSES"))
+    {
+      return BadRequest(
+        "Confirmation must be exactly: DELETE ALL EXPENSES");
+    }
+
+    var result =
+      await _budgetAdminService
+        .DeleteAllExpensesAsync(
+          userId);
+
+    return Ok(result);
+  }
+
+  /*===========================================================
+    DeleteAllBills
+  ===========================================================*/
+  [HttpPost("delete-all-bills")]
+  public async Task<ActionResult<
+    DeleteBudgetGroupResponse>>
+    DeleteAllBills(
+      [FromBody]
+      DeleteBudgetGroupRequest request)
+  {
+    var userId =
+      GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (!IsConfirmed(
+      request,
+      "DELETE ALL BILLS"))
+    {
+      return BadRequest(
+        "Confirmation must be exactly: DELETE ALL BILLS");
+    }
+
+    var result =
+      await _budgetAdminService
+        .DeleteAllBillsAsync(
+          userId);
+
+    return Ok(result);
+  }
+
+  /*===========================================================
+    DeleteAllRecurringTemplates
+  ===========================================================*/
+  [HttpPost(
+    "delete-all-recurring-bill-templates")]
+  public async Task<ActionResult<
+    DeleteBudgetGroupResponse>>
+    DeleteAllRecurringTemplates(
+      [FromBody]
+      DeleteBudgetGroupRequest request)
+  {
+    var userId =
+      GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (!IsConfirmed(
+      request,
+      "DELETE ALL RECURRING BILL TEMPLATES"))
+    {
+      return BadRequest(
+        "Confirmation must be exactly: DELETE ALL RECURRING BILL TEMPLATES");
+    }
+
+    var result =
+      await _budgetAdminService
+        .DeleteAllRecurringTemplatesAsync(
+          userId);
+
+    return Ok(result);
+  }
+
+  /*===========================================================
+    DeleteAllCategories
+  ===========================================================*/
+  [HttpPost("delete-all-categories")]
+  public async Task<ActionResult<
+    DeleteBudgetGroupResponse>>
+    DeleteAllCategories(
+      [FromBody]
+      DeleteBudgetGroupRequest request)
+  {
+    var userId =
+      GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (!IsConfirmed(
+      request,
+      "DELETE ALL CATEGORIES"))
+    {
+      return BadRequest(
+        "Confirmation must be exactly: DELETE ALL CATEGORIES");
+    }
+
+    var result =
+      await _budgetAdminService
+        .DeleteAllCategoriesAsync(
+          userId);
+
+    return Ok(result);
+  }
+
+  /*===========================================================
+    DeleteAllBudgetMonths
+  ===========================================================*/
+  [HttpPost("delete-all-budget-months")]
+  public async Task<ActionResult<
+    DeleteBudgetGroupResponse>>
+    DeleteAllBudgetMonths(
+      [FromBody]
+      DeleteBudgetGroupRequest request)
+  {
+    var userId =
+      GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (!IsConfirmed(
+      request,
+      "DELETE ALL BUDGET MONTHS"))
+    {
+      return BadRequest(
+        "Confirmation must be exactly: DELETE ALL BUDGET MONTHS");
+    }
+
+    var result =
+      await _budgetAdminService
+        .DeleteAllBudgetMonthsAsync(
+          userId);
+
+    return Ok(result);
+  }
+
+  /*===========================================================
+    DeleteAllAccounts
+  ===========================================================*/
+  [HttpPost("delete-all-accounts")]
+  public async Task<ActionResult<
+    DeleteBudgetGroupResponse>>
+    DeleteAllAccounts(
+      [FromBody]
+      DeleteBudgetGroupRequest request)
+  {
+    var userId =
+      GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (!IsConfirmed(
+      request,
+      "DELETE ALL ACCOUNTS"))
+    {
+      return BadRequest(
+        "Confirmation must be exactly: DELETE ALL ACCOUNTS");
+    }
+
+    var result =
+      await _budgetAdminService
+        .DeleteAllAccountsAsync(
+          userId);
+
+    if (result == null)
+    {
+      return Conflict(
+        "Accounts cannot be deleted while income, expenses, or transfers still reference them.");
+    }
+
+    return Ok(result);
+  }
+
+  /*===========================================================
+    DeleteAllBudgetData
+  ===========================================================*/
+  [HttpPost("delete-all")]
+  public async Task<ActionResult<
+    DeleteBudgetGroupResponse>>
+    DeleteAllBudgetData(
+      [FromBody]
+      DeleteBudgetGroupRequest request)
+  {
+    var userId =
+      GetUserId();
+
+    if (userId == null)
+    {
+      return Unauthorized();
+    }
+
+    if (!IsConfirmed(
+      request,
+      "DELETE ALL"))
+    {
+      return BadRequest(
+        "Confirmation must be exactly: DELETE ALL");
+    }
+
+    var result =
+      await _budgetAdminService
+        .DeleteAllBudgetDataAsync(
+          userId);
+
+    return Ok(result);
+  }
+
+  /*===========================================================
+    IsConfirmed
+  ===========================================================*/
+  private static bool IsConfirmed(
+    DeleteBudgetGroupRequest? request,
+    string expectedConfirmation)
+  {
+    return
+      request != null &&
+      string.Equals(
+        request.Confirmation?.Trim(),
+        expectedConfirmation,
+        StringComparison.Ordinal);
   }
 }

@@ -39,14 +39,16 @@ public sealed record PatchAccountTransferRequest
   public string? ToAccountId { get; set; }
 
   /*
-    Optional bill link.
+    BillId behavior:
 
-    Note:
-    With this nullable string design, null means
-    "do not update this field."
+    null
+    => Do not change the existing BillId.
 
-    It does not currently provide a way to explicitly
-    remove an existing BillId through PATCH.
+    Empty string
+    => Remove the transfer from its current bill.
+
+    A bill ID
+    => Link the transfer to that Transfer bill.
   */
   public string? BillId { get; set; }
 

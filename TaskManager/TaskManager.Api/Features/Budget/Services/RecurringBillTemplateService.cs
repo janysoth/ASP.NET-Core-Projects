@@ -474,9 +474,6 @@ public class RecurringBillTemplateService : BudgetBaseService
         ExpenseRecordId =
           null,
 
-        AccountTransferId =
-          null,
-
         PaidDate =
           null,
 
