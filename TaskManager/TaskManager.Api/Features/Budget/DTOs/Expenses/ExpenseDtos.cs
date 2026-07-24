@@ -4,7 +4,7 @@ public sealed record CreateExpenseRequest
 {
   public string AccountId { get; set; } = string.Empty;
 
-  public string Category { get; set; } = string.Empty;
+  public string CategoryId { get; set; } = string.Empty;
 
   public string Name { get; set; } = string.Empty;
 
@@ -19,7 +19,7 @@ public sealed record UpdateExpenseRequest
 {
   public string AccountId { get; set; } = string.Empty;
 
-  public string Category { get; set; } = string.Empty;
+  public string CategoryId { get; set; } = string.Empty;
 
   public string Name { get; set; } = string.Empty;
 
@@ -34,7 +34,7 @@ public sealed record PatchExpenseRequest
 {
   public string? AccountId { get; set; }
 
-  public string? Category { get; set; }
+  public string? CategoryId { get; set; }
 
   public string? Name { get; set; }
 
@@ -53,9 +53,9 @@ public sealed record ExpenseResponse
 
   public string AccountId { get; set; } = string.Empty;
 
-  public string AccountName { get; set; } = string.Empty;
+  public string CategoryId { get; set; } = string.Empty;
 
-  public string Category { get; set; } = string.Empty;
+  public string CategoryName { get; set; } = string.Empty;
 
   public string Name { get; set; } = string.Empty;
 

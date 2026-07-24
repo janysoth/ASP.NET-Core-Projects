@@ -1,4 +1,5 @@
 using MongoDB.Driver;
+using TaskManager.Api.Features.Budget.Constants;
 using TaskManager.Api.Features.Budget.DTOs;
 using TaskManager.Api.Features.Budget.Mappers;
 using TaskManager.Api.Features.Budget.Models;
@@ -37,7 +38,8 @@ public class BudgetCategoryService : BudgetBaseService
       return null;
     }
 
-    var normalizedType = NormalizeCategoryType(request.Type);
+    var normalizedType =
+      NormalizeCategoryType(request.Type);
 
     var normalizedExpenseType =
       NormalizeExpenseType(
@@ -69,7 +71,8 @@ public class BudgetCategoryService : BudgetBaseService
   /*===========================================================
     UpdateBudgetCategoryAsync:
     => Updates category name, type, classification, and amount.
-    => Clears ExpenseType when changing to Savings or Debt.
+    => Clears ExpenseType when changing to Savings.
+    => Expenses remain connected through CategoryId.
     => Returns the updated category response.
   ===========================================================*/
   public async Task<BudgetCategoryResponse?>
@@ -78,75 +81,83 @@ public class BudgetCategoryService : BudgetBaseService
       UpdateBudgetCategoryRequest request,
       string userId)
   {
-    var existingCategory = await BudgetCategories
-      .Find(c =>
-        c.Id == categoryId &&
-        c.UserId == userId)
-      .FirstOrDefaultAsync();
+    // Find the existing category and confirm ownership.
+    var existingCategory =
+      await GetCategoryByIdAsync(
+        categoryId,
+        userId);
 
-    if (existingCategory == null)
+    if (existingCategory is null)
     {
       return null;
     }
 
-    var normalizedType = NormalizeCategoryType(request.Type);
+    var normalizedType =
+      NormalizeCategoryType(request.Type);
 
     var normalizedExpenseType =
       NormalizeExpenseType(
         normalizedType,
         request.ExpenseType);
 
-    var normalizedName = request.Name.Trim();
+    var normalizedName =
+      request.Name.Trim();
 
+    // Build the category update.
     var update = Builders<BudgetCategory>.Update
-      .Set(c => c.Name, normalizedName)
-      .Set(c => c.Type, normalizedType)
-      .Set(c => c.ExpenseType, normalizedExpenseType)
-      .Set(c => c.PlannedAmount, request.PlannedAmount);
+      .Set(
+        category => category.Name,
+        normalizedName)
+      .Set(
+        category => category.Type,
+        normalizedType)
+      .Set(
+        category => category.ExpenseType,
+        normalizedExpenseType)
+      .Set(
+        category => category.PlannedAmount,
+        request.PlannedAmount);
 
-    var result = await BudgetCategories.UpdateOneAsync(
-      c =>
-        c.Id == categoryId &&
-        c.UserId == userId,
-      update);
+    // Update the category.
+    var updatedCategory =
+      await BudgetCategories.FindOneAndUpdateAsync(
+        category =>
+          category.Id == categoryId &&
+          category.UserId == userId,
+        update,
+        new FindOneAndUpdateOptions<BudgetCategory>
+        {
+          ReturnDocument = ReturnDocument.After
+        });
 
-    if (result.MatchedCount == 0)
+    if (updatedCategory is null)
     {
       return null;
     }
 
     /*
-      Expenses currently use the category name as a string.
+      IMPORTANT:
 
-      If the category name changes, update matching expenses so
-      planned-versus-actual calculations stay connected.
+      Expenses now store CategoryId instead of the category name.
+
+      Because of that, renaming the category does NOT require
+      updating any ExpenseRecord documents.
+
+      Example:
+
+      Before rename:
+        Category Id   = abc123
+        Category Name = Groceries
+
+      After rename:
+        Category Id   = abc123
+        Category Name = Food & Groceries
+
+      Every expense still stores:
+        CategoryId = abc123
+
+      Therefore, the relationship remains intact automatically.
     */
-    if (!string.Equals(
-      existingCategory.Name,
-      normalizedName,
-      StringComparison.OrdinalIgnoreCase))
-    {
-      var expenseUpdate = Builders<ExpenseRecord>.Update
-        .Set(e => e.Category, normalizedName);
-
-      await ExpenseRecords.UpdateManyAsync(
-        e =>
-          e.UserId == userId &&
-          e.BudgetMonthId == existingCategory.BudgetMonthId &&
-          e.Category == existingCategory.Name,
-        expenseUpdate);
-    }
-
-    var updatedCategory = await BudgetCategories
-      .Find(c =>
-        c.Id == categoryId &&
-        c.UserId == userId)
-      .FirstOrDefaultAsync();
-
-    if (updatedCategory == null)
-    {
-      return null;
-    }
 
     var expenses = await GetExpensesForCategoryAsync(
       updatedCategory,
@@ -160,38 +171,41 @@ public class BudgetCategoryService : BudgetBaseService
   /*===========================================================
     DeleteBudgetCategoryAsync:
     => Deletes a budget category owned by the logged-in user.
-    => Does not delete existing expenses assigned to its name.
     => Returns the deleted category information.
+    => Existing expenses are not deleted automatically.
   ===========================================================*/
   public async Task<BudgetCategoryResponse?>
     DeleteBudgetCategoryAsync(
       string categoryId,
       string userId)
   {
-    var category = await BudgetCategories
-      .Find(c =>
-        c.Id == categoryId &&
-        c.UserId == userId)
-      .FirstOrDefaultAsync();
+    // Find the category before deleting it.
+    var category =
+      await GetCategoryByIdAsync(
+        categoryId,
+        userId);
 
-    if (category == null)
+    if (category is null)
     {
       return null;
     }
 
+    // Load the expenses currently assigned to the category.
     var expenses = await GetExpensesForCategoryAsync(
       category,
       userId);
 
+    // Build the response before deleting the category.
     var deletedCategory =
       BudgetCategoryMapper.ToResponse(
         category,
         expenses);
 
+    // Delete the category.
     var result = await BudgetCategories.DeleteOneAsync(
-      c =>
-        c.Id == categoryId &&
-        c.UserId == userId);
+      existingCategory =>
+        existingCategory.Id == categoryId &&
+        existingCategory.UserId == userId);
 
     if (result.DeletedCount == 0)
     {
@@ -203,8 +217,9 @@ public class BudgetCategoryService : BudgetBaseService
 
   /*===========================================================
     GetExpensesForCategoryAsync:
-    => Gets expenses that belong to the category's budget month.
-    => Matches expenses by category name.
+    => Gets expenses assigned to the selected category.
+    => Matches expenses using CategoryId.
+    => Also confirms budget month and user ownership.
   ===========================================================*/
   private async Task<List<ExpenseRecord>>
     GetExpensesForCategoryAsync(
@@ -212,11 +227,10 @@ public class BudgetCategoryService : BudgetBaseService
       string userId)
   {
     return await ExpenseRecords
-      .Find(e =>
-        e.BudgetMonthId == category.BudgetMonthId &&
-        e.UserId == userId &&
-        e.Category.ToLower() ==
-          category.Name.ToLower())
+      .Find(expense =>
+        expense.UserId == userId &&
+        expense.BudgetMonthId == category.BudgetMonthId &&
+        expense.CategoryId == category.Id)
       .ToListAsync();
   }
 
@@ -224,19 +238,20 @@ public class BudgetCategoryService : BudgetBaseService
     NormalizeCategoryType:
     => Converts category types into consistent stored values.
     => Supported values are Expense and Savings.
-    => Converts a valid category type into its standard format.
+    => Defaults to Expense when the value is invalid.
   ===========================================================*/
-  private static string NormalizeCategoryType(string type)
+  private static string NormalizeCategoryType(
+    string type)
   {
     return BudgetCategoryTypes.Normalize(type)
       ?? BudgetCategoryTypes.Expense;
   }
 
   /*===========================================================
-   NormalizeExpenseType:
-   => Stores Fixed or Variable only for Expense categories.
-   => Returns null for Savings categories.
- ===========================================================*/
+    NormalizeExpenseType:
+    => Stores Fixed or Variable only for Expense categories.
+    => Returns null for Savings categories.
+  ===========================================================*/
   private static string? NormalizeExpenseType(
     string categoryType,
     string? expenseType)

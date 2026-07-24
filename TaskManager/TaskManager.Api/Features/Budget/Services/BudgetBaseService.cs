@@ -13,37 +13,73 @@ public abstract class BudgetBaseService
   protected readonly IMongoCollection<AccountTransfer> AccountTransfers;
   protected readonly IMongoCollection<Bill> Bills;
   protected readonly IMongoCollection<RecurringBillTemplate>
-  RecurringBillTemplates;
+    RecurringBillTemplates;
 
   /*===========================================================
     BudgetBaseService Constructor
   ===========================================================*/
   protected BudgetBaseService(IMongoDatabase database)
   {
-    BudgetMonths = database.GetCollection<BudgetMonth>("BudgetMonths");
-    BudgetCategories = database.GetCollection<BudgetCategory>("BudgetCategories");
-    IncomeRecords = database.GetCollection<IncomeRecord>("IncomeRecords");
-    ExpenseRecords = database.GetCollection<ExpenseRecord>("ExpenseRecords");
-    FinancialAccounts = database.GetCollection<FinancialAccount>("FinancialAccounts");
-    AccountTransfers = database.GetCollection<AccountTransfer>("AccountTransfers");
-    Bills = database.GetCollection<Bill>("Bills");
-    RecurringBillTemplates = database.GetCollection<RecurringBillTemplate>(
-    "RecurringBillTemplates");
+    BudgetMonths =
+      database.GetCollection<BudgetMonth>("BudgetMonths");
+
+    BudgetCategories =
+      database.GetCollection<BudgetCategory>("BudgetCategories");
+
+    IncomeRecords =
+      database.GetCollection<IncomeRecord>("IncomeRecords");
+
+    ExpenseRecords =
+      database.GetCollection<ExpenseRecord>("ExpenseRecords");
+
+    FinancialAccounts =
+      database.GetCollection<FinancialAccount>("FinancialAccounts");
+
+    AccountTransfers =
+      database.GetCollection<AccountTransfer>("AccountTransfers");
+
+    Bills =
+      database.GetCollection<Bill>("Bills");
+
+    RecurringBillTemplates =
+      database.GetCollection<RecurringBillTemplate>(
+        "RecurringBillTemplates");
   }
 
   /*===========================================================
     BudgetMonthExistsAsync:
     => Checks whether a budget month exists for the current user.
-    => Prevents records from being attached to another user's budget.
+    => Prevents records from being attached to another user's
+       budget month.
   ===========================================================*/
   protected async Task<bool> BudgetMonthExistsAsync(
     string budgetMonthId,
     string userId)
   {
     var count = await BudgetMonths.CountDocumentsAsync(
-      b => b.Id == budgetMonthId && b.UserId == userId);
+      budgetMonth =>
+        budgetMonth.Id == budgetMonthId &&
+        budgetMonth.UserId == userId);
 
     return count > 0;
+  }
+
+  /*===========================================================
+    GetBudgetMonthModelByIdAsync:
+    => Gets one BudgetMonth database model owned by the user.
+    => Returns null when the budget month does not exist.
+    => Named "Model" to distinguish it from service methods
+       that return BudgetMonthResponse DTOs.
+  ===========================================================*/
+  protected async Task<BudgetMonth?> GetBudgetMonthModelByIdAsync(
+    string budgetMonthId,
+    string userId)
+  {
+    return await BudgetMonths
+      .Find(budgetMonth =>
+        budgetMonth.Id == budgetMonthId &&
+        budgetMonth.UserId == userId)
+      .FirstOrDefaultAsync();
   }
 
   /*===========================================================
@@ -56,7 +92,9 @@ public abstract class BudgetBaseService
     string userId)
   {
     var count = await FinancialAccounts.CountDocumentsAsync(
-      a => a.Id == accountId && a.UserId == userId);
+      account =>
+        account.Id == accountId &&
+        account.UserId == userId);
 
     return count > 0;
   }
@@ -71,7 +109,9 @@ public abstract class BudgetBaseService
     string userId)
   {
     return await FinancialAccounts
-      .Find(a => a.Id == accountId && a.UserId == userId)
+      .Find(account =>
+        account.Id == accountId &&
+        account.UserId == userId)
       .FirstOrDefaultAsync();
   }
 
@@ -85,41 +125,65 @@ public abstract class BudgetBaseService
     string userId)
   {
     return await BudgetCategories
-      .Find(c => c.Id == categoryId && c.UserId == userId)
+      .Find(category =>
+        category.Id == categoryId &&
+        category.UserId == userId)
       .FirstOrDefaultAsync();
   }
 
   /*===========================================================
-  GetAccountCurrentBalanceAsync:
-  => Calculates the current balance for one account.
-  => Cash accounts treat expenses as money leaving.
-  => Credit cards treat expenses as increasing the amount owed.
-===========================================================*/
+    GetBudgetCategoryForMonthAsync:
+    => Gets one category owned by the current user.
+    => Confirms the category belongs to the selected budget
+       month.
+    => Returns null when the category is invalid or belongs to
+       another budget month.
+  ===========================================================*/
+  protected async Task<BudgetCategory?>
+    GetBudgetCategoryForMonthAsync(
+      string categoryId,
+      string budgetMonthId,
+      string userId)
+  {
+    return await BudgetCategories
+      .Find(category =>
+        category.Id == categoryId &&
+        category.BudgetMonthId == budgetMonthId &&
+        category.UserId == userId)
+      .FirstOrDefaultAsync();
+  }
+
+  /*===========================================================
+    GetAccountCurrentBalanceAsync:
+    => Calculates the current balance for one account.
+    => Cash accounts treat expenses as money leaving.
+    => Credit cards treat expenses as increasing the amount owed.
+  ===========================================================*/
   protected async Task<decimal> GetAccountCurrentBalanceAsync(
     FinancialAccount account)
   {
     var incomes = await IncomeRecords
-      .Find(i =>
-        i.UserId == account.UserId &&
-        i.AccountId == account.Id)
+      .Find(income =>
+        income.UserId == account.UserId &&
+        income.AccountId == account.Id)
       .ToListAsync();
 
     var expenses = await ExpenseRecords
-      .Find(e =>
-        e.UserId == account.UserId &&
-        e.AccountId == account.Id)
+      .Find(expense =>
+        expense.UserId == account.UserId &&
+        expense.AccountId == account.Id)
       .ToListAsync();
 
     var transfersOut = await AccountTransfers
-      .Find(t =>
-        t.UserId == account.UserId &&
-        t.FromAccountId == account.Id)
+      .Find(transfer =>
+        transfer.UserId == account.UserId &&
+        transfer.FromAccountId == account.Id)
       .ToListAsync();
 
     var transfersIn = await AccountTransfers
-      .Find(t =>
-        t.UserId == account.UserId &&
-        t.ToAccountId == account.Id)
+      .Find(transfer =>
+        transfer.UserId == account.UserId &&
+        transfer.ToAccountId == account.Id)
       .ToListAsync();
 
     if (string.Equals(
@@ -129,16 +193,16 @@ public abstract class BudgetBaseService
     {
       return
         account.StartingBalance
-        + expenses.Sum(e => e.Amount)
-        + transfersOut.Sum(t => t.Amount)
-        - transfersIn.Sum(t => t.Amount);
+        + expenses.Sum(expense => expense.Amount)
+        + transfersOut.Sum(transfer => transfer.Amount)
+        - transfersIn.Sum(transfer => transfer.Amount);
     }
 
     return
       account.StartingBalance
-      + incomes.Sum(i => i.Amount)
-      - expenses.Sum(e => e.Amount)
-      - transfersOut.Sum(t => t.Amount)
-      + transfersIn.Sum(t => t.Amount);
+      + incomes.Sum(income => income.Amount)
+      - expenses.Sum(expense => expense.Amount)
+      - transfersOut.Sum(transfer => transfer.Amount)
+      + transfersIn.Sum(transfer => transfer.Amount);
   }
 }

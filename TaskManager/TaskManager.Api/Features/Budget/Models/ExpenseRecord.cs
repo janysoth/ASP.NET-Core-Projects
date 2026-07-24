@@ -3,19 +3,23 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace TaskManager.Api.Features.Budget.Models;
 
-public class ExpenseRecord
+public sealed class ExpenseRecord
 {
   [BsonId]
   [BsonRepresentation(BsonType.ObjectId)]
   public string Id { get; set; } = string.Empty;
 
+  [BsonRepresentation(BsonType.ObjectId)]
   public string UserId { get; set; } = string.Empty;
 
+  [BsonRepresentation(BsonType.ObjectId)]
   public string BudgetMonthId { get; set; } = string.Empty;
 
+  [BsonRepresentation(BsonType.ObjectId)]
   public string AccountId { get; set; } = string.Empty;
 
-  public string Category { get; set; } = string.Empty;
+  [BsonRepresentation(BsonType.ObjectId)]
+  public string CategoryId { get; set; } = string.Empty;
 
   public string Name { get; set; } = string.Empty;
 
@@ -25,5 +29,5 @@ public class ExpenseRecord
 
   public string? Notes { get; set; }
 
-  public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+  public DateTime CreatedAtUtc { get; set; }
 }

@@ -1,236 +1,350 @@
 using Microsoft.AspNetCore.Mvc;
-// using TaskManager.Api.Features.Budget.DTOs;
 using TaskManager.Api.Features.Budget.Services;
 
 namespace TaskManager.Api.Features.Budget.Controllers;
 
-// Marks this class as an API controller.
 [ApiController]
-
-// Base route for expense endpoints.
-// Example:
-// POST   /api/budget/months/{budgetMonthId}/expense
-// PUT    /api/budget/expense/{expenseId}
-// PATCH  /api/budget/expense/{expenseId}
-// DELETE /api/budget/expense/{expenseId}
 [Route("api/budget")]
-public class ExpensesController : BudgetControllerBase
+public sealed class ExpenseController : BudgetControllerBase
 {
-  // Service responsible for expense business logic
   private readonly ExpenseService _expenseService;
 
-  // Constructor used for Dependency Injection (DI)
-  public ExpensesController(ExpenseService expenseService)
+  /*===========================================================
+    ExpenseController Constructor
+  ===========================================================*/
+  public ExpenseController(
+    ExpenseService expenseService)
   {
     _expenseService = expenseService;
   }
 
-  // ==========================================
-  // POST: api/budget/months/{budgetMonthId}/expense
-  // Adds a new expense record to a budget month.
-  // ==========================================
-  [HttpPost("months/{budgetMonthId}/expense")]
-  public async Task<ActionResult<ExpenseResponse>> AddExpense(
-    string budgetMonthId,
-    CreateExpenseRequest request)
+  /*===========================================================
+    GetExpenses:
+    => Gets all expenses owned by the current user.
+    => Can optionally filter by month and year.
+
+    Examples:
+    GET /api/budget/expenses
+    GET /api/budget/expenses?month=7&year=2026
+    GET /api/budget/expenses?year=2026
+  ===========================================================*/
+  [HttpGet("expenses")]
+  public async Task<ActionResult<List<ExpenseResponse>>>
+    GetExpenses(
+      [FromQuery] int? month,
+      [FromQuery] int? year)
   {
-    // Get the authenticated user's ID
     var userId = GetUserId();
 
-    // Return 401 if the user is not authenticated
-    if (userId == null)
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    // Validate that an account was selected
-    if (string.IsNullOrWhiteSpace(request.AccountId))
+    // DateTime.Month uses:
+    //
+    // January = 1
+    // December = 12
+    if (month.HasValue &&
+        (month.Value < 1 || month.Value > 12))
     {
-      return BadRequest("Account is required.");
+      return BadRequest(
+        "Month must be between 1 and 12.");
     }
 
-    // Validate that an expense category was provided
-    if (string.IsNullOrWhiteSpace(request.Category))
+    if (year.HasValue && year.Value < 2000)
     {
-      return BadRequest("Expense category is required.");
+      return BadRequest(
+        "Year is invalid.");
     }
 
-    // Validate that an expense name was provided
-    if (string.IsNullOrWhiteSpace(request.Name))
+    var expenses =
+      await _expenseService.GetExpensesAsync(
+        userId,
+        month,
+        year);
+
+    return Ok(expenses);
+  }
+
+  /*===========================================================
+    GetExpenseById:
+    => Gets one expense owned by the current user.
+
+    GET /api/budget/expenses/{expenseId}
+  ===========================================================*/
+  [HttpGet("expenses/{expenseId}")]
+  public async Task<ActionResult<ExpenseResponse>>
+    GetExpenseById(
+      string expenseId)
+  {
+    var userId = GetUserId();
+
+    if (userId is null)
     {
-      return BadRequest("Expense name is required.");
+      return Unauthorized();
     }
 
-    // Validate that the expense amount is greater than zero
-    if (request.Amount <= 0)
+    if (string.IsNullOrWhiteSpace(expenseId))
     {
-      return BadRequest("Expense amount must be greater than 0.");
+      return BadRequest(
+        "Expense ID is required.");
     }
 
-    // Create the expense record
-    var expense = await _expenseService.AddExpenseAsync(
-      budgetMonthId,
-      request,
-      userId);
+    var expense =
+      await _expenseService.GetExpenseByIdAsync(
+        expenseId,
+        userId);
 
-    // Return 404 if the budget month or account was not found
-    if (expense == null)
+    if (expense is null)
     {
-      return NotFound("Budget month or account not found.");
+      return NotFound(
+        "Expense was not found.");
     }
 
-    // Return the newly created expense
     return Ok(expense);
   }
 
-  // ==========================================
-  // PUT: api/budget/expense/{expenseId}
-  // Updates an existing expense record.
-  // ==========================================
-  [HttpPut("expense/{expenseId}")]
-  public async Task<ActionResult<ExpenseResponse>> UpdateExpense(
-    string expenseId,
-    UpdateExpenseRequest request)
+  /*===========================================================
+    AddExpense:
+    => Creates a new expense inside a budget month.
+    => Requires an AccountId and CategoryId.
+
+    POST /api/budget/months/{budgetMonthId}/expenses
+  ===========================================================*/
+  [HttpPost("months/{budgetMonthId}/expenses")]
+  public async Task<ActionResult<ExpenseResponse>>
+    AddExpense(
+      string budgetMonthId,
+      [FromBody] CreateExpenseRequest request)
   {
-    // Get the authenticated user's ID
     var userId = GetUserId();
 
-    // Return 401 if the user is not authenticated
-    if (userId == null)
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    // Validate that an account was selected
+    if (string.IsNullOrWhiteSpace(budgetMonthId))
+    {
+      return BadRequest(
+        "Budget month ID is required.");
+    }
+
     if (string.IsNullOrWhiteSpace(request.AccountId))
     {
-      return BadRequest("Account is required.");
+      return BadRequest(
+        "AccountId is required.");
     }
 
-    // Validate that an expense category was provided
-    if (string.IsNullOrWhiteSpace(request.Category))
+    // Expenses now reference the category by ID
+    // instead of storing the category name.
+    if (string.IsNullOrWhiteSpace(request.CategoryId))
     {
-      return BadRequest("Expense category is required.");
+      return BadRequest(
+        "CategoryId is required.");
     }
 
-    // Validate that an expense name was provided
     if (string.IsNullOrWhiteSpace(request.Name))
     {
-      return BadRequest("Expense name is required.");
+      return BadRequest(
+        "Expense name is required.");
     }
 
-    // Validate that the expense amount is greater than zero
     if (request.Amount <= 0)
     {
-      return BadRequest("Expense amount must be greater than 0.");
+      return BadRequest(
+        "Expense amount must be greater than zero.");
     }
 
-    // Update the expense record
-    var updatedExpense = await _expenseService.UpdateExpenseAsync(
-      expenseId,
-      request,
-      userId);
-
-    // Return 404 if the expense record or account was not found
-    if (updatedExpense == null)
+    if (request.ExpenseDate == default)
     {
-      return NotFound("Expense record or account not found.");
+      return BadRequest(
+        "Expense date is required.");
     }
 
-    // Return the updated expense
-    return Ok(updatedExpense);
+    var expense =
+      await _expenseService.AddExpenseAsync(
+        budgetMonthId,
+        request,
+        userId);
+
+    if (expense is null)
+    {
+      return BadRequest(
+        "Unable to create expense. Verify the budget month, " +
+        "account, category, category type, and expense date.");
+    }
+
+    return CreatedAtAction(
+      nameof(GetExpenseById),
+      new
+      {
+        expenseId = expense.Id
+      },
+      expense);
   }
 
-  // ==========================================
-  // PATCH: api/budget/expense/{expenseId}
-  // Partially updates an existing expense record.
-  // Only the fields included in the request
-  // will be updated.
-  // ==========================================
-  [HttpPatch("expense/{expenseId}")]
-  public async Task<ActionResult<ExpenseResponse>> PatchExpense(
-    string expenseId,
-    PatchExpenseRequest request)
+  /*===========================================================
+    UpdateExpense:
+    => Completely updates an existing expense.
+    => PUT expects all editable expense fields.
+
+    PUT /api/budget/expenses/{expenseId}
+  ===========================================================*/
+  [HttpPut("expenses/{expenseId}")]
+  public async Task<ActionResult<ExpenseResponse>>
+    UpdateExpense(
+      string expenseId,
+      [FromBody] UpdateExpenseRequest request)
   {
-    // Get the authenticated user's ID
     var userId = GetUserId();
 
-    // Return 401 if the user is not authenticated
-    if (userId == null)
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    // Validate the account if it was supplied
-    if (request.AccountId != null && string.IsNullOrWhiteSpace(request.AccountId))
+    if (string.IsNullOrWhiteSpace(expenseId))
     {
-      return BadRequest("Account cannot be empty.");
+      return BadRequest(
+        "Expense ID is required.");
     }
 
-    // Validate the expense category if it was supplied
-    if (request.Category != null && string.IsNullOrWhiteSpace(request.Category))
+    if (string.IsNullOrWhiteSpace(request.AccountId))
     {
-      return BadRequest("Expense category cannot be empty.");
+      return BadRequest(
+        "AccountId is required.");
     }
 
-    // Validate the expense name if it was supplied
-    if (request.Name != null && string.IsNullOrWhiteSpace(request.Name))
+    // This used to validate request.Category.
+    //
+    // The new expense architecture uses CategoryId.
+    if (string.IsNullOrWhiteSpace(request.CategoryId))
     {
-      return BadRequest("Expense name cannot be empty.");
+      return BadRequest(
+        "CategoryId is required.");
     }
 
-    // Validate the expense amount if it was supplied
-    if (request.Amount.HasValue && request.Amount.Value <= 0)
+    if (string.IsNullOrWhiteSpace(request.Name))
     {
-      return BadRequest("Expense amount must be greater than 0.");
+      return BadRequest(
+        "Expense name is required.");
     }
 
-    // Update only the supplied fields
-    var updatedExpense = await _expenseService.PatchExpenseAsync(
-      expenseId,
-      request,
-      userId);
-
-    // Return 404 if the expense record or account was not found
-    if (updatedExpense == null)
+    if (request.Amount <= 0)
     {
-      return NotFound("Expense record or account not found.");
+      return BadRequest(
+        "Expense amount must be greater than zero.");
     }
 
-    // Return the updated expense
-    return Ok(updatedExpense);
+    if (request.ExpenseDate == default)
+    {
+      return BadRequest(
+        "Expense date is required.");
+    }
+
+    var expense =
+      await _expenseService.UpdateExpenseAsync(
+        expenseId,
+        request,
+        userId);
+
+    if (expense is null)
+    {
+      return NotFound(
+        "Unable to update expense. Verify the expense, account, " +
+        "category, category type, and expense date.");
+    }
+
+    return Ok(expense);
   }
 
-  // ==========================================
-  // DELETE: api/budget/expense/{expenseId}
-  // Deletes an existing expense record.
-  // ==========================================
-  [HttpDelete("expense/{expenseId}")]
-  public async Task<ActionResult<ExpenseResponse>> DeleteExpense(
-    string expenseId)
+  /*===========================================================
+    PatchExpense:
+    => Partially updates an existing expense.
+    => Only supplied fields are changed.
+
+    PATCH /api/budget/expenses/{expenseId}
+  ===========================================================*/
+  [HttpPatch("expenses/{expenseId}")]
+  public async Task<ActionResult<ExpenseResponse>>
+    PatchExpense(
+      string expenseId,
+      [FromBody] PatchExpenseRequest request)
   {
-    // Get the authenticated user's ID
     var userId = GetUserId();
 
-    // Return 401 if the user is not authenticated
-    if (userId == null)
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    // Delete the selected expense
-    var deletedExpense = await _expenseService.DeleteExpenseAsync(
-      expenseId,
-      userId);
-
-    // Return 404 if the expense record does not exist
-    // or does not belong to the current user
-    if (deletedExpense == null)
+    if (string.IsNullOrWhiteSpace(expenseId))
     {
-      return NotFound("Expense record not found.");
+      return BadRequest(
+        "Expense ID is required.");
     }
 
-    // Return the deleted expense
-    return Ok(deletedExpense);
+    if (request.Amount.HasValue &&
+        request.Amount.Value <= 0)
+    {
+      return BadRequest(
+        "Expense amount must be greater than zero.");
+    }
+
+    var expense =
+      await _expenseService.PatchExpenseAsync(
+        expenseId,
+        request,
+        userId);
+
+    if (expense is null)
+    {
+      return NotFound(
+        "Unable to update expense. Verify the expense and any " +
+        "account or category values supplied.");
+    }
+
+    return Ok(expense);
+  }
+
+  /*===========================================================
+    DeleteExpense:
+    => Deletes one expense owned by the current user.
+    => Returns the deleted expense.
+
+    DELETE /api/budget/expenses/{expenseId}
+  ===========================================================*/
+  [HttpDelete("expenses/{expenseId}")]
+  public async Task<ActionResult<ExpenseResponse>>
+    DeleteExpense(
+      string expenseId)
+  {
+    var userId = GetUserId();
+
+    if (userId is null)
+    {
+      return Unauthorized();
+    }
+
+    if (string.IsNullOrWhiteSpace(expenseId))
+    {
+      return BadRequest(
+        "Expense ID is required.");
+    }
+
+    var expense =
+      await _expenseService.DeleteExpenseAsync(
+        expenseId,
+        userId);
+
+    if (expense is null)
+    {
+      return NotFound(
+        "Expense was not found.");
+    }
+
+    return Ok(expense);
   }
 }
