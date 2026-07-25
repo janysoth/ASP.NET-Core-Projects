@@ -26,15 +26,21 @@ public class TransferService : BudgetBaseService
     GetTransfersAsync(
       string userId)
   {
-    var transfers = await AccountTransfers
-      .Find(t => t.UserId == userId)
-      .SortByDescending(t => t.TransferDate)
-      .ThenByDescending(t => t.CreatedAtUtc)
-      .ToListAsync();
+    var transfers =
+      await AccountTransfers
+        .Find(t =>
+          t.UserId == userId)
+        .SortByDescending(t =>
+          t.TransferDate)
+        .ThenByDescending(t =>
+          t.CreatedAtUtc)
+        .ToListAsync();
 
-    var accounts = await FinancialAccounts
-      .Find(a => a.UserId == userId)
-      .ToListAsync();
+    var accounts =
+      await FinancialAccounts
+        .Find(a =>
+          a.UserId == userId)
+        .ToListAsync();
 
     var accountLookup =
       accounts.ToDictionary(
@@ -70,7 +76,8 @@ public class TransferService : BudgetBaseService
     => Supports normal account transfers.
     => Supports credit-card payments without requiring a BillId.
     => Optionally links a payment to a Transfer bill.
-    => Prevents credit-card payments from exceeding the card balance.
+    => Prevents credit-card payments from exceeding card balance.
+    => Future-dated transfers are not allowed.
   ===========================================================*/
   public async Task<AccountTransferResponse?>
     CreateTransferAsync(
@@ -109,7 +116,21 @@ public class TransferService : BudgetBaseService
       return null;
     }
 
+    /*
+      Transfer amount must be positive.
+    */
     if (request.Amount <= 0)
+    {
+      return null;
+    }
+
+    /*
+      Transfers represent money that has already moved.
+
+      Future-dated transfers are not allowed.
+    */
+    if (request.TransferDate.Date >
+        DateTime.UtcNow.Date)
     {
       return null;
     }
@@ -117,11 +138,11 @@ public class TransferService : BudgetBaseService
     /*
       BillId is optional.
 
-      A transfer can exist without any bill.
+      Example without BillId:
 
-      Example:
-      Checking → Capital One
-      $250
+      Checking
+      →
+      CreditCard
 
       If BillId is supplied, validate the relationship.
     */
@@ -130,11 +151,12 @@ public class TransferService : BudgetBaseService
     if (!string.IsNullOrWhiteSpace(
       request.BillId))
     {
-      linkedBill = await Bills
-        .Find(b =>
-          b.Id == request.BillId &&
-          b.UserId == userId)
-        .FirstOrDefaultAsync();
+      linkedBill =
+        await Bills
+          .Find(b =>
+            b.Id == request.BillId &&
+            b.UserId == userId)
+          .FirstOrDefaultAsync();
 
       if (linkedBill == null)
       {
@@ -142,7 +164,7 @@ public class TransferService : BudgetBaseService
       }
 
       /*
-        Only Transfer bills can have linked AccountTransfers.
+        Only Transfer bills can have linked transfers.
       */
       if (!string.Equals(
         linkedBill.PaymentType,
@@ -153,8 +175,8 @@ public class TransferService : BudgetBaseService
       }
 
       /*
-        The transfer destination must match the bill's
-        configured CreditCard destination account.
+        Destination account must match the bill's
+        configured CreditCard account.
       */
       if (!string.Equals(
         linkedBill.DestinationAccountId,
@@ -166,9 +188,7 @@ public class TransferService : BudgetBaseService
     }
 
     /*
-      Detect whether this transfer is a credit-card payment.
-
-      A credit-card payment is:
+      Detect whether this is a credit-card payment.
 
       Checking/Savings
       →
@@ -179,10 +199,8 @@ public class TransferService : BudgetBaseService
       IsCreditCardAccount(toAccount);
 
     /*
-      Prevent invalid transfers into a CreditCard.
-
-      If the destination is CreditCard, the source must
-      be Checking or Savings.
+      Anything going into a CreditCard must come from
+      Checking or Savings.
     */
     if (IsCreditCardAccount(toAccount) &&
         !IsCashAccount(fromAccount))
@@ -191,7 +209,7 @@ public class TransferService : BudgetBaseService
     }
 
     /*
-      Credit-card payment rules.
+      Credit-card payment validation.
     */
     if (isCreditCardPayment)
     {
@@ -200,8 +218,7 @@ public class TransferService : BudgetBaseService
           toAccount);
 
       /*
-        Do not allow payment when the card already has
-        no outstanding balance.
+        Card must have an outstanding balance.
       */
       if (creditCardBalance <= 0)
       {
@@ -209,12 +226,7 @@ public class TransferService : BudgetBaseService
       }
 
       /*
-        Prevent accidental overpayment.
-
-        Example:
-        Balance = $500
-        Payment = $600
-        → reject
+        Do not allow accidental card overpayment.
       */
       if (request.Amount >
           creditCardBalance)
@@ -224,18 +236,8 @@ public class TransferService : BudgetBaseService
     }
 
     /*
-      If BillId was supplied, make sure the payment does not
-      exceed the remaining amount on that bill.
-
-      Example:
-      Bill expected amount = $500
-      Already paid = $250
-      Remaining = $250
-
-      Another $300 linked payment should be rejected.
-
-      The user could still make an unlinked direct card payment
-      if they intentionally want to pay more than the statement bill.
+      If linked to a bill, prevent payments from
+      exceeding the remaining bill amount.
     */
     if (linkedBill != null)
     {
@@ -309,19 +311,20 @@ public class TransferService : BudgetBaseService
     DeleteTransferAsync:
     => Deletes one account transfer owned by the logged-in user.
     => Returns the deleted transfer information.
-    => If linked to a bill, bill totals/status update automatically
-       because they are calculated from remaining transfers.
+    => If linked to a bill, bill totals/status automatically
+       recalculate from the remaining transfers.
   ===========================================================*/
   public async Task<AccountTransferResponse?>
     DeleteTransferAsync(
       string transferId,
       string userId)
   {
-    var transfer = await AccountTransfers
-      .Find(t =>
-        t.Id == transferId &&
-        t.UserId == userId)
-      .FirstOrDefaultAsync();
+    var transfer =
+      await AccountTransfers
+        .Find(t =>
+          t.Id == transferId &&
+          t.UserId == userId)
+        .FirstOrDefaultAsync();
 
     if (transfer == null)
     {
@@ -363,8 +366,9 @@ public class TransferService : BudgetBaseService
     => Partially updates an existing transfer.
     => Validates account ownership.
     => Supports linking and unlinking a Transfer bill.
-    => Prevents using the same account as source and destination.
+    => Prevents using the same account as source/destination.
     => Prevents credit-card and bill overpayments.
+    => Future-dated transfers are not allowed.
   ===========================================================*/
   public async Task<AccountTransferResponse?>
     PatchTransferAsync(
@@ -375,11 +379,12 @@ public class TransferService : BudgetBaseService
     /*
       Find the existing transfer.
     */
-    var transfer = await AccountTransfers
-      .Find(t =>
-        t.Id == transferId &&
-        t.UserId == userId)
-      .FirstOrDefaultAsync();
+    var transfer =
+      await AccountTransfers
+        .Find(t =>
+          t.Id == transferId &&
+          t.UserId == userId)
+        .FirstOrDefaultAsync();
 
     if (transfer == null)
     {
@@ -387,9 +392,9 @@ public class TransferService : BudgetBaseService
     }
 
     /*
-      Use the requested account IDs when supplied.
+      Use requested account IDs when supplied.
 
-      Otherwise, preserve the existing account IDs.
+      Otherwise preserve the existing IDs.
     */
     var newFromAccountId =
       request.FromAccountId ??
@@ -428,7 +433,7 @@ public class TransferService : BudgetBaseService
     }
 
     /*
-      A transfer into a CreditCard must come from
+      Transfers into a CreditCard must come from
       Checking or Savings.
     */
     if (IsCreditCardAccount(toAccount) &&
@@ -438,7 +443,7 @@ public class TransferService : BudgetBaseService
     }
 
     /*
-      Determine the updated amount.
+      Determine the final amount.
     */
     var newAmount =
       request.Amount ??
@@ -450,16 +455,37 @@ public class TransferService : BudgetBaseService
     }
 
     /*
-      Determine the updated BillId.
+      Determine the final transfer date.
 
-      request.BillId == null:
-      => Preserve the existing BillId.
+      If the request does not contain a new date,
+      preserve the existing transfer date.
+    */
+    var newTransferDate =
+      request.TransferDate ??
+      transfer.TransferDate;
 
-      request.BillId == "":
-      => Unlink the transfer from its bill.
+    /*
+      Transfers represent money that has already moved.
 
-      request.BillId contains an ID:
-      => Link it to that bill.
+      Future-dated transfers are not allowed.
+    */
+    if (newTransferDate.Date >
+        DateTime.UtcNow.Date)
+    {
+      return null;
+    }
+
+    /*
+      Determine the final BillId.
+
+      null:
+      => preserve current BillId
+
+      empty string:
+      => unlink from bill
+
+      ID:
+      => link to that bill
     */
     var newBillId =
       request.BillId == null
@@ -472,16 +498,17 @@ public class TransferService : BudgetBaseService
     Bill? linkedBill = null;
 
     /*
-      Validate the new bill relationship when a BillId exists.
+      Validate bill relationship when a BillId exists.
     */
     if (!string.IsNullOrWhiteSpace(
       newBillId))
     {
-      linkedBill = await Bills
-        .Find(b =>
-          b.Id == newBillId &&
-          b.UserId == userId)
-        .FirstOrDefaultAsync();
+      linkedBill =
+        await Bills
+          .Find(b =>
+            b.Id == newBillId &&
+            b.UserId == userId)
+          .FirstOrDefaultAsync();
 
       if (linkedBill == null)
       {
@@ -500,8 +527,7 @@ public class TransferService : BudgetBaseService
       }
 
       /*
-        The transfer destination must match the
-        destination account configured on the bill.
+        Destination must match the bill's configured account.
       */
       if (!string.Equals(
         linkedBill.DestinationAccountId,
@@ -512,7 +538,7 @@ public class TransferService : BudgetBaseService
       }
 
       /*
-        A Transfer bill should point to a CreditCard account.
+        Transfer bill destination must be a CreditCard.
       */
       if (!IsCreditCardAccount(
         toAccount))
@@ -524,9 +550,9 @@ public class TransferService : BudgetBaseService
     /*
       Validate a credit-card payment.
 
-      Because the existing transfer may already affect the card
-      balance, add its effect back before validating the updated
-      replacement amount.
+      The existing transfer may already affect the card balance,
+      so its previous amount must be restored before validating
+      the replacement amount.
     */
     if (IsCreditCardAccount(toAccount) &&
         IsCashAccount(fromAccount))
@@ -536,16 +562,12 @@ public class TransferService : BudgetBaseService
           toAccount);
 
       /*
-        Only add the old amount back when the existing transfer
-        currently pays this same CreditCard account.
-
-        This prevents incorrect calculations when changing
-        the destination account.
+        Only restore the existing amount when the old transfer
+        already paid this same CreditCard.
       */
       var existingTransferPaidSameCard =
         transfer.ToAccountId ==
-          toAccount.Id &&
-        IsCashAccount(fromAccount);
+          toAccount.Id;
 
       var balanceBeforeThisTransfer =
         existingTransferPaidSameCard
@@ -566,10 +588,11 @@ public class TransferService : BudgetBaseService
     }
 
     /*
-      When linked to a bill, prevent the updated transfer
-      from making total payments exceed the bill amount.
+      Prevent the updated transfer from making
+      bill payments exceed the bill amount.
 
-      Exclude the current transfer from the existing payment total.
+      Exclude the current transfer from the total because
+      it is being replaced by newAmount.
     */
     if (linkedBill != null)
     {
@@ -594,7 +617,7 @@ public class TransferService : BudgetBaseService
     }
 
     /*
-      Build only the MongoDB updates that the user requested.
+      Build only the updates supplied by the user.
     */
     var updates =
       new List<
@@ -619,9 +642,7 @@ public class TransferService : BudgetBaseService
     }
 
     /*
-      BillId needs special handling.
-
-      Empty string means remove BillId from the MongoDB document.
+      Empty BillId means unlink the transfer.
     */
     if (request.BillId != null)
     {
@@ -657,7 +678,7 @@ public class TransferService : BudgetBaseService
         Builders<AccountTransfer>.Update
           .Set(
             t => t.TransferDate,
-            request.TransferDate.Value));
+            newTransferDate));
     }
 
     if (request.Notes != null)
@@ -697,7 +718,7 @@ public class TransferService : BudgetBaseService
     }
 
     /*
-      Reload the transfer after updating it.
+      Reload the transfer after updating.
     */
     var updatedTransfer =
       await AccountTransfers
@@ -726,9 +747,10 @@ public class TransferService : BudgetBaseService
       updatedFromAccount,
       updatedToAccount);
   }
+
   /*===========================================================
     IsCreditCardAccount:
-    => Checks whether the account is a CreditCard account.
+    => Checks whether an account is a CreditCard account.
   ===========================================================*/
   private static bool IsCreditCardAccount(
     FinancialAccount account)
@@ -741,7 +763,8 @@ public class TransferService : BudgetBaseService
 
   /*===========================================================
     IsCashAccount:
-    => Checks whether an account can be used to pay a credit card.
+    => Checks whether an account can be used as the source
+       of a credit-card payment.
     => Checking and Savings are allowed.
   ===========================================================*/
   private static bool IsCashAccount(
