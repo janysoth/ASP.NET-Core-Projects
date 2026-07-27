@@ -12,6 +12,17 @@ public static class BillMapper
     => Transfer bills can use multiple linked AccountTransfers.
     => Calculates total paid, remaining amount, payment count,
        and bill status.
+
+    IMPORTANT:
+
+    Expense Bill:
+    => Once marked paid, RemainingAmount becomes 0.
+    => ActualAmount may be different from ExpectedAmount.
+    => The difference is budget variance, not unpaid balance.
+
+    Transfer Bill:
+    => RemainingAmount continues to represent the unpaid
+       portion of the expected transfer bill.
   ===========================================================*/
   public static BillResponse ToResponse(
     Bill bill,
@@ -22,14 +33,30 @@ public static class BillMapper
     FinancialAccount? destinationAccount = null,
     IReadOnlyDictionary<string, FinancialAccount>? accountLookup = null)
   {
-    // Use an empty collection when no transfers were provided.
+    /*
+      Use an empty collection when no transfers were provided.
+    */
     var linkedTransfers =
       transfers ?? Array.Empty<AccountTransfer>();
 
     /*
+      Determine whether this is a Transfer bill.
+
+      Transfer bills:
+      => Support multiple payments.
+
+      Expense bills:
+      => Use one final ExpenseRecord.
+    */
+    var isTransferBill =
+      string.Equals(
+        bill.PaymentType,
+        BillPaymentTypes.Transfer,
+        StringComparison.OrdinalIgnoreCase);
+
+    /*
       Expense Bill Actual Amount:
-      => Comes from the single ExpenseRecord created when
-         the expense bill is marked paid.
+      => Comes from the linked ExpenseRecord.
     */
     var expenseActualAmount =
       expense?.Amount;
@@ -37,46 +64,85 @@ public static class BillMapper
     /*
       Transfer Bill Total Paid:
       => Adds all transfers linked to this bill.
-      => Allows multiple credit-card payments toward one bill.
     */
     var transferTotalPaid =
       linkedTransfers.Sum(
-        transfer => transfer.Amount);
+        transfer =>
+          transfer.Amount);
 
     /*
       Total Paid:
-      => Expense bills use the linked ExpenseRecord amount.
-      => Transfer bills use the sum of all linked transfers.
+
+      Expense Bill:
+      => Uses the ExpenseRecord amount.
+
+      Transfer Bill:
+      => Uses the total of all linked transfers.
     */
     var totalPaid =
-      string.Equals(
-        bill.PaymentType,
-        BillPaymentTypes.Transfer,
-        StringComparison.OrdinalIgnoreCase)
+      isTransferBill
         ? transferTotalPaid
         : expenseActualAmount ?? 0;
 
+    /*=========================================================
+      REMAINING AMOUNT
+    =========================================================*/
+
     /*
-      Remaining Amount:
-      => Never returns a negative value.
-      => If total payments meet or exceed the expected amount,
-         remaining amount becomes zero.
+      Expense Bill:
+
+      Once Bill.IsPaid = true, the bill is considered fully
+      settled.
+
+      Example:
+
+      Expected = $80
+      Actual   = $74
+
+      Bill Remaining = $0
+
+      The $6 difference belongs to the category budget:
+
+      Budget Remaining = $6
+
+      ---------------------------------------------------------
+
+      Transfer Bill:
+
+      Expected = $500
+      Paid     = $300
+
+      Bill Remaining = $200
     */
-    var remainingAmount =
-      Math.Max(
-        0,
-        bill.ExpectedAmount - totalPaid);
+    decimal remainingAmount;
+
+    if (isTransferBill)
+    {
+      remainingAmount =
+        Math.Max(
+          0,
+          bill.ExpectedAmount -
+          transferTotalPaid);
+    }
+    else
+    {
+      remainingAmount =
+        bill.IsPaid
+          ? 0
+          : bill.ExpectedAmount;
+    }
 
     /*
       Payment Count:
-      => Expense bills have either zero or one payment record.
-      => Transfer bills can have multiple payment records.
+
+      Expense bills:
+      => Either zero or one ExpenseRecord.
+
+      Transfer bills:
+      => Can contain multiple AccountTransfers.
     */
     var paymentCount =
-      string.Equals(
-        bill.PaymentType,
-        BillPaymentTypes.Transfer,
-        StringComparison.OrdinalIgnoreCase)
+      isTransferBill
         ? linkedTransfers.Count
         : expense != null
           ? 1
@@ -85,8 +151,7 @@ public static class BillMapper
     /*
       Build the list of individual transfer payments.
 
-      This list is mainly used by Transfer bills so the frontend
-      can display each credit-card payment separately.
+      Mainly used by Transfer bills.
     */
     var paymentResponses =
       BuildPaymentResponses(
@@ -97,33 +162,34 @@ public static class BillMapper
       Calculate whether the bill is considered paid.
 
       Expense bills:
-      => Use the stored IsPaid value.
+      => Use stored Bill.IsPaid.
 
       Transfer bills:
-      => Are considered paid when linked transfers equal or exceed
-         the expected bill amount.
+      => Fully paid when linked transfers meet or exceed
+         ExpectedAmount.
     */
     var isPaid =
-      string.Equals(
-        bill.PaymentType,
-        BillPaymentTypes.Transfer,
-        StringComparison.OrdinalIgnoreCase)
-        ? totalPaid >= bill.ExpectedAmount &&
+      isTransferBill
+        ? totalPaid >=
+            bill.ExpectedAmount &&
           bill.ExpectedAmount > 0
         : bill.IsPaid;
 
     /*
       ActualAmount:
-      => Maintained for compatibility with the existing BillResponse.
-      => Expense bills return the ExpenseRecord amount.
-      => Transfer bills return the total of all linked payments.
+
+      Expense Bill:
+      => ExpenseRecord.Amount
+
+      Transfer Bill:
+      => Total linked transfer payments
+
+      null:
+      => Nothing has been paid yet.
     */
     decimal? actualAmount = null;
 
-    if (string.Equals(
-      bill.PaymentType,
-      BillPaymentTypes.Transfer,
-      StringComparison.OrdinalIgnoreCase))
+    if (isTransferBill)
     {
       if (linkedTransfers.Count > 0)
       {
@@ -148,27 +214,30 @@ public static class BillMapper
       PaymentType =
         bill.PaymentType,
 
-      /*
+      /*=======================================================
         Expense Bill Information
-      */
+      =======================================================*/
+
       BudgetCategoryId =
         bill.BudgetCategoryId,
 
       BudgetCategoryName =
         category?.Name,
 
-      /*
+      /*=======================================================
         Transfer Bill Information
-      */
+      =======================================================*/
+
       DestinationAccountId =
         bill.DestinationAccountId,
 
       DestinationAccountName =
         destinationAccount?.Name,
 
-      /*
+      /*=======================================================
         Basic Bill Information
-      */
+      =======================================================*/
+
       Name =
         bill.Name,
 
@@ -202,20 +271,19 @@ public static class BillMapper
           totalPaid),
 
       /*
-        Expense bills still use ExpenseRecordId.
-
+        Expense bills use ExpenseRecordId.
       */
       ExpenseRecordId =
         bill.ExpenseRecordId,
 
-
       /*
-        For an Expense bill, this is the account that paid
-        the expense.
+        Expense Bill:
+        => Account used to pay the bill.
 
-        Transfer bill source accounts are available inside
-        the Payments list because each payment may come from
-        a different Checking or Savings account.
+        Transfer Bill:
+        => Source accounts are available inside Payments
+           because each payment may come from a different
+           Checking or Savings account.
       */
       AccountId =
         expenseAccount?.Id,
@@ -238,7 +306,8 @@ public static class BillMapper
 
   /*===========================================================
     BuildPaymentResponses:
-    => Converts linked AccountTransfers into BillPaymentResponse DTOs.
+    => Converts linked AccountTransfers into
+       BillPaymentResponse DTOs.
     => Adds source and destination account names.
     => Supports multiple payments toward one Transfer bill.
   ===========================================================*/
@@ -250,8 +319,10 @@ public static class BillMapper
       new List<BillPaymentResponse>();
 
     foreach (var transfer in transfers
-      .OrderBy(t => t.TransferDate)
-      .ThenBy(t => t.CreatedAtUtc))
+      .OrderBy(transfer =>
+        transfer.TransferDate)
+      .ThenBy(transfer =>
+        transfer.CreatedAtUtc))
     {
       FinancialAccount? fromAccount = null;
       FinancialAccount? toAccount = null;
@@ -304,17 +375,17 @@ public static class BillMapper
   /*===========================================================
     GetPaidDate:
     => Expense bills use the bill's stored PaidDate.
-    => Transfer bills use the date of the latest linked payment
-       once the bill has been fully paid.
-    => Returns null when the bill is not fully paid.
+    => Transfer bills use the latest linked payment date
+       once fully paid.
+    => Partially paid Transfer bills return null.
   ===========================================================*/
   private static DateTime? GetPaidDate(
     Bill bill,
     IReadOnlyCollection<AccountTransfer> transfers)
   {
     /*
-      Normal Expense Bill:
-      => Continue using the stored PaidDate.
+      Expense Bill:
+      => Use the stored PaidDate.
     */
     if (!string.Equals(
       bill.PaymentType,
@@ -335,10 +406,12 @@ public static class BillMapper
 
     var totalPaid =
       transfers.Sum(
-        transfer => transfer.Amount);
+        transfer =>
+          transfer.Amount);
 
     /*
-      A partially paid bill does not yet have a final paid date.
+      Partially paid Transfer bills do not yet have
+      a final paid date.
     */
     if (totalPaid <
         bill.ExpectedAmount)
@@ -349,32 +422,43 @@ public static class BillMapper
     /*
       Once fully paid, use the latest payment date.
     */
-    return transfers
-      .Max(
-        transfer => transfer.TransferDate);
+    return transfers.Max(
+      transfer =>
+        transfer.TransferDate);
   }
 
   /*===========================================================
     GetStatus:
-    => Calculates the current status of a bill.
-    => Expense bills use their existing IsPaid flag.
-    => Transfer bills calculate status from linked payments.
-    => Supports Partially Paid status.
+    => Calculates the bill status.
+
+    Expense Bill:
+    => Uses Bill.IsPaid.
+    => Does not support Partially Paid.
+
+    Transfer Bill:
+    => Supports:
+       - Partially Paid
+       - Paid
+       - standard due-date statuses
   ===========================================================*/
   private static string GetStatus(
     Bill bill,
     decimal totalPaid)
   {
+    var isTransferBill =
+      string.Equals(
+        bill.PaymentType,
+        BillPaymentTypes.Transfer,
+        StringComparison.OrdinalIgnoreCase);
+
     /*
       Transfer Bill:
-      => Status depends on total linked payments.
+      => Status depends on linked payments.
     */
-    if (string.Equals(
-      bill.PaymentType,
-      BillPaymentTypes.Transfer,
-      StringComparison.OrdinalIgnoreCase))
+    if (isTransferBill)
     {
-      if (totalPaid >= bill.ExpectedAmount &&
+      if (totalPaid >=
+          bill.ExpectedAmount &&
           bill.ExpectedAmount > 0)
       {
         return "Paid";
@@ -389,7 +473,10 @@ public static class BillMapper
     {
       /*
         Expense Bill:
-        => Uses the stored IsPaid flag.
+
+        Once Bill.IsPaid is true, the bill is fully settled.
+
+        ActualAmount does not have to equal ExpectedAmount.
       */
       if (bill.IsPaid)
       {
@@ -397,6 +484,9 @@ public static class BillMapper
       }
     }
 
+    /*
+      Remaining statuses apply when the bill is not paid.
+    */
     var today =
       DateTime.UtcNow.Date;
 
