@@ -8,17 +8,40 @@ public static class BudgetCategoryMapper
     ToResponse:
     => Converts a BudgetCategory model into a response DTO.
     => Calculates actual spending using CategoryId.
+    => Calculates planned bill amounts for Fixed expenses.
+    => Calculates the effective planned category budget.
     => Calculates the remaining category budget.
     => Identifies whether the category is over budget.
+
+    Budget Rules:
+
+    Fixed Expense:
+    => Planned budget comes from linked Bill.ExpectedAmount.
+
+    Variable Expense:
+    => Planned budget comes from category.PlannedAmount.
+
+    Savings:
+    => Planned budget comes from category.PlannedAmount.
   ===========================================================*/
   public static BudgetCategoryResponse ToResponse(
     BudgetCategory category,
-    IReadOnlyCollection<ExpenseRecord> expenses)
+    IReadOnlyCollection<ExpenseRecord> expenses,
+    IReadOnlyCollection<Bill>? bills = null)
   {
-    /*---------------------------------------------------------
-      Calculate how much has been spent in this category.
+    /*
+      Use an empty bill collection when bills were not supplied.
 
-      Expenses now store CategoryId instead of the category
+      This keeps the mapper compatible with existing code while
+      we update the remaining services step-by-step.
+    */
+    var availableBills =
+      bills ?? Array.Empty<Bill>();
+
+    /*---------------------------------------------------------
+      Calculate actual spending for this category.
+
+      ExpenseRecord stores CategoryId instead of the category
       name.
 
       Example:
@@ -29,28 +52,100 @@ public static class BudgetCategoryMapper
       ExpenseRecord.CategoryId:
       12345
 
-      This means renaming a category will no longer break the
-      relationship between the category and its expenses.
+      Renaming the category does not break the relationship.
     ---------------------------------------------------------*/
-    var spentAmount = expenses
-      .Where(expense =>
-        expense.CategoryId == category.Id)
-      .Sum(expense =>
-        expense.Amount);
+    var spentAmount =
+      expenses
+        .Where(expense =>
+          expense.CategoryId ==
+            category.Id)
+        .Sum(expense =>
+          expense.Amount);
 
     /*---------------------------------------------------------
-      Calculate how much of the planned category budget
-      remains.
+      Determine whether this is a Fixed Expense category.
 
       Example:
 
-      PlannedAmount = $600
-      SpentAmount   = $200
+      Type        = Expense
+      ExpenseType = Fixed
+    ---------------------------------------------------------*/
+    var isFixedExpense =
+      string.Equals(
+        category.Type,
+        "Expense",
+        StringComparison.OrdinalIgnoreCase) &&
+      string.Equals(
+        category.ExpenseType,
+        "Fixed",
+        StringComparison.OrdinalIgnoreCase);
 
-      RemainingAmount = $400
+    /*---------------------------------------------------------
+      Calculate the amount automatically budgeted from bills.
+
+      Only Expense bills linked to this category count.
+
+      Example:
+
+      Internet = $80
+      Phone    = $120
+
+      BillPlannedAmount = $200
+
+      Transfer bills such as credit-card payments are NOT
+      included because they are movements between accounts,
+      not new expenses.
+    ---------------------------------------------------------*/
+    var billPlannedAmount =
+      availableBills
+        .Where(bill =>
+          string.Equals(
+            bill.PaymentType,
+            "Expense",
+            StringComparison.OrdinalIgnoreCase) &&
+          bill.BudgetCategoryId ==
+            category.Id)
+        .Sum(bill =>
+          bill.ExpectedAmount);
+
+    /*---------------------------------------------------------
+      Determine the effective planned amount.
+
+      Fixed Expense:
+      => Uses Bill.ExpectedAmount totals.
+
+      Variable Expense:
+      => Uses BudgetCategory.PlannedAmount.
+
+      Savings:
+      => Uses BudgetCategory.PlannedAmount.
+
+      This prevents a Fixed category from being counted twice.
+    ---------------------------------------------------------*/
+    var totalPlannedAmount =
+      isFixedExpense
+        ? billPlannedAmount
+        : category.PlannedAmount;
+
+    /*---------------------------------------------------------
+      Calculate the remaining category budget.
+
+      Fixed Example:
+
+      Internet Bill    = $80
+      Actual Payment   = $74
+
+      Remaining Budget = $6
+
+      Variable Example:
+
+      Groceries Budget = $600
+      Spent             = $200
+
+      Remaining Budget = $400
     ---------------------------------------------------------*/
     var remainingAmount =
-      category.PlannedAmount -
+      totalPlannedAmount -
       spentAmount;
 
     /*---------------------------------------------------------
@@ -73,8 +168,32 @@ public static class BudgetCategoryMapper
       ExpenseType =
         category.ExpenseType,
 
+      /*
+        Preserve the manually stored amount.
+
+        For Fixed Expense categories this may be zero because
+        the effective planned amount comes from bills.
+      */
       PlannedAmount =
         category.PlannedAmount,
+
+      /*
+        Amount automatically planned from linked bills.
+      */
+      BillPlannedAmount =
+        billPlannedAmount,
+
+      /*
+        The amount actually used for budgeting.
+
+        Fixed:
+        => BillPlannedAmount
+
+        Variable / Savings:
+        => PlannedAmount
+      */
+      TotalPlannedAmount =
+        totalPlannedAmount,
 
       SpentAmount =
         spentAmount,
