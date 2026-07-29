@@ -22,14 +22,15 @@ public class RecurringBillTemplateController : BudgetControllerBase
 
   /*===========================================================
     GetTemplates:
-    => Gets all recurring bill templates for the logged-in user.
-    => Returns both Expense and Transfer templates.
+    => Gets all recurring Fixed Expense bill templates
+       for the logged-in user.
   ===========================================================*/
   [HttpGet("bill-templates")]
   public async Task<ActionResult<List<RecurringBillTemplateResponse>>>
     GetTemplates()
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId == null)
     {
@@ -40,7 +41,8 @@ public class RecurringBillTemplateController : BudgetControllerBase
       await _templateService.GetTemplatesAsync(
         userId);
 
-    return Ok(templates);
+    return Ok(
+      templates);
   }
 
   /*===========================================================
@@ -53,7 +55,8 @@ public class RecurringBillTemplateController : BudgetControllerBase
     GetTemplateById(
       string templateId)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId == null)
     {
@@ -71,21 +74,27 @@ public class RecurringBillTemplateController : BudgetControllerBase
         "Recurring bill template not found.");
     }
 
-    return Ok(template);
+    return Ok(
+      template);
   }
 
   /*===========================================================
     CreateTemplate:
-    => Creates an Expense or Transfer recurring bill template.
-    => Expense templates require a category name.
-    => Transfer templates require a CreditCard destination.
+    => Creates a recurring Fixed Expense bill template.
+
+    Required:
+    => CategoryName
+    => Name
+    => ExpectedAmount greater than 0
+    => DueDay between 1 and 31
   ===========================================================*/
   [HttpPost("bill-templates")]
   public async Task<ActionResult<RecurringBillTemplateResponse>>
     CreateTemplate(
       CreateRecurringBillTemplateRequest request)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId == null)
     {
@@ -94,9 +103,7 @@ public class RecurringBillTemplateController : BudgetControllerBase
 
     var validationError =
       ValidateTemplate(
-        request.PaymentType,
         request.CategoryName,
-        request.DestinationAccountId,
         request.Name,
         request.ExpectedAmount,
         request.DueDay);
@@ -115,7 +122,7 @@ public class RecurringBillTemplateController : BudgetControllerBase
     if (template == null)
     {
       return BadRequest(
-        "The recurring bill template could not be created. Transfer templates must use a valid CreditCard destination account.");
+        "The recurring bill template could not be created.");
     }
 
     return CreatedAtAction(
@@ -129,9 +136,7 @@ public class RecurringBillTemplateController : BudgetControllerBase
 
   /*===========================================================
     UpdateTemplate:
-    => Updates an existing recurring bill template.
-    => Expense and Transfer templates use different
-       validation rules.
+    => Updates an existing recurring Fixed Expense template.
     => Already-generated bills are not changed.
   ===========================================================*/
   [HttpPut("bill-templates/{templateId}")]
@@ -140,7 +145,8 @@ public class RecurringBillTemplateController : BudgetControllerBase
       string templateId,
       UpdateRecurringBillTemplateRequest request)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId == null)
     {
@@ -149,9 +155,7 @@ public class RecurringBillTemplateController : BudgetControllerBase
 
     var validationError =
       ValidateTemplate(
-        request.PaymentType,
         request.CategoryName,
-        request.DestinationAccountId,
         request.Name,
         request.ExpectedAmount,
         request.DueDay);
@@ -171,10 +175,11 @@ public class RecurringBillTemplateController : BudgetControllerBase
     if (template == null)
     {
       return BadRequest(
-        "The recurring bill template could not be updated. Check the template ID, payment type, or destination CreditCard account.");
+        "The recurring bill template could not be updated. Check the template ID and template values.");
     }
 
-    return Ok(template);
+    return Ok(
+      template);
   }
 
   /*===========================================================
@@ -188,7 +193,8 @@ public class RecurringBillTemplateController : BudgetControllerBase
     DeleteTemplate(
       string templateId)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId == null)
     {
@@ -206,14 +212,14 @@ public class RecurringBillTemplateController : BudgetControllerBase
         "Recurring bill template not found.");
     }
 
-    return Ok(template);
+    return Ok(
+      template);
   }
 
   /*===========================================================
     GenerateBills:
-    => Generates bills from all active recurring templates.
-    => Expense templates generate Expense bills.
-    => Transfer templates generate credit-card payment bills.
+    => Generates Fixed Expense bills from all active
+       recurring templates.
     => Duplicate bills are skipped.
   ===========================================================*/
   [HttpPost("bills/generate")]
@@ -221,7 +227,8 @@ public class RecurringBillTemplateController : BudgetControllerBase
     GenerateBills(
       GenerateBillsRequest request)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId == null)
     {
@@ -252,36 +259,26 @@ public class RecurringBillTemplateController : BudgetControllerBase
         "The target budget month does not exist.");
     }
 
-    return Ok(result);
+    return Ok(
+      result);
   }
 
   /*===========================================================
     ValidateTemplate:
-    => Validates Expense and Transfer recurring templates.
-    => Uses nullable-safe string checks.
-    => Expense requires CategoryName.
-    => Transfer requires DestinationAccountId.
+    => Validates a recurring Fixed Expense bill template.
     => Returns an error message or null when valid.
   ===========================================================*/
   private static string? ValidateTemplate(
-    string? paymentType,
     string? categoryName,
-    string? destinationAccountId,
     string? name,
     decimal expectedAmount,
     int dueDay)
   {
-    /*
-      Validate the main payment type first.
-
-      BillPaymentTypes.IsValid accepts a nullable string,
-      so this check is safe even when paymentType is null.
-    */
-    if (!BillPaymentTypes.IsValid(
-      paymentType))
+    if (string.IsNullOrWhiteSpace(
+      categoryName))
     {
       return
-        "Payment type must be Expense or Transfer.";
+        "Category name is required.";
     }
 
     if (string.IsNullOrWhiteSpace(
@@ -302,64 +299,6 @@ public class RecurringBillTemplateController : BudgetControllerBase
     {
       return
         "Due day must be between 1 and 31.";
-    }
-
-    /*
-      Expense Template:
-
-      Required:
-      CategoryName
-
-      Must be empty:
-      DestinationAccountId
-    */
-    if (string.Equals(
-      paymentType,
-      BillPaymentTypes.Expense,
-      StringComparison.OrdinalIgnoreCase))
-    {
-      if (string.IsNullOrWhiteSpace(
-        categoryName))
-      {
-        return
-          "Category name is required for an Expense template.";
-      }
-
-      if (!string.IsNullOrWhiteSpace(
-        destinationAccountId))
-      {
-        return
-          "Destination account must be empty for an Expense template.";
-      }
-    }
-
-    /*
-      Transfer Template:
-
-      Required:
-      DestinationAccountId
-
-      Must be empty:
-      CategoryName
-    */
-    if (string.Equals(
-      paymentType,
-      BillPaymentTypes.Transfer,
-      StringComparison.OrdinalIgnoreCase))
-    {
-      if (string.IsNullOrWhiteSpace(
-        destinationAccountId))
-      {
-        return
-          "Destination CreditCard account is required for a Transfer template.";
-      }
-
-      if (!string.IsNullOrWhiteSpace(
-        categoryName))
-      {
-        return
-          "Category name must be empty for a Transfer template.";
-      }
     }
 
     return null;

@@ -1,5 +1,4 @@
 using MongoDB.Driver;
-using TaskManager.Api.Features.Budget.DTOs.Admin;
 using TaskManager.Api.Features.Budget.Models;
 
 namespace TaskManager.Api.Features.Budget.Services;
@@ -19,7 +18,8 @@ public class BudgetAdminService : BudgetBaseService
     DeleteAllTransactionsAsync:
     => Deletes all income, expenses, and transfers.
     => Transactions are financial activity records.
-    => Bills, accounts, months, and categories are preserved.
+    => Bills, accounts, months, categories, and recurring
+       templates are preserved.
   ===========================================================*/
   public async Task<DeleteBudgetGroupResponse>
     DeleteAllTransactionsAsync(
@@ -63,8 +63,9 @@ public class BudgetAdminService : BudgetBaseService
 
   /*===========================================================
     DeleteAllTransfersAsync:
-    => Deletes every account transfer for the current user.
-    => This also removes all transfer-based bill payments.
+    => Deletes every AccountTransfer for the current user.
+    => Bills are not affected because transfers and bills
+       are no longer connected.
   ===========================================================*/
   public async Task<DeleteBudgetGroupResponse>
     DeleteAllTransfersAsync(
@@ -116,8 +117,15 @@ public class BudgetAdminService : BudgetBaseService
 
   /*===========================================================
     DeleteAllExpensesAsync:
-    => Deletes every expense record for the current user.
-    => Expense bill payment history is removed.
+    => Deletes every ExpenseRecord for the current user.
+    => Bills themselves are preserved.
+
+    IMPORTANT:
+    => A paid bill may still contain ExpenseRecordId after
+       this bulk admin operation.
+
+    => This endpoint is intended as an administrative reset
+       operation rather than normal user bill management.
   ===========================================================*/
   public async Task<DeleteBudgetGroupResponse>
     DeleteAllExpensesAsync(
@@ -144,50 +152,17 @@ public class BudgetAdminService : BudgetBaseService
   /*===========================================================
     DeleteAllBillsAsync:
     => Deletes every bill for the current user.
-    => Preserves account transfers.
-    => Unlinks transfers by removing Transfer.BillId.
-    => Preserves recurring templates.
+    => AccountTransfers are preserved.
+    => Recurring bill templates are preserved.
+
+    IMPORTANT:
+    => Bills and AccountTransfers are independent.
+    => No transfer unlinking is required.
   ===========================================================*/
   public async Task<DeleteBudgetGroupResponse>
     DeleteAllBillsAsync(
       string userId)
   {
-    var userBills =
-      await Bills
-        .Find(bill =>
-          bill.UserId == userId)
-        .Project(bill =>
-          bill.Id)
-        .ToListAsync();
-
-    long unlinkedTransfers = 0;
-
-    if (userBills.Count > 0)
-    {
-      var transferFilter =
-        Builders<AccountTransfer>.Filter.And(
-          Builders<AccountTransfer>.Filter.Eq(
-            transfer => transfer.UserId,
-            userId),
-          Builders<AccountTransfer>.Filter.In(
-            transfer => transfer.BillId,
-            userBills));
-
-      var transferUpdate =
-        Builders<AccountTransfer>.Update
-          .Unset(
-            transfer =>
-              transfer.BillId);
-
-      var unlinkResult =
-        await AccountTransfers.UpdateManyAsync(
-          transferFilter,
-          transferUpdate);
-
-      unlinkedTransfers =
-        unlinkResult.ModifiedCount;
-    }
-
     var billResult =
       await Bills.DeleteManyAsync(
         bill =>
@@ -201,9 +176,6 @@ public class BudgetAdminService : BudgetBaseService
       DeletedBills =
         billResult.DeletedCount,
 
-      UnlinkedTransfers =
-        unlinkedTransfers,
-
       DeletedCount =
         billResult.DeletedCount
     };
@@ -212,13 +184,17 @@ public class BudgetAdminService : BudgetBaseService
   /*===========================================================
     DeleteAllRecurringTemplatesAsync:
     => Deletes recurring bill templates.
-    => Preserves generated bills.
-    => Removes template links from existing bills.
+    => Preserves previously-generated bills.
+    => Removes RecurringBillTemplateId from generated bills
+       before deleting the templates.
   ===========================================================*/
   public async Task<DeleteBudgetGroupResponse>
     DeleteAllRecurringTemplatesAsync(
       string userId)
   {
+    /*
+      Get IDs of templates that will be deleted.
+    */
     var templateIds =
       await RecurringBillTemplates
         .Find(template =>
@@ -229,12 +205,19 @@ public class BudgetAdminService : BudgetBaseService
 
     long unlinkedBills = 0;
 
+    /*
+      Generated bills should remain valid even after their
+      template is deleted.
+
+      Remove the template reference first.
+    */
     if (templateIds.Count > 0)
     {
       var billFilter =
         Builders<Bill>.Filter.And(
           Builders<Bill>.Filter.Eq(
-            bill => bill.UserId,
+            bill =>
+              bill.UserId,
             userId),
           Builders<Bill>.Filter.In(
             bill =>
@@ -281,12 +264,33 @@ public class BudgetAdminService : BudgetBaseService
   /*===========================================================
     DeleteAllCategoriesAsync:
     => Deletes every budget category for the current user.
-    => Existing expense records are preserved.
-    ===========================================================*/
-  public async Task<DeleteBudgetGroupResponse>
+
+    IMPORTANT:
+    => Bills depend on BudgetCategoryId.
+
+    => Therefore, categories should not be bulk-deleted while
+       bills still exist.
+
+    => Expense records also use CategoryId. For a completely
+       clean reset, use DeleteAllBudgetDataAsync instead.
+  ===========================================================*/
+  public async Task<DeleteBudgetGroupResponse?>
     DeleteAllCategoriesAsync(
       string userId)
   {
+    /*
+      Prevent orphaned Bill.BudgetCategoryId values.
+    */
+    var billCount =
+      await Bills.CountDocumentsAsync(
+        bill =>
+          bill.UserId == userId);
+
+    if (billCount > 0)
+    {
+      return null;
+    }
+
     var result =
       await BudgetCategories.DeleteManyAsync(
         category =>
@@ -308,8 +312,22 @@ public class BudgetAdminService : BudgetBaseService
   /*===========================================================
     DeleteAllBudgetMonthsAsync:
     => Deletes every budget month.
-    => Also deletes all month-owned records.
-    => Accounts and recurring templates are preserved.
+    => Also deletes records owned by those budget months.
+
+    Deletes:
+    => IncomeRecords
+    => ExpenseRecords
+    => Bills
+    => BudgetCategories
+    => BudgetMonths
+
+    Preserves:
+    => FinancialAccounts
+    => AccountTransfers
+    => RecurringBillTemplates
+
+    IMPORTANT:
+    => AccountTransfers are independent from budget months.
   ===========================================================*/
   public async Task<DeleteBudgetGroupResponse>
     DeleteAllBudgetMonthsAsync(
@@ -328,58 +346,15 @@ public class BudgetAdminService : BudgetBaseService
         expense =>
           expense.UserId == userId);
 
-    var categoryResult =
-      await BudgetCategories.DeleteManyAsync(
-        category =>
-          category.UserId == userId);
-
-    /*
-      Transfers are not owned by a budget month,
-      so they are preserved.
-
-      However, bills are owned by budget months.
-      Any transfer links to those bills must be removed first.
-    */
-    var billIds =
-      await Bills
-        .Find(bill =>
-          bill.UserId == userId)
-        .Project(bill =>
-          bill.Id)
-        .ToListAsync();
-
-    long unlinkedTransfers = 0;
-
-    if (billIds.Count > 0)
-    {
-      var transferFilter =
-        Builders<AccountTransfer>.Filter.And(
-          Builders<AccountTransfer>.Filter.Eq(
-            transfer => transfer.UserId,
-            userId),
-          Builders<AccountTransfer>.Filter.In(
-            transfer => transfer.BillId,
-            billIds));
-
-      var transferUpdate =
-        Builders<AccountTransfer>.Update
-          .Unset(
-            transfer =>
-              transfer.BillId);
-
-      var unlinkResult =
-        await AccountTransfers.UpdateManyAsync(
-          transferFilter,
-          transferUpdate);
-
-      unlinkedTransfers =
-        unlinkResult.ModifiedCount;
-    }
-
     var billResult =
       await Bills.DeleteManyAsync(
         bill =>
           bill.UserId == userId);
+
+    var categoryResult =
+      await BudgetCategories.DeleteManyAsync(
+        category =>
+          category.UserId == userId);
 
     var monthResult =
       await BudgetMonths.DeleteManyAsync(
@@ -389,8 +364,8 @@ public class BudgetAdminService : BudgetBaseService
     var deletedTotal =
       incomeResult.DeletedCount +
       expenseResult.DeletedCount +
-      categoryResult.DeletedCount +
       billResult.DeletedCount +
+      categoryResult.DeletedCount +
       monthResult.DeletedCount;
 
     return new DeleteBudgetGroupResponse
@@ -404,17 +379,14 @@ public class BudgetAdminService : BudgetBaseService
       DeletedExpenseRecords =
         expenseResult.DeletedCount,
 
-      DeletedCategories =
-        categoryResult.DeletedCount,
-
       DeletedBills =
         billResult.DeletedCount,
 
+      DeletedCategories =
+        categoryResult.DeletedCount,
+
       DeletedBudgetMonths =
         monthResult.DeletedCount,
-
-      UnlinkedTransfers =
-        unlinkedTransfers,
 
       DeletedCount =
         deletedTotal
@@ -423,8 +395,19 @@ public class BudgetAdminService : BudgetBaseService
 
   /*===========================================================
     DeleteAllAccountsAsync:
-    => Deletes every account.
-    => Refuses deletion while financial records reference them.
+    => Deletes every financial account.
+    => Refuses deletion while financial activity still
+       references those accounts.
+
+    Account references exist in:
+
+    IncomeRecord.AccountId
+    ExpenseRecord.AccountId
+    AccountTransfer.FromAccountId
+    AccountTransfer.ToAccountId
+
+    Bills and recurring bill templates no longer store
+    financial account IDs.
   ===========================================================*/
   public async Task<DeleteBudgetGroupResponse?>
     DeleteAllAccountsAsync(
@@ -445,6 +428,10 @@ public class BudgetAdminService : BudgetBaseService
         transfer =>
           transfer.UserId == userId);
 
+    /*
+      Do not delete accounts while financial records still
+      reference them.
+    */
     if (incomeCount > 0 ||
         expenseCount > 0 ||
         transferCount > 0)
@@ -453,32 +440,9 @@ public class BudgetAdminService : BudgetBaseService
     }
 
     /*
-      Clear destination account references before deleting accounts.
-
-      Bills and templates may still exist after account deletion.
+      Bills and recurring templates no longer contain
+      DestinationAccountId, so no cleanup is needed.
     */
-    var billUpdate =
-      Builders<Bill>.Update
-        .Unset(
-          bill =>
-            bill.DestinationAccountId);
-
-    await Bills.UpdateManyAsync(
-      bill =>
-        bill.UserId == userId,
-      billUpdate);
-
-    var templateUpdate =
-      Builders<RecurringBillTemplate>.Update
-        .Unset(
-          template =>
-            template.DestinationAccountId);
-
-    await RecurringBillTemplates.UpdateManyAsync(
-      template =>
-        template.UserId == userId,
-      templateUpdate);
-
     var result =
       await FinancialAccounts.DeleteManyAsync(
         account =>
@@ -501,11 +465,16 @@ public class BudgetAdminService : BudgetBaseService
     DeleteAllBudgetDataAsync:
     => Deletes all budget data for the current user.
     => Deletes records in dependency-safe order.
+
+    This is the complete clean-slate operation.
   ===========================================================*/
   public async Task<DeleteBudgetGroupResponse>
     DeleteAllBudgetDataAsync(
       string userId)
   {
+    /*---------------------------------------------------------
+      Delete financial activity first.
+    ---------------------------------------------------------*/
     var transferResult =
       await AccountTransfers.DeleteManyAsync(
         transfer =>
@@ -521,6 +490,9 @@ public class BudgetAdminService : BudgetBaseService
         expense =>
           expense.UserId == userId);
 
+    /*---------------------------------------------------------
+      Delete bills and recurring templates.
+    ---------------------------------------------------------*/
     var billResult =
       await Bills.DeleteManyAsync(
         bill =>
@@ -532,6 +504,9 @@ public class BudgetAdminService : BudgetBaseService
           template =>
             template.UserId == userId);
 
+    /*---------------------------------------------------------
+      Delete budget categories and months.
+    ---------------------------------------------------------*/
     var categoryResult =
       await BudgetCategories.DeleteManyAsync(
         category =>
@@ -542,6 +517,10 @@ public class BudgetAdminService : BudgetBaseService
         month =>
           month.UserId == userId);
 
+    /*---------------------------------------------------------
+      Accounts can now safely be deleted because all financial
+      records that reference them have already been removed.
+    ---------------------------------------------------------*/
     var accountResult =
       await FinancialAccounts.DeleteManyAsync(
         account =>

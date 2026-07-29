@@ -8,7 +8,10 @@ public static class TransferMapper
     ToResponse:
     => Converts an AccountTransfer into a response DTO.
     => Includes source and destination account names.
-    => Includes optional BillId when linked to a bill.
+
+    IMPORTANT:
+    => AccountTransfers are no longer linked to bills.
+    => They only represent money moving between accounts.
   ===========================================================*/
   public static AccountTransferResponse ToResponse(
     AccountTransfer transfer,
@@ -17,7 +20,8 @@ public static class TransferMapper
   {
     return new AccountTransferResponse
     {
-      Id = transfer.Id,
+      Id =
+        transfer.Id,
 
       FromAccountId =
         transfer.FromAccountId,
@@ -32,9 +36,6 @@ public static class TransferMapper
       ToAccountName =
         toAccount?.Name ??
         string.Empty,
-
-      BillId =
-        transfer.BillId,
 
       Amount =
         transfer.Amount,

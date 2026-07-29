@@ -22,6 +22,9 @@ public class BillService : BudgetBaseService
     => Gets all bills belonging to the logged-in user.
     => Supports optional month and year filters.
     => Returns bills sorted by due date.
+
+    IMPORTANT:
+    => Bills now represent Fixed Expense obligations only.
   ===========================================================*/
   public async Task<List<BillResponse>> GetBillsAsync(
     string userId,
@@ -33,7 +36,12 @@ public class BillService : BudgetBaseService
         bill => bill.UserId,
         userId);
 
-    if (month.HasValue || year.HasValue)
+    /*
+      When month/year filters are supplied, first find
+      the matching BudgetMonth IDs.
+    */
+    if (month.HasValue ||
+        year.HasValue)
     {
       var budgetMonthIds =
         await GetBudgetMonthIdsAsync(
@@ -47,10 +55,12 @@ public class BillService : BudgetBaseService
           budgetMonthIds);
     }
 
-    var bills = await Bills
-      .Find(filter)
-      .SortBy(bill => bill.DueDate)
-      .ToListAsync();
+    var bills =
+      await Bills
+        .Find(filter)
+        .SortBy(bill =>
+          bill.DueDate)
+        .ToListAsync();
 
     var responses =
       new List<BillResponse>();
@@ -69,18 +79,19 @@ public class BillService : BudgetBaseService
   /*===========================================================
     GetBillByIdAsync:
     => Gets one bill by ID.
-    => Ensures the bill belongs to the logged-in user.
-    => Returns the complete bill response.
+    => Confirms the bill belongs to the logged-in user.
+    => Returns the complete BillResponse.
   ===========================================================*/
   public async Task<BillResponse?> GetBillByIdAsync(
     string billId,
     string userId)
   {
-    var bill = await Bills
-      .Find(b =>
-        b.Id == billId &&
-        b.UserId == userId)
-      .FirstOrDefaultAsync();
+    var bill =
+      await Bills
+        .Find(existingBill =>
+          existingBill.Id == billId &&
+          existingBill.UserId == userId)
+        .FirstOrDefaultAsync();
 
     if (bill == null)
     {
@@ -94,45 +105,55 @@ public class BillService : BudgetBaseService
 
   /*===========================================================
     CreateBillAsync:
-    => Creates either an Expense bill or Transfer bill.
+    => Creates a Fixed Expense bill.
 
-    Expense Bill:
-    => Requires a Fixed Expense category.
-    => Bill.ExpectedAmount automatically becomes part of the
-       monthly Fixed planned budget.
-
-    Transfer Bill:
-    => Requires a CreditCard destination account.
-    => Does NOT count as another expense.
-
-    General Rules:
+    Rules:
+    => Name is required.
     => ExpectedAmount must be greater than zero.
-    => Name cannot be blank.
-    => Due date must belong to the selected budget month.
+    => Bill must belong to a Fixed Expense category.
+    => Category must belong to the selected budget month.
+    => DueDate must belong to the selected budget month.
     => Future due dates are allowed.
+
+    IMPORTANT:
+    => Bill.ExpectedAmount automatically contributes to the
+       Fixed planned budget.
   ===========================================================*/
   public async Task<BillResponse?> CreateBillAsync(
     string budgetMonthId,
     CreateBillRequest request,
     string userId)
   {
-    /*
+    /*---------------------------------------------------------
       Bill name is required.
-    */
+    ---------------------------------------------------------*/
     if (string.IsNullOrWhiteSpace(
       request.Name))
     {
       return null;
     }
 
-    /*
-      Bills must have a positive expected amount.
-    */
+    /*---------------------------------------------------------
+      Expected amount must be positive.
+    ---------------------------------------------------------*/
     if (request.ExpectedAmount <= 0)
     {
       return null;
     }
 
+    /*---------------------------------------------------------
+      BudgetCategoryId is required because every bill now
+      belongs to a Fixed Expense category.
+    ---------------------------------------------------------*/
+    if (string.IsNullOrWhiteSpace(
+      request.BudgetCategoryId))
+    {
+      return null;
+    }
+
+    /*---------------------------------------------------------
+      Load the selected budget month.
+    ---------------------------------------------------------*/
     var budgetMonth =
       await GetBudgetMonthModelByIdAsync(
         budgetMonthId,
@@ -143,14 +164,14 @@ public class BillService : BudgetBaseService
       return null;
     }
 
-    /*
-      Bill due date must belong to the selected budget month.
+    /*---------------------------------------------------------
+      Due date must belong to the selected budget month.
 
       Example:
 
-      July budget
-      → due date must be in July.
-    */
+      August Budget
+      → Bill DueDate must be in August.
+    ---------------------------------------------------------*/
     if (!IsDateInsideBudgetMonth(
       request.DueDate,
       budgetMonth.Month,
@@ -160,97 +181,31 @@ public class BillService : BudgetBaseService
         "The bill due date must be within the selected budget month.");
     }
 
-    var paymentType =
-      BillPaymentTypes.Normalize(
-        request.PaymentType);
+    /*---------------------------------------------------------
+      Load and validate the category.
 
-    if (paymentType == null)
+      Bills may only use:
+
+      Type        = Expense
+      ExpenseType = Fixed
+    ---------------------------------------------------------*/
+    var category =
+      await GetBudgetCategoryForMonthAsync(
+        request.BudgetCategoryId,
+        budgetMonthId,
+        userId);
+
+    if (category == null ||
+        !IsValidBillCategory(
+          category,
+          budgetMonthId))
     {
       return null;
     }
 
-    BudgetCategory? category = null;
-    FinancialAccount? destinationAccount = null;
-
-    /*=========================================================
-      EXPENSE BILL
-    =========================================================*/
-
-    /*
-      Expense bills represent Fixed monthly expenses.
-
-      Examples:
-
-      Mortgage
-      Internet
-      Phone
-      Insurance
-      Utilities
-
-      They must be linked to:
-
-      Type        = Expense
-      ExpenseType = Fixed
-    */
-    if (paymentType == BillPaymentTypes.Expense)
-    {
-      if (string.IsNullOrWhiteSpace(
-        request.BudgetCategoryId))
-      {
-        return null;
-      }
-
-      category =
-        await GetBudgetCategoryForMonthAsync(
-          request.BudgetCategoryId,
-          budgetMonthId,
-          userId);
-
-      if (category == null ||
-          !IsValidExpenseBillCategory(
-            category,
-            budgetMonthId))
-      {
-        return null;
-      }
-    }
-
-    /*=========================================================
-      TRANSFER BILL
-    =========================================================*/
-
-    /*
-      Transfer bills are used for account-payment obligations.
-
-      Example:
-
-      Checking
-      →
-      CreditCard
-
-      They require a CreditCard destination account.
-    */
-    if (paymentType == BillPaymentTypes.Transfer)
-    {
-      if (string.IsNullOrWhiteSpace(
-        request.DestinationAccountId))
-      {
-        return null;
-      }
-
-      destinationAccount =
-        await GetAccountByIdAsync(
-          request.DestinationAccountId,
-          userId);
-
-      if (destinationAccount == null ||
-          !IsCreditCardAccount(
-            destinationAccount))
-      {
-        return null;
-      }
-    }
-
+    /*---------------------------------------------------------
+      Create the bill.
+    ---------------------------------------------------------*/
     var bill =
       new Bill
       {
@@ -260,20 +215,8 @@ public class BillService : BudgetBaseService
         BudgetMonthId =
           budgetMonthId,
 
-        PaymentType =
-          paymentType,
-
         BudgetCategoryId =
-          paymentType ==
-            BillPaymentTypes.Expense
-            ? category?.Id
-            : null,
-
-        DestinationAccountId =
-          paymentType ==
-            BillPaymentTypes.Transfer
-            ? destinationAccount?.Id
-            : null,
+          category.Id,
 
         Name =
           request.Name.Trim(),
@@ -305,59 +248,69 @@ public class BillService : BudgetBaseService
 
     return BillMapper.ToResponse(
       bill,
-      category: category,
-      destinationAccount: destinationAccount);
+      category: category);
   }
 
   /*===========================================================
     UpdateBillAsync:
-    => Updates an existing bill.
+    => Updates an existing Fixed Expense bill.
 
-    Expense Bill:
-    => Must remain linked to a Fixed Expense category.
-
-    Transfer Bill:
-    => Must use a CreditCard destination account.
-
-    General Rules:
+    Rules:
+    => Name is required.
     => ExpectedAmount must be greater than zero.
-    => Name cannot be blank.
-    => Paid bills cannot change payment structure.
-    => Future due dates are allowed.
+    => Category must remain a Fixed Expense category.
+    => DueDate must remain inside the bill's budget month.
+
+    Paid Bill:
+    => If name/category changes, the linked ExpenseRecord
+       is kept synchronized.
   ===========================================================*/
   public async Task<BillResponse?> UpdateBillAsync(
     string billId,
     UpdateBillRequest request,
     string userId)
   {
-    /*
+    /*---------------------------------------------------------
       Bill name is required.
-    */
+    ---------------------------------------------------------*/
     if (string.IsNullOrWhiteSpace(
       request.Name))
     {
       return null;
     }
 
-    /*
-      Bills must have a positive expected amount.
-    */
+    /*---------------------------------------------------------
+      Expected amount must be positive.
+    ---------------------------------------------------------*/
     if (request.ExpectedAmount <= 0)
     {
       return null;
     }
 
-    var bill = await Bills
-      .Find(b =>
-        b.Id == billId &&
-        b.UserId == userId)
-      .FirstOrDefaultAsync();
+    if (string.IsNullOrWhiteSpace(
+      request.BudgetCategoryId))
+    {
+      return null;
+    }
+
+    /*---------------------------------------------------------
+      Find the existing bill.
+    ---------------------------------------------------------*/
+    var bill =
+      await Bills
+        .Find(existingBill =>
+          existingBill.Id == billId &&
+          existingBill.UserId == userId)
+        .FirstOrDefaultAsync();
 
     if (bill == null)
     {
       return null;
     }
 
+    /*---------------------------------------------------------
+      Load the bill's budget month.
+    ---------------------------------------------------------*/
     var budgetMonth =
       await GetBudgetMonthModelByIdAsync(
         bill.BudgetMonthId,
@@ -368,6 +321,9 @@ public class BillService : BudgetBaseService
       return null;
     }
 
+    /*---------------------------------------------------------
+      Due date must remain inside the bill's budget month.
+    ---------------------------------------------------------*/
     if (!IsDateInsideBudgetMonth(
       request.DueDate,
       budgetMonth.Month,
@@ -377,179 +333,91 @@ public class BillService : BudgetBaseService
         "The bill due date must be within the selected budget month.");
     }
 
-    var paymentType =
-      BillPaymentTypes.Normalize(
-        request.PaymentType);
+    /*---------------------------------------------------------
+      Load and validate the new category.
+    ---------------------------------------------------------*/
+    var category =
+      await GetBudgetCategoryForMonthAsync(
+        request.BudgetCategoryId,
+        bill.BudgetMonthId,
+        userId);
 
-    if (paymentType == null)
+    if (category == null ||
+        !IsValidBillCategory(
+          category,
+          bill.BudgetMonthId))
     {
       return null;
     }
 
-    /*
-      Once paid, do not allow:
+    var normalizedName =
+      request.Name.Trim();
 
-      Expense → Transfer
-      Transfer → Expense
+    /*---------------------------------------------------------
+      If the bill has already been paid, keep the generated
+      ExpenseRecord synchronized with bill name/category.
 
-      The linked financial transaction already represents
-      the original payment structure.
-    */
+      We intentionally DO NOT automatically overwrite the
+      ExpenseRecord.Amount when ExpectedAmount changes.
+
+      ExpectedAmount = planned amount.
+      ExpenseRecord.Amount = actual amount paid.
+    ---------------------------------------------------------*/
     if (bill.IsPaid &&
-        !string.Equals(
-          bill.PaymentType,
-          paymentType,
-          StringComparison.OrdinalIgnoreCase))
+        !string.IsNullOrWhiteSpace(
+          bill.ExpenseRecordId))
     {
-      return null;
+      var expenseUpdate =
+        Builders<ExpenseRecord>.Update
+          .Set(
+            expense =>
+              expense.CategoryId,
+            category.Id)
+          .Set(
+            expense =>
+              expense.Name,
+            normalizedName);
+
+      await ExpenseRecords.UpdateOneAsync(
+        expense =>
+          expense.Id ==
+            bill.ExpenseRecordId &&
+          expense.UserId ==
+            userId,
+        expenseUpdate);
     }
 
-    BudgetCategory? category = null;
-    FinancialAccount? destinationAccount = null;
-
-    /*=========================================================
-      EXPENSE BILL
-    =========================================================*/
-
-    if (paymentType == BillPaymentTypes.Expense)
-    {
-      if (string.IsNullOrWhiteSpace(
-        request.BudgetCategoryId))
-      {
-        return null;
-      }
-
-      category =
-        await GetBudgetCategoryForMonthAsync(
-          request.BudgetCategoryId,
-          bill.BudgetMonthId,
-          userId);
-
-      /*
-        Expense bills can only use:
-
-        Type        = Expense
-        ExpenseType = Fixed
-      */
-      if (category == null ||
-          !IsValidExpenseBillCategory(
-            category,
-            bill.BudgetMonthId))
-      {
-        return null;
-      }
-
-      /*
-        If already paid, keep the linked ExpenseRecord
-        synchronized when the bill name or category changes.
-      */
-      if (bill.IsPaid &&
-          !string.IsNullOrWhiteSpace(
-            bill.ExpenseRecordId))
-      {
-        var expenseUpdate =
-          Builders<ExpenseRecord>.Update
-            .Set(
-              expense =>
-                expense.CategoryId,
-              category.Id)
-            .Set(
-              expense =>
-                expense.Name,
-              request.Name.Trim());
-
-        await ExpenseRecords.UpdateOneAsync(
-          expense =>
-            expense.Id ==
-              bill.ExpenseRecordId &&
-            expense.UserId ==
-              userId,
-          expenseUpdate);
-      }
-    }
-
-    /*=========================================================
-      TRANSFER BILL
-    =========================================================*/
-
-    if (paymentType == BillPaymentTypes.Transfer)
-    {
-      if (string.IsNullOrWhiteSpace(
-        request.DestinationAccountId))
-      {
-        return null;
-      }
-
-      destinationAccount =
-        await GetAccountByIdAsync(
-          request.DestinationAccountId,
-          userId);
-
-      if (destinationAccount == null ||
-          !IsCreditCardAccount(
-            destinationAccount))
-      {
-        return null;
-      }
-
-      /*
-        Do not allow changing the destination credit card
-        after the bill has been paid.
-
-        This protects the existing payment relationship.
-      */
-      if (bill.IsPaid &&
-          !string.Equals(
-            bill.DestinationAccountId,
-            destinationAccount.Id,
-            StringComparison.Ordinal))
-      {
-        return null;
-      }
-    }
-
+    /*---------------------------------------------------------
+      Update the bill.
+    ---------------------------------------------------------*/
     var update =
       Builders<Bill>.Update
         .Set(
-          b =>
-            b.PaymentType,
-          paymentType)
+          existingBill =>
+            existingBill.BudgetCategoryId,
+          category.Id)
         .Set(
-          b =>
-            b.BudgetCategoryId,
-          paymentType ==
-            BillPaymentTypes.Expense
-            ? category?.Id
-            : null)
+          existingBill =>
+            existingBill.Name,
+          normalizedName)
         .Set(
-          b =>
-            b.DestinationAccountId,
-          paymentType ==
-            BillPaymentTypes.Transfer
-            ? destinationAccount?.Id
-            : null)
-        .Set(
-          b =>
-            b.Name,
-          request.Name.Trim())
-        .Set(
-          b =>
-            b.ExpectedAmount,
+          existingBill =>
+            existingBill.ExpectedAmount,
           request.ExpectedAmount)
         .Set(
-          b =>
-            b.DueDate,
+          existingBill =>
+            existingBill.DueDate,
           request.DueDate)
         .Set(
-          b =>
-            b.Notes,
+          existingBill =>
+            existingBill.Notes,
           request.Notes);
 
     var result =
       await Bills.UpdateOneAsync(
-        b =>
-          b.Id == billId &&
-          b.UserId == userId,
+        existingBill =>
+          existingBill.Id == billId &&
+          existingBill.UserId == userId,
         update);
 
     if (result.MatchedCount == 0)
@@ -566,43 +434,46 @@ public class BillService : BudgetBaseService
     DeleteBillAsync:
     => Deletes one bill owned by the logged-in user.
 
-    Expense Bill:
-    => Deletes the linked ExpenseRecord.
+    If the bill is paid:
+    => Deletes the ExpenseRecord created by the bill.
 
-    Transfer Bill:
-    => Keeps real account-transfer history.
-    => Removes BillId from linked AccountTransfers.
+    This reverses:
+    => Transaction history.
+    => Category spending.
+    => Account balance impact.
   ===========================================================*/
   public async Task<BillResponse?> DeleteBillAsync(
     string billId,
     string userId)
   {
-    var bill = await Bills
-      .Find(b =>
-        b.Id == billId &&
-        b.UserId == userId)
-      .FirstOrDefaultAsync();
+    /*---------------------------------------------------------
+      Find the bill before deleting it.
+    ---------------------------------------------------------*/
+    var bill =
+      await Bills
+        .Find(existingBill =>
+          existingBill.Id == billId &&
+          existingBill.UserId == userId)
+        .FirstOrDefaultAsync();
 
     if (bill == null)
     {
       return null;
     }
 
+    /*---------------------------------------------------------
+      Build the response before deleting related records.
+    ---------------------------------------------------------*/
     var deletedBill =
       await BuildBillResponseAsync(
         bill,
         userId);
 
-    /*
-      Expense Bill:
-      Delete the automatically generated ExpenseRecord.
-    */
-    if (string.Equals(
-      bill.PaymentType,
-      BillPaymentTypes.Expense,
-      StringComparison.OrdinalIgnoreCase) &&
-      !string.IsNullOrWhiteSpace(
-        bill.ExpenseRecordId))
+    /*---------------------------------------------------------
+      If this bill created an ExpenseRecord, delete it too.
+    ---------------------------------------------------------*/
+    if (!string.IsNullOrWhiteSpace(
+      bill.ExpenseRecordId))
     {
       await ExpenseRecords.DeleteOneAsync(
         expense =>
@@ -612,36 +483,14 @@ public class BillService : BudgetBaseService
             userId);
     }
 
-    /*
-      Transfer Bill:
-      Preserve actual transfer history.
-
-      Remove BillId so linked transfers become
-      standalone account transfers.
-    */
-    if (string.Equals(
-      bill.PaymentType,
-      BillPaymentTypes.Transfer,
-      StringComparison.OrdinalIgnoreCase))
-    {
-      var unlinkTransfers =
-        Builders<AccountTransfer>.Update
-          .Unset(
-            transfer =>
-              transfer.BillId);
-
-      await AccountTransfers.UpdateManyAsync(
-        transfer =>
-          transfer.UserId == userId &&
-          transfer.BillId == bill.Id,
-        unlinkTransfers);
-    }
-
+    /*---------------------------------------------------------
+      Delete the bill itself.
+    ---------------------------------------------------------*/
     var deleteResult =
       await Bills.DeleteOneAsync(
-        b =>
-          b.Id == billId &&
-          b.UserId == userId);
+        existingBill =>
+          existingBill.Id == billId &&
+          existingBill.UserId == userId);
 
     if (deleteResult.DeletedCount == 0)
     {
@@ -653,101 +502,84 @@ public class BillService : BudgetBaseService
 
   /*===========================================================
     MarkBillPaidAsync:
-    => Marks an Expense bill as paid.
-    => Creates an ExpenseRecord for the actual payment.
-    => Transfer bills must use the AccountTransfer endpoint.
+    => Marks a Fixed Expense bill as paid.
+    => Creates one ExpenseRecord for the actual payment.
     => PaidDate cannot be in the future.
 
-    Option A Rule:
+    Option A:
+
+    ExpectedAmount and ActualAmount may differ.
 
     Example:
 
-    ExpectedAmount = $80
-    ActualAmount   = $74
+    Expected = $80
+    Actual   = $74
 
-    The bill is still fully paid.
+    Bill:
+    => Paid
+    => RemainingAmount = $0
 
-    The $6 difference represents budget variance,
-    not an unpaid balance.
+    Budget:
+    => Planned = $80
+    => Spent   = $74
+    => Remaining = $6
   ===========================================================*/
   public async Task<BillResponse?> MarkBillPaidAsync(
     string billId,
     MarkBillPaidRequest request,
     string userId)
   {
-    var bill = await Bills
-      .Find(b =>
-        b.Id == billId &&
-        b.UserId == userId)
-      .FirstOrDefaultAsync();
+    /*---------------------------------------------------------
+      Find the bill.
+    ---------------------------------------------------------*/
+    var bill =
+      await Bills
+        .Find(existingBill =>
+          existingBill.Id == billId &&
+          existingBill.UserId == userId)
+        .FirstOrDefaultAsync();
 
     if (bill == null)
     {
       return null;
     }
 
-    /*
+    /*---------------------------------------------------------
+      Bills can only be paid once.
+    ---------------------------------------------------------*/
+    if (bill.IsPaid)
+    {
+      return null;
+    }
+
+    /*---------------------------------------------------------
+      Actual amount must be positive.
+    ---------------------------------------------------------*/
+    if (request.ActualAmount <= 0)
+    {
+      return null;
+    }
+
+    /*---------------------------------------------------------
       A payment represents money that has already moved.
 
       Future payment dates are not allowed.
-    */
+    ---------------------------------------------------------*/
     if (request.PaidDate.Date >
         DateTime.UtcNow.Date)
     {
       return null;
     }
 
-    /*
-      Transfer bills support multiple payments.
+    /*---------------------------------------------------------
+      Load the account used to pay the bill.
 
-      Credit-card payments should use:
-
-      POST /api/budget/transfers
-
-      with an optional BillId.
-    */
-    if (string.Equals(
-      bill.PaymentType,
-      BillPaymentTypes.Transfer,
-      StringComparison.OrdinalIgnoreCase))
-    {
-      return null;
-    }
-
-    /*
-      Expense bills can only be paid once.
-    */
-    if (bill.IsPaid)
-    {
-      return null;
-    }
-
-    /*
-      Expense bills must have a category.
-    */
-    if (string.IsNullOrWhiteSpace(
-      bill.BudgetCategoryId))
-    {
-      return null;
-    }
-
-    /*
-      Actual payment amount must be positive.
-    */
-    if (request.ActualAmount <= 0)
-    {
-      return null;
-    }
-
-    /*
-      Load the account used to pay the expense.
-
-      Expense bills may be paid from:
+      Allowed examples:
 
       Checking
       Savings
       CreditCard
-    */
+    ---------------------------------------------------------*/
     var paymentAccount =
       await GetAccountByIdAsync(
         request.AccountId,
@@ -758,14 +590,9 @@ public class BillService : BudgetBaseService
       return null;
     }
 
-    /*
+    /*---------------------------------------------------------
       Load and validate the bill category.
-
-      The category must still be:
-
-      Type        = Expense
-      ExpenseType = Fixed
-    */
+    ---------------------------------------------------------*/
     var category =
       await GetBudgetCategoryForMonthAsync(
         bill.BudgetCategoryId,
@@ -773,20 +600,20 @@ public class BillService : BudgetBaseService
         userId);
 
     if (category == null ||
-        !IsValidExpenseBillCategory(
+        !IsValidBillCategory(
           category,
           bill.BudgetMonthId))
     {
       return null;
     }
 
-    /*
+    /*---------------------------------------------------------
       Create the actual ExpenseRecord.
 
-      The expected bill amount remains on Bill.ExpectedAmount.
+      Bill.ExpectedAmount remains the planned amount.
 
-      The real amount paid is stored here.
-    */
+      ExpenseRecord.Amount stores what was actually paid.
+    ---------------------------------------------------------*/
     var expense =
       new ExpenseRecord
       {
@@ -822,38 +649,34 @@ public class BillService : BudgetBaseService
     await ExpenseRecords.InsertOneAsync(
       expense);
 
-    /*
-      Mark the bill fully paid.
-
-      Expense bills follow Option A:
-
-      Actual amount does NOT have to equal ExpectedAmount.
-    */
+    /*---------------------------------------------------------
+      Mark the bill paid and connect it to the ExpenseRecord.
+    ---------------------------------------------------------*/
     var billUpdate =
       Builders<Bill>.Update
         .Set(
-          b =>
-            b.IsPaid,
+          existingBill =>
+            existingBill.IsPaid,
           true)
         .Set(
-          b =>
-            b.ExpenseRecordId,
+          existingBill =>
+            existingBill.ExpenseRecordId,
           expense.Id)
         .Set(
-          b =>
-            b.PaidDate,
+          existingBill =>
+            existingBill.PaidDate,
           request.PaidDate);
 
-    /*
-      !b.IsPaid protects against two requests paying
-      the same Expense bill at the same time.
-    */
+    /*---------------------------------------------------------
+      !IsPaid protects against two requests trying to pay
+      the same bill at the same time.
+    ---------------------------------------------------------*/
     var updateResult =
       await Bills.UpdateOneAsync(
-        b =>
-          b.Id == bill.Id &&
-          b.UserId == userId &&
-          !b.IsPaid,
+        existingBill =>
+          existingBill.Id == bill.Id &&
+          existingBill.UserId == userId &&
+          !existingBill.IsPaid,
         billUpdate);
 
     if (updateResult.ModifiedCount == 0)
@@ -864,17 +687,22 @@ public class BillService : BudgetBaseService
       */
       await ExpenseRecords.DeleteOneAsync(
         expenseRecord =>
-          expenseRecord.Id == expense.Id &&
-          expenseRecord.UserId == userId);
+          expenseRecord.Id ==
+            expense.Id &&
+          expenseRecord.UserId ==
+            userId);
 
       return null;
     }
 
+    /*---------------------------------------------------------
+      Reload and return the updated bill.
+    ---------------------------------------------------------*/
     var updatedBill =
       await Bills
-        .Find(b =>
-          b.Id == bill.Id &&
-          b.UserId == userId)
+        .Find(existingBill =>
+          existingBill.Id == bill.Id &&
+          existingBill.UserId == userId)
         .FirstOrDefaultAsync();
 
     if (updatedBill == null)
@@ -888,202 +716,56 @@ public class BillService : BudgetBaseService
   }
 
   /*===========================================================
-    MarkExpenseBillPaidAsync:
-    => Creates an ExpenseRecord for an Expense bill.
-    => Allows payment from Checking, Savings, or CreditCard.
-    => Links the created expense back to the bill.
-    => PaidDate cannot be in the future.
-
-    NOTE:
-    => This helper currently duplicates some logic from
-       MarkBillPaidAsync.
-    => It is not used by the primary payment flow.
-    => We can remove it later during cleanup.
-  ===========================================================*/
-  private async Task<BillResponse?> MarkExpenseBillPaidAsync(
-    Bill bill,
-    FinancialAccount sourceAccount,
-    MarkBillPaidRequest request,
-    string userId)
-  {
-    if (string.IsNullOrWhiteSpace(
-      bill.BudgetCategoryId))
-    {
-      return null;
-    }
-
-    if (request.PaidDate.Date >
-        DateTime.UtcNow.Date)
-    {
-      return null;
-    }
-
-    if (request.ActualAmount <= 0)
-    {
-      return null;
-    }
-
-    var category =
-      await GetBudgetCategoryForMonthAsync(
-        bill.BudgetCategoryId,
-        bill.BudgetMonthId,
-        userId);
-
-    if (category == null ||
-        !IsValidExpenseBillCategory(
-          category,
-          bill.BudgetMonthId))
-    {
-      return null;
-    }
-
-    var expense =
-      new ExpenseRecord
-      {
-        UserId =
-          userId,
-
-        BudgetMonthId =
-          bill.BudgetMonthId,
-
-        AccountId =
-          sourceAccount.Id,
-
-        CategoryId =
-          category.Id,
-
-        Name =
-          bill.Name,
-
-        Amount =
-          request.ActualAmount,
-
-        ExpenseDate =
-          request.PaidDate,
-
-        Notes =
-          request.Notes ??
-          bill.Notes,
-
-        CreatedAtUtc =
-          DateTime.UtcNow
-      };
-
-    await ExpenseRecords.InsertOneAsync(
-      expense);
-
-    var billUpdate =
-      Builders<Bill>.Update
-        .Set(
-          b =>
-            b.IsPaid,
-          true)
-        .Set(
-          b =>
-            b.ExpenseRecordId,
-          expense.Id)
-        .Set(
-          b =>
-            b.PaidDate,
-          request.PaidDate);
-
-    var updateResult =
-      await Bills.UpdateOneAsync(
-        b =>
-          b.Id == bill.Id &&
-          b.UserId == userId &&
-          !b.IsPaid,
-        billUpdate);
-
-    if (updateResult.ModifiedCount == 0)
-    {
-      await ExpenseRecords.DeleteOneAsync(
-        expenseRecord =>
-          expenseRecord.Id == expense.Id &&
-          expenseRecord.UserId == userId);
-
-      return null;
-    }
-
-    var updatedBill =
-      await Bills
-        .Find(b =>
-          b.Id == bill.Id &&
-          b.UserId == userId)
-        .FirstOrDefaultAsync();
-
-    if (updatedBill == null)
-    {
-      return null;
-    }
-
-    return BillMapper.ToResponse(
-      updatedBill,
-      category: category,
-      expense: expense,
-      transfers: null,
-      expenseAccount: sourceAccount,
-      destinationAccount: null,
-      accountLookup: null);
-  }
-
-  /*===========================================================
     MarkBillUnpaidAsync:
-    => Reverses the payment for an Expense bill.
-    => Deletes the linked ExpenseRecord.
-    => Transfer bills are reversed by deleting individual
-       AccountTransfer records instead.
+    => Reverses a bill payment.
+    => Deletes the ExpenseRecord created when the bill was paid.
+    => Resets the bill to unpaid.
+
+    This automatically reverses:
+    => Transaction history.
+    => Category spending.
+    => Account balance impact.
   ===========================================================*/
   public async Task<BillResponse?> MarkBillUnpaidAsync(
     string billId,
     string userId)
   {
-    var bill = await Bills
-      .Find(b =>
-        b.Id == billId &&
-        b.UserId == userId)
-      .FirstOrDefaultAsync();
+    /*---------------------------------------------------------
+      Find the bill.
+    ---------------------------------------------------------*/
+    var bill =
+      await Bills
+        .Find(existingBill =>
+          existingBill.Id == billId &&
+          existingBill.UserId == userId)
+        .FirstOrDefaultAsync();
 
     if (bill == null)
     {
       return null;
     }
 
-    /*
-      Transfer bills can have multiple payments.
-
-      Delete a specific transfer using:
-
-      DELETE /api/budget/transfers/{transferId}
-    */
-    if (string.Equals(
-      bill.PaymentType,
-      BillPaymentTypes.Transfer,
-      StringComparison.OrdinalIgnoreCase))
-    {
-      return null;
-    }
-
+    /*---------------------------------------------------------
+      Bill must currently be paid.
+    ---------------------------------------------------------*/
     if (!bill.IsPaid)
     {
       return null;
     }
 
+    /*---------------------------------------------------------
+      Paid bills must have the ExpenseRecord generated when
+      they were paid.
+    ---------------------------------------------------------*/
     if (string.IsNullOrWhiteSpace(
       bill.ExpenseRecordId))
     {
       return null;
     }
 
-    /*
-      Delete the ExpenseRecord created when the bill was paid.
-
-      This reverses:
-
-      Transaction history
-      Category spending
-      Account balance impact
-    */
+    /*---------------------------------------------------------
+      Delete the linked ExpenseRecord.
+    ---------------------------------------------------------*/
     var deleteResult =
       await ExpenseRecords.DeleteOneAsync(
         expense =>
@@ -1097,27 +779,27 @@ public class BillService : BudgetBaseService
       return null;
     }
 
-    /*
-      Reset the bill back to unpaid.
-    */
+    /*---------------------------------------------------------
+      Reset the bill to unpaid.
+    ---------------------------------------------------------*/
     var update =
       Builders<Bill>.Update
         .Set(
-          b =>
-            b.IsPaid,
+          existingBill =>
+            existingBill.IsPaid,
           false)
         .Unset(
-          b =>
-            b.ExpenseRecordId)
+          existingBill =>
+            existingBill.ExpenseRecordId)
         .Unset(
-          b =>
-            b.PaidDate);
+          existingBill =>
+            existingBill.PaidDate);
 
     var updateResult =
       await Bills.UpdateOneAsync(
-        b =>
-          b.Id == billId &&
-          b.UserId == userId,
+        existingBill =>
+          existingBill.Id == billId &&
+          existingBill.UserId == userId,
         update);
 
     if (updateResult.MatchedCount == 0)
@@ -1125,11 +807,14 @@ public class BillService : BudgetBaseService
       return null;
     }
 
+    /*---------------------------------------------------------
+      Reload the bill after reversing the payment.
+    ---------------------------------------------------------*/
     var updatedBill =
       await Bills
-        .Find(b =>
-          b.Id == billId &&
-          b.UserId == userId)
+        .Find(existingBill =>
+          existingBill.Id == billId &&
+          existingBill.UserId == userId)
         .FirstOrDefaultAsync();
 
     if (updatedBill == null)
@@ -1145,158 +830,50 @@ public class BillService : BudgetBaseService
   /*===========================================================
     BuildBillResponseAsync:
     => Builds the complete response for one bill.
-    => Expense bills load their category, ExpenseRecord,
-       and payment account.
-    => Transfer bills load all linked AccountTransfers.
-    => Loads account names used by those payments.
+    => Loads:
+       - Fixed Expense category.
+       - Linked ExpenseRecord when paid.
+       - Payment account when paid.
   ===========================================================*/
   private async Task<BillResponse> BuildBillResponseAsync(
     Bill bill,
     string userId)
   {
-    BudgetCategory? category = null;
+    /*---------------------------------------------------------
+      Load the bill's Fixed Expense category.
+    ---------------------------------------------------------*/
+    var category =
+      await GetCategoryByIdAsync(
+        bill.BudgetCategoryId,
+        userId);
+
     ExpenseRecord? expense = null;
-    FinancialAccount? expenseAccount = null;
-    FinancialAccount? destinationAccount = null;
+    FinancialAccount? paymentAccount = null;
 
-    var linkedTransfers =
-      new List<AccountTransfer>();
-
-    var accountLookup =
-      new Dictionary<string, FinancialAccount>();
-
-    /*
-      Expense Bill:
-      Load the linked budget category.
-    */
-    if (string.Equals(
-      bill.PaymentType,
-      BillPaymentTypes.Expense,
-      StringComparison.OrdinalIgnoreCase) &&
-      !string.IsNullOrWhiteSpace(
-        bill.BudgetCategoryId))
-    {
-      category =
-        await GetCategoryByIdAsync(
-          bill.BudgetCategoryId,
-          userId);
-    }
-
-    /*
-      Expense Bill Payment:
-      Load the ExpenseRecord and its payment account.
-    */
-    if (string.Equals(
-      bill.PaymentType,
-      BillPaymentTypes.Expense,
-      StringComparison.OrdinalIgnoreCase) &&
-      !string.IsNullOrWhiteSpace(
-        bill.ExpenseRecordId))
+    /*---------------------------------------------------------
+      If the bill has been paid, load its ExpenseRecord.
+    ---------------------------------------------------------*/
+    if (!string.IsNullOrWhiteSpace(
+      bill.ExpenseRecordId))
     {
       expense =
         await ExpenseRecords
-          .Find(e =>
-            e.Id == bill.ExpenseRecordId &&
-            e.UserId == userId)
+          .Find(expenseRecord =>
+            expenseRecord.Id ==
+              bill.ExpenseRecordId &&
+            expenseRecord.UserId ==
+              userId)
           .FirstOrDefaultAsync();
 
+      /*
+        Load the account used for the payment.
+      */
       if (expense != null)
       {
-        expenseAccount =
+        paymentAccount =
           await GetAccountByIdAsync(
             expense.AccountId,
             userId);
-      }
-    }
-
-    /*
-      Transfer Bill:
-      Load the destination CreditCard account.
-    */
-    if (string.Equals(
-      bill.PaymentType,
-      BillPaymentTypes.Transfer,
-      StringComparison.OrdinalIgnoreCase) &&
-      !string.IsNullOrWhiteSpace(
-        bill.DestinationAccountId))
-    {
-      destinationAccount =
-        await GetAccountByIdAsync(
-          bill.DestinationAccountId,
-          userId);
-    }
-
-    /*
-      Transfer Bill Payments:
-      Load all transfers linked to this bill.
-    */
-    if (string.Equals(
-      bill.PaymentType,
-      BillPaymentTypes.Transfer,
-      StringComparison.OrdinalIgnoreCase))
-    {
-      linkedTransfers =
-        await AccountTransfers
-          .Find(t =>
-            t.UserId == userId &&
-            t.BillId == bill.Id)
-          .SortBy(t =>
-            t.TransferDate)
-          .ThenBy(t =>
-            t.CreatedAtUtc)
-          .ToListAsync();
-
-      /*
-        Collect account IDs used by linked payments.
-      */
-      var accountIds =
-        linkedTransfers
-          .SelectMany(t => new[]
-          {
-            t.FromAccountId,
-            t.ToAccountId
-          })
-          .Where(id =>
-            !string.IsNullOrWhiteSpace(id))
-          .Distinct()
-          .ToList();
-
-      /*
-        Include the configured destination account even when
-        the bill has not received a payment yet.
-      */
-      if (!string.IsNullOrWhiteSpace(
-        bill.DestinationAccountId) &&
-        !accountIds.Contains(
-          bill.DestinationAccountId))
-      {
-        accountIds.Add(
-          bill.DestinationAccountId);
-      }
-
-      if (accountIds.Count > 0)
-      {
-        var accounts =
-          await FinancialAccounts
-            .Find(a =>
-              a.UserId == userId &&
-              accountIds.Contains(a.Id))
-            .ToListAsync();
-
-        accountLookup =
-          accounts.ToDictionary(
-            a => a.Id,
-            a => a);
-
-        if (!string.IsNullOrWhiteSpace(
-          bill.DestinationAccountId) &&
-          accountLookup.TryGetValue(
-            bill.DestinationAccountId,
-            out var loadedDestinationAccount))
-        {
-          destinationAccount =
-            loadedDestinationAccount;
-        }
       }
     }
 
@@ -1304,15 +881,13 @@ public class BillService : BudgetBaseService
       bill,
       category: category,
       expense: expense,
-      transfers: linkedTransfers,
-      expenseAccount: expenseAccount,
-      destinationAccount: destinationAccount,
-      accountLookup: accountLookup);
+      paymentAccount: paymentAccount);
   }
 
   /*===========================================================
     GetBudgetMonthIdsAsync:
-    => Finds budget month IDs matching optional month/year filters.
+    => Finds BudgetMonth IDs matching optional month/year
+       filters.
   ===========================================================*/
   private async Task<List<string>> GetBudgetMonthIdsAsync(
     string userId,
@@ -1355,8 +930,8 @@ public class BillService : BudgetBaseService
   }
 
   /*===========================================================
-    IsValidExpenseBillCategory:
-    => Expense bills may ONLY use a Fixed Expense category.
+    IsValidBillCategory:
+    => Bills may ONLY use a Fixed Expense category.
     => Category must belong to the same budget month.
 
     Required:
@@ -1364,10 +939,10 @@ public class BillService : BudgetBaseService
     Type        = Expense
     ExpenseType = Fixed
 
-    This is important because Bill.ExpectedAmount is now the
-    source of truth for Fixed planned expenses.
+    Bill.ExpectedAmount becomes the planned amount for the
+    Fixed category.
   ===========================================================*/
-  private static bool IsValidExpenseBillCategory(
+  private static bool IsValidBillCategory(
     BudgetCategory category,
     string budgetMonthId)
   {
@@ -1389,28 +964,13 @@ public class BillService : BudgetBaseService
   }
 
   /*===========================================================
-    IsCreditCardAccount:
-    => Checks whether the account is a CreditCard account.
-  ===========================================================*/
-  private static bool IsCreditCardAccount(
-    FinancialAccount account)
-  {
-    return string.Equals(
-      account.Type,
-      FinancialAccountTypes.CreditCard,
-      StringComparison.OrdinalIgnoreCase);
-  }
-
-  /*===========================================================
     IsDateInsideBudgetMonth:
-    => Checks whether a due date belongs to the bill's
-       selected budget month.
+    => Checks whether a bill due date belongs to the selected
+       budget month.
 
     BudgetMonth.Month:
     January  = 1
     December = 12
-
-    DateTime.Month uses the same numbering.
   ===========================================================*/
   private static bool IsDateInsideBudgetMonth(
     DateTime date,

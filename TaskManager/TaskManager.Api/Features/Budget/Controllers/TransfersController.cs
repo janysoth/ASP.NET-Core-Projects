@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-// using TaskManager.Api.Features.Budget.DTOs;
 using TaskManager.Api.Features.Budget.Services;
 
 namespace TaskManager.Api.Features.Budget.Controllers;
@@ -16,52 +15,65 @@ namespace TaskManager.Api.Features.Budget.Controllers;
 [Route("api/budget/transfers")]
 public class TransfersController : BudgetControllerBase
 {
-  // Service responsible for account transfer business logic
+  // Service responsible for account transfer business logic.
   private readonly TransferService _transferService;
 
-  // Constructor used for Dependency Injection (DI)
-  public TransfersController(TransferService transferService)
+  // Constructor used for Dependency Injection (DI).
+  public TransfersController(
+    TransferService transferService)
   {
     _transferService = transferService;
   }
 
-  // ==========================================
-  // GET: api/budget/transfers
-  // Gets all account transfers for the
-  // logged-in user.
-  // ==========================================
+  /*===========================================================
+    GetTransfers:
+    => GET: api/budget/transfers
+    => Gets all account transfers for the logged-in user.
+  ===========================================================*/
   [HttpGet]
-  public async Task<ActionResult<List<AccountTransferResponse>>> GetTransfers()
+  public async Task<ActionResult<List<AccountTransferResponse>>>
+    GetTransfers()
   {
-    // Get the authenticated user's ID
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
-    // Return 401 if the user is not authenticated
     if (userId == null)
     {
       return Unauthorized();
     }
 
-    // Get all transfers that belong to this user
-    var transfers = await _transferService.GetTransfersAsync(userId);
+    var transfers =
+      await _transferService
+        .GetTransfersAsync(
+          userId);
 
-    // Return the transfer list
-    return Ok(transfers);
+    return Ok(
+      transfers);
   }
 
   /*===========================================================
-   CreateTransfer:
-   => POST: api/budget/transfers
-   => Creates a transfer between two accounts.
-   => Supports direct credit-card payments.
-   => BillId is optional for linking a payment to a Transfer bill.
- ===========================================================*/
+    CreateTransfer:
+    => POST: api/budget/transfers
+    => Creates a transfer between two accounts.
+
+    Supported examples:
+
+    Checking → Savings
+    Savings  → Checking
+    Checking → CreditCard
+    Savings  → CreditCard
+
+    IMPORTANT:
+    => Transfers do not create expenses.
+    => Transfers are not linked to bills.
+  ===========================================================*/
   [HttpPost]
   public async Task<ActionResult<AccountTransferResponse>>
     CreateTransfer(
       CreateAccountTransferRequest request)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId == null)
     {
@@ -102,30 +114,32 @@ public class TransfersController : BudgetControllerBase
     }
 
     var transfer =
-      await _transferService.CreateTransferAsync(
-        request,
-        userId);
+      await _transferService
+        .CreateTransferAsync(
+          request,
+          userId);
 
     if (transfer == null)
     {
       return BadRequest(
-        "The transfer could not be created. Check the accounts, credit-card balance, payment amount, or linked bill.");
+        "The transfer could not be created. Check the accounts, transfer date, amount, or credit-card balance.");
     }
 
-    return Ok(transfer);
+    return Ok(
+      transfer);
   }
 
-  // ==========================================
-  // PATCH: api/budget/transfers/{transferId}
-  // Partially updates an existing account
-  // transfer. Only the fields included in
-  // the request will be updated.
-  // ==========================================
+  /*===========================================================
+    PatchTransfer:
+    => PATCH: api/budget/transfers/{transferId}
+    => Partially updates an existing account transfer.
+    => Only supplied fields are changed.
+  ===========================================================*/
   [HttpPatch("{transferId}")]
   public async Task<ActionResult<AccountTransferResponse>>
-  PatchTransfer(
-    string transferId,
-    PatchAccountTransferRequest request)
+    PatchTransfer(
+      string transferId,
+      PatchAccountTransferRequest request)
   {
     var userId =
       GetUserId();
@@ -145,43 +159,45 @@ public class TransfersController : BudgetControllerBase
     if (updatedTransfer == null)
     {
       return BadRequest(
-        "The transfer could not be updated. Check the accounts, amount, bill, and payment limits.");
+        "The transfer could not be updated. Check the accounts, transfer date, amount, or credit-card balance.");
     }
 
     return Ok(
       updatedTransfer);
   }
 
-  // ==========================================
-  // DELETE: api/budget/transfers/{transferId}
-  // Deletes an existing account transfer.
-  // ==========================================
+  /*===========================================================
+    DeleteTransfer:
+    => DELETE: api/budget/transfers/{transferId}
+    => Deletes an existing account transfer.
+    => Account balances recalculate from the remaining data.
+  ===========================================================*/
   [HttpDelete("{transferId}")]
-  public async Task<ActionResult<AccountTransferResponse>> DeleteTransfer(
-    string transferId)
+  public async Task<ActionResult<AccountTransferResponse>>
+    DeleteTransfer(
+      string transferId)
   {
-    // Get the authenticated user's ID
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
-    // Return 401 if the user is not authenticated
     if (userId == null)
     {
       return Unauthorized();
     }
 
-    // Delete the selected transfer
-    var deletedTransfer = await _transferService.DeleteTransferAsync(
-      transferId,
-      userId);
+    var deletedTransfer =
+      await _transferService
+        .DeleteTransferAsync(
+          transferId,
+          userId);
 
-    // Return 404 if the transfer does not exist
-    // or does not belong to the current user
     if (deletedTransfer == null)
     {
-      return NotFound("Transfer not found.");
+      return NotFound(
+        "Transfer not found.");
     }
 
-    // Return the deleted transfer
-    return Ok(deletedTransfer);
+    return Ok(
+      deletedTransfer);
   }
 }

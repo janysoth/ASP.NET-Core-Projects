@@ -23,13 +23,15 @@ public class BillsController : BudgetControllerBase
     GetBills:
     => Gets bills belonging to the logged-in user.
     => Supports optional month and year filters.
+    => Bills represent Fixed Expense obligations only.
   ===========================================================*/
   [HttpGet("bills")]
   public async Task<ActionResult<List<BillResponse>>> GetBills(
     [FromQuery] int? month,
     [FromQuery] int? year)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId == null)
     {
@@ -57,7 +59,8 @@ public class BillsController : BudgetControllerBase
         month,
         year);
 
-    return Ok(bills);
+    return Ok(
+      bills);
   }
 
   /*===========================================================
@@ -69,7 +72,8 @@ public class BillsController : BudgetControllerBase
   public async Task<ActionResult<BillResponse>> GetBillById(
     string billId)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId == null)
     {
@@ -87,34 +91,43 @@ public class BillsController : BudgetControllerBase
         "Bill not found.");
     }
 
-    return Ok(bill);
+    return Ok(
+      bill);
   }
 
   /*===========================================================
     CreateBill:
-    => Creates an Expense bill or Transfer bill.
-    => Expense bills require a budget category.
-    => Transfer bills require a CreditCard destination account.
+    => Creates a Fixed Expense bill.
+    => Every bill must use a valid Fixed Expense category.
+    => Bill.ExpectedAmount becomes part of the monthly
+       Fixed planned budget.
   ===========================================================*/
   [HttpPost("months/{budgetMonthId}/bills")]
   public async Task<ActionResult<BillResponse>> CreateBill(
     string budgetMonthId,
     CreateBillRequest request)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId == null)
     {
       return Unauthorized();
     }
 
-    if (!BillPaymentTypes.IsValid(
-      request.PaymentType))
+    /*---------------------------------------------------------
+      Budget category is required.
+    ---------------------------------------------------------*/
+    if (string.IsNullOrWhiteSpace(
+      request.BudgetCategoryId))
     {
       return BadRequest(
-        "Payment type must be Expense or Transfer.");
+        "Budget category is required.");
     }
 
+    /*---------------------------------------------------------
+      Bill name is required.
+    ---------------------------------------------------------*/
     if (string.IsNullOrWhiteSpace(
       request.Name))
     {
@@ -122,62 +135,22 @@ public class BillsController : BudgetControllerBase
         "Bill name is required.");
     }
 
+    /*---------------------------------------------------------
+      Expected amount must be positive.
+    ---------------------------------------------------------*/
     if (request.ExpectedAmount <= 0)
     {
       return BadRequest(
         "Expected amount must be greater than 0.");
     }
 
+    /*---------------------------------------------------------
+      Due date is required.
+    ---------------------------------------------------------*/
     if (request.DueDate == default)
     {
       return BadRequest(
         "Due date is required.");
-    }
-
-    /*
-      Expense Bill validation.
-    */
-    if (string.Equals(
-      request.PaymentType,
-      BillPaymentTypes.Expense,
-      StringComparison.OrdinalIgnoreCase))
-    {
-      if (string.IsNullOrWhiteSpace(
-        request.BudgetCategoryId))
-      {
-        return BadRequest(
-          "Budget category is required for an Expense bill.");
-      }
-
-      if (!string.IsNullOrWhiteSpace(
-        request.DestinationAccountId))
-      {
-        return BadRequest(
-          "Destination account must be empty for an Expense bill.");
-      }
-    }
-
-    /*
-      Transfer Bill validation.
-    */
-    if (string.Equals(
-      request.PaymentType,
-      BillPaymentTypes.Transfer,
-      StringComparison.OrdinalIgnoreCase))
-    {
-      if (string.IsNullOrWhiteSpace(
-        request.DestinationAccountId))
-      {
-        return BadRequest(
-          "Destination CreditCard account is required for a Transfer bill.");
-      }
-
-      if (!string.IsNullOrWhiteSpace(
-        request.BudgetCategoryId))
-      {
-        return BadRequest(
-          "Budget category must be empty for a Transfer bill.");
-      }
     }
 
     try
@@ -191,7 +164,7 @@ public class BillsController : BudgetControllerBase
       if (bill == null)
       {
         return BadRequest(
-          "The bill could not be created. Expense bills must use a valid Expense category, and Transfer bills must use a valid CreditCard destination account.");
+          "The bill could not be created. The category must be a valid Fixed Expense category belonging to the selected budget month.");
       }
 
       return CreatedAtAction(
@@ -211,29 +184,36 @@ public class BillsController : BudgetControllerBase
 
   /*===========================================================
     UpdateBill:
-    => Updates an Expense or Transfer bill.
-    => Validates the required relationship for its payment type.
-    => Paid bills cannot switch payment types.
+    => Updates an existing Fixed Expense bill.
+    => Category must remain a valid Fixed Expense category.
+    => Due date must remain within the bill's budget month.
   ===========================================================*/
   [HttpPut("bills/{billId}")]
   public async Task<ActionResult<BillResponse>> UpdateBill(
     string billId,
     UpdateBillRequest request)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId == null)
     {
       return Unauthorized();
     }
 
-    if (!BillPaymentTypes.IsValid(
-      request.PaymentType))
+    /*---------------------------------------------------------
+      Budget category is required.
+    ---------------------------------------------------------*/
+    if (string.IsNullOrWhiteSpace(
+      request.BudgetCategoryId))
     {
       return BadRequest(
-        "Payment type must be Expense or Transfer.");
+        "Budget category is required.");
     }
 
+    /*---------------------------------------------------------
+      Bill name is required.
+    ---------------------------------------------------------*/
     if (string.IsNullOrWhiteSpace(
       request.Name))
     {
@@ -241,56 +221,22 @@ public class BillsController : BudgetControllerBase
         "Bill name is required.");
     }
 
+    /*---------------------------------------------------------
+      Expected amount must be positive.
+    ---------------------------------------------------------*/
     if (request.ExpectedAmount <= 0)
     {
       return BadRequest(
         "Expected amount must be greater than 0.");
     }
 
+    /*---------------------------------------------------------
+      Due date is required.
+    ---------------------------------------------------------*/
     if (request.DueDate == default)
     {
       return BadRequest(
         "Due date is required.");
-    }
-
-    if (string.Equals(
-      request.PaymentType,
-      BillPaymentTypes.Expense,
-      StringComparison.OrdinalIgnoreCase))
-    {
-      if (string.IsNullOrWhiteSpace(
-        request.BudgetCategoryId))
-      {
-        return BadRequest(
-          "Budget category is required for an Expense bill.");
-      }
-
-      if (!string.IsNullOrWhiteSpace(
-        request.DestinationAccountId))
-      {
-        return BadRequest(
-          "Destination account must be empty for an Expense bill.");
-      }
-    }
-
-    if (string.Equals(
-      request.PaymentType,
-      BillPaymentTypes.Transfer,
-      StringComparison.OrdinalIgnoreCase))
-    {
-      if (string.IsNullOrWhiteSpace(
-        request.DestinationAccountId))
-      {
-        return BadRequest(
-          "Destination CreditCard account is required for a Transfer bill.");
-      }
-
-      if (!string.IsNullOrWhiteSpace(
-        request.BudgetCategoryId))
-      {
-        return BadRequest(
-          "Budget category must be empty for a Transfer bill.");
-      }
     }
 
     try
@@ -304,7 +250,7 @@ public class BillsController : BudgetControllerBase
       if (updatedBill == null)
       {
         return BadRequest(
-          "The bill could not be updated. Check the payment type, category, destination account, or whether a paid bill is being changed.");
+          "The bill could not be updated. Check the category, bill values, or whether the bill exists.");
       }
 
       return Ok(
@@ -320,14 +266,15 @@ public class BillsController : BudgetControllerBase
   /*===========================================================
     DeleteBill:
     => Deletes one bill.
-    => Also removes the ExpenseRecord or AccountTransfer
-       automatically created when the bill was paid.
+    => If the bill was paid, also deletes the linked
+       ExpenseRecord created by that payment.
   ===========================================================*/
   [HttpDelete("bills/{billId}")]
   public async Task<ActionResult<BillResponse>> DeleteBill(
     string billId)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId == null)
     {
@@ -351,22 +298,27 @@ public class BillsController : BudgetControllerBase
 
   /*===========================================================
     MarkBillPaid:
-    => Pays an Expense bill or Transfer bill.
-    => Expense bills create ExpenseRecords.
-    => Transfer bills create AccountTransfers.
+    => Marks a Fixed Expense bill as paid.
+    => Creates one ExpenseRecord.
+    => Payment account may be Checking, Savings, or CreditCard.
+    => Paid date cannot be in the future.
   ===========================================================*/
   [HttpPost("bills/{billId}/mark-paid")]
   public async Task<ActionResult<BillResponse>> MarkBillPaid(
     string billId,
     MarkBillPaidRequest request)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId == null)
     {
       return Unauthorized();
     }
 
+    /*---------------------------------------------------------
+      Payment account is required.
+    ---------------------------------------------------------*/
     if (string.IsNullOrWhiteSpace(
       request.AccountId))
     {
@@ -374,12 +326,18 @@ public class BillsController : BudgetControllerBase
         "Payment account is required.");
     }
 
+    /*---------------------------------------------------------
+      Actual amount must be positive.
+    ---------------------------------------------------------*/
     if (request.ActualAmount <= 0)
     {
       return BadRequest(
         "Actual amount must be greater than 0.");
     }
 
+    /*---------------------------------------------------------
+      Paid date is required.
+    ---------------------------------------------------------*/
     if (request.PaidDate == default)
     {
       return BadRequest(
@@ -395,7 +353,7 @@ public class BillsController : BudgetControllerBase
     if (paidBill == null)
     {
       return BadRequest(
-        "The bill could not be paid. It may already be paid, the payment account may be invalid, or a Transfer bill may require a Checking or Savings source account.");
+        "The bill could not be paid. It may already be paid, the payment account may be invalid, the category may be invalid, or the paid date may be in the future.");
     }
 
     return Ok(
@@ -404,14 +362,16 @@ public class BillsController : BudgetControllerBase
 
   /*===========================================================
     MarkBillUnpaid:
-    => Reverses the payment for a bill.
-    => Deletes its linked ExpenseRecord or AccountTransfer.
+    => Reverses a bill payment.
+    => Deletes the linked ExpenseRecord.
+    => Restores category spending and account balance impact.
   ===========================================================*/
   [HttpPost("bills/{billId}/mark-unpaid")]
   public async Task<ActionResult<BillResponse>> MarkBillUnpaid(
     string billId)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId == null)
     {
@@ -426,7 +386,7 @@ public class BillsController : BudgetControllerBase
     if (unpaidBill == null)
     {
       return BadRequest(
-        "The bill could not be marked unpaid. It may already be unpaid or may not exist.");
+        "The bill could not be marked unpaid. It may already be unpaid, may not exist, or may not have a linked expense record.");
     }
 
     return Ok(

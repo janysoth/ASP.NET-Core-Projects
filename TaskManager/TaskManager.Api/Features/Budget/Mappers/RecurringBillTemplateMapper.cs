@@ -6,33 +6,43 @@ public static class RecurringBillTemplateMapper
 {
   /*===========================================================
     ToResponse:
-    => Converts a recurring template into a response DTO.
-    => Includes the destination CreditCard name for Transfer
-       templates when available.
+    => Converts a recurring bill template into a response DTO.
+
+    IMPORTANT:
+    => Recurring bill templates now represent Fixed Expense
+       bills only.
+    => They are no longer used for account transfers or
+       credit-card payments.
   ===========================================================*/
   public static RecurringBillTemplateResponse ToResponse(
-    RecurringBillTemplate template,
-    FinancialAccount? destinationAccount = null)
+    RecurringBillTemplate template)
   {
     return new RecurringBillTemplateResponse
     {
-      Id = template.Id,
-      PaymentType = template.PaymentType,
+      Id =
+        template.Id,
 
-      CategoryName = template.CategoryName,
+      CategoryName =
+        template.CategoryName ??
+        string.Empty,
 
-      DestinationAccountId =
-        template.DestinationAccountId,
+      Name =
+        template.Name,
 
-      DestinationAccountName =
-        destinationAccount?.Name,
+      ExpectedAmount =
+        template.ExpectedAmount,
 
-      Name = template.Name,
-      ExpectedAmount = template.ExpectedAmount,
-      DueDay = template.DueDay,
-      IsActive = template.IsActive,
-      Notes = template.Notes,
-      CreatedAtUtc = template.CreatedAtUtc
+      DueDay =
+        template.DueDay,
+
+      IsActive =
+        template.IsActive,
+
+      Notes =
+        template.Notes,
+
+      CreatedAtUtc =
+        template.CreatedAtUtc
     };
   }
 }

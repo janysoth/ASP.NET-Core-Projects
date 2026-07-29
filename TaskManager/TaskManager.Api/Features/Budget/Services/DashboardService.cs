@@ -56,58 +56,78 @@ public class DashboardService : BudgetBaseService
       await _accountService.GetAccountsAsync(
         userId);
 
+    /*===========================================================
+      ACCOUNT TOTALS
+    ===========================================================*/
+
+    /*
+      Total checking balance.
+    */
+    var totalChecking =
+      accounts
+        .Where(account =>
+          string.Equals(
+            account.Type,
+            FinancialAccountTypes.Checking,
+            StringComparison.OrdinalIgnoreCase))
+        .Sum(account =>
+          account.CurrentBalance);
+
+    /*
+      Total savings balance.
+    */
+    var totalSavings =
+      accounts
+        .Where(account =>
+          string.Equals(
+            account.Type,
+            FinancialAccountTypes.Savings,
+            StringComparison.OrdinalIgnoreCase))
+        .Sum(account =>
+          account.CurrentBalance);
+
     /*
       Total cash:
-      Checking + Savings balances.
+
+      Checking
+      +
+      Savings
     */
-    var totalChecking = accounts
-      .Where(account =>
-        string.Equals(
-          account.Type,
-          FinancialAccountTypes.Checking,
-          StringComparison.OrdinalIgnoreCase))
-      .Sum(account =>
-        account.CurrentBalance);
-
-    var totalSavings = accounts
-      .Where(account =>
-        string.Equals(
-          account.Type,
-          FinancialAccountTypes.Savings,
-          StringComparison.OrdinalIgnoreCase))
-      .Sum(account =>
-        account.CurrentBalance);
-
     var totalCash =
       totalChecking +
       totalSavings;
 
     /*
-      Total credit-card debt:
-      Sum of all CreditCard account balances.
+      Total outstanding credit-card debt.
     */
-    var totalCreditCardDebt = accounts
-      .Where(account =>
-        string.Equals(
-          account.Type,
-          FinancialAccountTypes.CreditCard,
-          StringComparison.OrdinalIgnoreCase))
-      .Sum(account =>
-        account.CurrentBalance);
+    var totalCreditCardDebt =
+      accounts
+        .Where(account =>
+          string.Equals(
+            account.Type,
+            FinancialAccountTypes.CreditCard,
+            StringComparison.OrdinalIgnoreCase))
+        .Sum(account =>
+          account.CurrentBalance);
 
     /*
-      Simplified net worth used by this app:
+      Simplified net worth:
 
-      Checking
-      + Savings
-      - CreditCard balances
+      Cash
+      -
+      Credit-card debt
     */
     var netWorth =
       totalCash -
       totalCreditCardDebt;
 
+    /*===========================================================
+      BUILD BASE DASHBOARD
+    ===========================================================*/
+
     /*
-      Start building the grouped dashboard response.
+      Account and net-worth information can be returned even
+      when the selected budget month does not exist.
     */
     var dashboard =
       new DashboardSummaryResponse
@@ -147,35 +167,31 @@ public class DashboardService : BudgetBaseService
           }
       };
 
-    /*
-      Find the selected budget month.
-    */
-    var budgetMonth = await BudgetMonths
-      .Find(b =>
-        b.UserId == userId &&
-        b.Month == month &&
-        b.Year == year)
-      .FirstOrDefaultAsync();
+    /*===========================================================
+      FIND SELECTED BUDGET MONTH
+    ===========================================================*/
+
+    var budgetMonth =
+      await BudgetMonths
+        .Find(existingBudgetMonth =>
+          existingBudgetMonth.UserId == userId &&
+          existingBudgetMonth.Month == month &&
+          existingBudgetMonth.Year == year)
+        .FirstOrDefaultAsync();
 
     /*
-      If no budget month exists, return the account
-      and net-worth data that we already have.
+      If the selected month does not exist, return the account
+      information already calculated above.
     */
     if (budgetMonth == null)
     {
       return dashboard;
     }
 
-    /*
-      Get the complete budget-month response.
+    /*===========================================================
+      LOAD COMPLETE MONTH DATA
+    ===========================================================*/
 
-      This includes:
-      - planned income
-      - actual income
-      - actual expenses
-      - fixed/variable totals
-      - category comparisons
-    */
     var budgetResponse =
       await _budgetMonthService
         .GetBudgetMonthByIdAsync(
@@ -188,7 +204,7 @@ public class DashboardService : BudgetBaseService
     }
 
     /*
-      Get all bills for the selected month.
+      Get all Fixed Expense bills for the selected month.
     */
     var bills =
       await _billService.GetBillsAsync(
@@ -198,8 +214,6 @@ public class DashboardService : BudgetBaseService
 
     /*
       Get transactions for the selected month.
-
-      The dashboard will show only the most recent transactions.
     */
     var transactions =
       await _transactionService.GetTransactionsAsync(
@@ -208,9 +222,9 @@ public class DashboardService : BudgetBaseService
         year);
 
     /*===========================================================
-      Cash Flow:
-      => Planned income and actual monthly movement.
+      CASH FLOW
     ===========================================================*/
+
     dashboard.CashFlow =
       new CashFlowSummaryResponse
       {
@@ -235,9 +249,9 @@ public class DashboardService : BudgetBaseService
       };
 
     /*===========================================================
-      Spending:
-      => Fixed and Variable planned-versus-actual comparisons.
+      SPENDING
     ===========================================================*/
+
     dashboard.Spending =
       new SpendingSummaryResponse
       {
@@ -291,9 +305,9 @@ public class DashboardService : BudgetBaseService
       };
 
     /*===========================================================
-      Savings:
-      => Planned savings categories for the selected month.
+      SAVINGS
     ===========================================================*/
+
     dashboard.Savings =
       new SavingsSummaryResponse
       {
@@ -312,93 +326,105 @@ public class DashboardService : BudgetBaseService
             .ToList()
       };
 
-    /*
-      Determine today's date once for bill calculations.
-    */
-    var today =
-      DateTime.UtcNow.Date;
-
     /*===========================================================
-      Bills:
-      => Includes regular Expense bills and Transfer bills.
-      => Transfer bill status may be:
-         Unpaid
-         Partially Paid
-         Paid
+      BILLS
     ===========================================================*/
-    var paidBills =
-      bills.Count(bill =>
-        string.Equals(
-          bill.Status,
-          "Paid",
-          StringComparison.OrdinalIgnoreCase));
-
-    var partiallyPaidBills =
-      bills.Count(bill =>
-        string.Equals(
-          bill.Status,
-          "Partially Paid",
-          StringComparison.OrdinalIgnoreCase));
-
-    var overdueBills =
-      bills.Count(bill =>
-        !string.Equals(
-          bill.Status,
-          "Paid",
-          StringComparison.OrdinalIgnoreCase) &&
-        bill.DueDate.Date <
-          today);
 
     /*
-      UnpaidBills represents bills that are not fully paid.
+      Bills are now Fixed Expense obligations only.
 
-      This includes:
+      A bill is either:
+
+      Paid
+
+      or
+
+      Unpaid:
       - Upcoming
       - Due Soon
       - Due Today
       - Overdue
 
-      It does not include Partially Paid because that has
-      its own separate dashboard count.
+      Expense bills no longer support Partially Paid.
     */
+
+    var today =
+      DateTime.UtcNow.Date;
+
+    /*---------------------------------------------------------
+      Count paid bills.
+    ---------------------------------------------------------*/
+    var paidBills =
+      bills.Count(bill =>
+        bill.IsPaid);
+
+    /*---------------------------------------------------------
+      Partial bill payments no longer exist.
+
+      Keep this value at zero while the response DTO still
+      contains PartiallyPaidBills.
+    ---------------------------------------------------------*/
+    var partiallyPaidBills =
+      0;
+
+    /*---------------------------------------------------------
+      Count overdue unpaid bills.
+    ---------------------------------------------------------*/
+    var overdueBills =
+      bills.Count(bill =>
+        !bill.IsPaid &&
+        bill.DueDate.Date < today);
+
+    /*---------------------------------------------------------
+      Count every bill that has not been paid.
+    ---------------------------------------------------------*/
     var unpaidBills =
       bills.Count(bill =>
-        !string.Equals(
-          bill.Status,
-          "Paid",
-          StringComparison.OrdinalIgnoreCase) &&
-        !string.Equals(
-          bill.Status,
-          "Partially Paid",
-          StringComparison.OrdinalIgnoreCase));
+        !bill.IsPaid);
 
-    /*
+    /*---------------------------------------------------------
       Expected Bills Total:
-      Sum of the expected amount for all bills.
-    */
+
+      Sum of expected amounts for all Fixed Expense bills.
+
+      Example:
+
+      Mortgage = $1,600
+      Internet = $80
+      Dance    = $141
+
+      Expected total = $1,821
+    ---------------------------------------------------------*/
     var expectedBillsTotal =
       bills.Sum(bill =>
         bill.ExpectedAmount);
 
-    /*
+    /*---------------------------------------------------------
       Paid Bills Total:
-      Expense bills:
-      => ActualAmount from the ExpenseRecord.
 
-      Transfer bills:
-      => TotalPaid from all linked transfers.
-    */
+      Uses the ACTUAL amount stored in the ExpenseRecord.
+
+      Example:
+
+      Internet expected = $80
+      Actual payment     = $74
+
+      PaidBillsTotal receives $74.
+
+      Unpaid bills have ActualAmount = null and contribute $0.
+    ---------------------------------------------------------*/
     var paidBillsTotal =
-      bills.Sum(bill =>
-        bill.TotalPaid);
+      bills
+        .Where(bill =>
+          bill.IsPaid)
+        .Sum(bill =>
+          bill.ActualAmount ?? 0);
 
-    /*
+    /*---------------------------------------------------------
       Upcoming bills:
-      Show bills that are not fully paid.
 
-      A Partially Paid bill remains visible because
-      there is still money remaining.
-    */
+      Show the next five unpaid bills ordered by due date.
+    ---------------------------------------------------------*/
     var upcomingBills =
       bills
         .Where(bill =>
@@ -417,6 +443,12 @@ public class DashboardService : BudgetBaseService
         PaidBills =
           paidBills,
 
+        /*
+          Kept for compatibility with the current dashboard DTO.
+
+          Since bills can no longer be partially paid,
+          this will always be zero.
+        */
         PartiallyPaidBills =
           partiallyPaidBills,
 
@@ -437,10 +469,13 @@ public class DashboardService : BudgetBaseService
       };
 
     /*===========================================================
-      Recent Transactions:
-      => Shows the most recent monthly transactions.
-      => Includes income, expenses, and transfers.
+      RECENT TRANSACTIONS
     ===========================================================*/
+
+    /*
+      Shows the ten most recent financial transactions
+      for the selected month.
+    */
     dashboard.RecentTransactions =
       transactions
         .OrderByDescending(transaction =>

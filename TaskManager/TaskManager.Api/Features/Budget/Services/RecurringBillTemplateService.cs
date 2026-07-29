@@ -6,6 +6,11 @@ namespace TaskManager.Api.Features.Budget.Services;
 
 public class RecurringBillTemplateService : BudgetBaseService
 {
+  /*===========================================================
+    RecurringBillTemplateService Constructor:
+    => Receives the shared MongoDB database.
+    => Passes the database to BudgetBaseService.
+  ===========================================================*/
   public RecurringBillTemplateService(
     IMongoDatabase database) : base(database)
   {
@@ -13,17 +18,23 @@ public class RecurringBillTemplateService : BudgetBaseService
 
   /*===========================================================
     GetTemplatesAsync:
-    => Gets all recurring bill templates for the current user.
-    => Supports both Expense and Transfer templates.
+    => Gets all recurring Fixed Expense bill templates
+       for the current user.
+    => Active templates appear first.
   ===========================================================*/
   public async Task<List<RecurringBillTemplateResponse>>
-    GetTemplatesAsync(string userId)
+    GetTemplatesAsync(
+      string userId)
   {
-    var templates = await RecurringBillTemplates
-      .Find(t => t.UserId == userId)
-      .SortByDescending(t => t.IsActive)
-      .ThenBy(t => t.Name)
-      .ToListAsync();
+    var templates =
+      await RecurringBillTemplates
+        .Find(template =>
+          template.UserId == userId)
+        .SortByDescending(template =>
+          template.IsActive)
+        .ThenBy(template =>
+          template.Name)
+        .ToListAsync();
 
     var responses =
       new List<RecurringBillTemplateResponse>();
@@ -31,9 +42,8 @@ public class RecurringBillTemplateService : BudgetBaseService
     foreach (var template in templates)
     {
       responses.Add(
-        await BuildTemplateResponseAsync(
-          template,
-          userId));
+        RecurringBillTemplateMapper.ToResponse(
+          template));
     }
 
     return responses;
@@ -41,109 +51,126 @@ public class RecurringBillTemplateService : BudgetBaseService
 
   /*===========================================================
     GetTemplateByIdAsync:
-    => Gets one recurring bill template.
+    => Gets one recurring Fixed Expense bill template.
+    => Confirms the template belongs to the current user.
   ===========================================================*/
   public async Task<RecurringBillTemplateResponse?>
     GetTemplateByIdAsync(
       string templateId,
       string userId)
   {
-    var template = await RecurringBillTemplates
-      .Find(t =>
-        t.Id == templateId &&
-        t.UserId == userId)
-      .FirstOrDefaultAsync();
+    var template =
+      await RecurringBillTemplates
+        .Find(existingTemplate =>
+          existingTemplate.Id == templateId &&
+          existingTemplate.UserId == userId)
+        .FirstOrDefaultAsync();
 
     if (template == null)
     {
       return null;
     }
 
-    return await BuildTemplateResponseAsync(
-      template,
-      userId);
+    return RecurringBillTemplateMapper.ToResponse(
+      template);
   }
 
   /*===========================================================
     CreateTemplateAsync:
-    => Creates an Expense or Transfer recurring template.
-    => Expense templates store CategoryName.
-    => Transfer templates store a CreditCard destination account.
+    => Creates a recurring Fixed Expense bill template.
+
+    Required:
+    => CategoryName
+    => Name
+    => ExpectedAmount greater than zero
+    => DueDay between 1 and 31
+
+    IMPORTANT:
+    => CategoryName is stored instead of CategoryId because
+       each monthly budget has different category IDs.
   ===========================================================*/
   public async Task<RecurringBillTemplateResponse?>
     CreateTemplateAsync(
       CreateRecurringBillTemplateRequest request,
       string userId)
   {
-    var paymentType =
-      BillPaymentTypes.Normalize(
-        request.PaymentType);
-
-    if (paymentType == null)
+    /*---------------------------------------------------------
+      Category name is required.
+    ---------------------------------------------------------*/
+    if (string.IsNullOrWhiteSpace(
+      request.CategoryName))
     {
       return null;
     }
 
-    FinancialAccount? destinationAccount = null;
-
-    if (paymentType == BillPaymentTypes.Transfer)
+    /*---------------------------------------------------------
+      Template name is required.
+    ---------------------------------------------------------*/
+    if (string.IsNullOrWhiteSpace(
+      request.Name))
     {
-      if (string.IsNullOrWhiteSpace(
-        request.DestinationAccountId))
-      {
-        return null;
-      }
-
-      destinationAccount =
-        await GetAccountByIdAsync(
-          request.DestinationAccountId,
-          userId);
-
-      if (destinationAccount == null ||
-          !IsCreditCardAccount(
-            destinationAccount))
-      {
-        return null;
-      }
+      return null;
     }
 
-    var template = new RecurringBillTemplate
+    /*---------------------------------------------------------
+      Expected amount must be positive.
+    ---------------------------------------------------------*/
+    if (request.ExpectedAmount <= 0)
     {
-      UserId = userId,
+      return null;
+    }
 
-      PaymentType = paymentType,
+    /*---------------------------------------------------------
+      Due day must represent a possible calendar day.
 
-      CategoryName =
-        paymentType == BillPaymentTypes.Expense
-          ? request.CategoryName?.Trim()
-          : null,
+      Months with fewer days are handled during generation.
+    ---------------------------------------------------------*/
+    if (request.DueDay < 1 ||
+        request.DueDay > 31)
+    {
+      return null;
+    }
 
-      DestinationAccountId =
-        paymentType == BillPaymentTypes.Transfer
-          ? destinationAccount?.Id
-          : null,
+    var template =
+      new RecurringBillTemplate
+      {
+        UserId =
+          userId,
 
-      Name = request.Name.Trim(),
-      ExpectedAmount = request.ExpectedAmount,
-      DueDay = request.DueDay,
-      IsActive = request.IsActive,
-      Notes = request.Notes,
-      CreatedAtUtc = DateTime.UtcNow
-    };
+        CategoryName =
+          request.CategoryName.Trim(),
+
+        Name =
+          request.Name.Trim(),
+
+        ExpectedAmount =
+          request.ExpectedAmount,
+
+        DueDay =
+          request.DueDay,
+
+        IsActive =
+          request.IsActive,
+
+        Notes =
+          request.Notes,
+
+        CreatedAtUtc =
+          DateTime.UtcNow
+      };
 
     await RecurringBillTemplates.InsertOneAsync(
       template);
 
     return RecurringBillTemplateMapper.ToResponse(
-      template,
-      destinationAccount);
+      template);
   }
 
   /*===========================================================
     UpdateTemplateAsync:
-    => Updates a recurring template.
-    => Existing generated bills remain unchanged.
-    => Future bills use the updated template information.
+    => Updates an existing recurring Fixed Expense template.
+    => Previously-generated bills remain unchanged.
+    => Future generated bills use the updated template.
   ===========================================================*/
   public async Task<RecurringBillTemplateResponse?>
     UpdateTemplateAsync(
@@ -151,11 +178,14 @@ public class RecurringBillTemplateService : BudgetBaseService
       UpdateRecurringBillTemplateRequest request,
       string userId)
   {
+    /*---------------------------------------------------------
+      Confirm the template exists and belongs to the user.
+    ---------------------------------------------------------*/
     var existingTemplate =
       await RecurringBillTemplates
-        .Find(t =>
-          t.Id == templateId &&
-          t.UserId == userId)
+        .Find(template =>
+          template.Id == templateId &&
+          template.UserId == userId)
         .FirstOrDefaultAsync();
 
     if (existingTemplate == null)
@@ -163,74 +193,73 @@ public class RecurringBillTemplateService : BudgetBaseService
       return null;
     }
 
-    var paymentType =
-      BillPaymentTypes.Normalize(
-        request.PaymentType);
-
-    if (paymentType == null)
+    /*---------------------------------------------------------
+      Validate category name.
+    ---------------------------------------------------------*/
+    if (string.IsNullOrWhiteSpace(
+      request.CategoryName))
     {
       return null;
     }
 
-    FinancialAccount? destinationAccount = null;
-
-    if (paymentType == BillPaymentTypes.Transfer)
+    /*---------------------------------------------------------
+      Validate template name.
+    ---------------------------------------------------------*/
+    if (string.IsNullOrWhiteSpace(
+      request.Name))
     {
-      if (string.IsNullOrWhiteSpace(
-        request.DestinationAccountId))
-      {
-        return null;
-      }
+      return null;
+    }
 
-      destinationAccount =
-        await GetAccountByIdAsync(
-          request.DestinationAccountId,
-          userId);
+    /*---------------------------------------------------------
+      Validate expected amount.
+    ---------------------------------------------------------*/
+    if (request.ExpectedAmount <= 0)
+    {
+      return null;
+    }
 
-      if (destinationAccount == null ||
-          !IsCreditCardAccount(
-            destinationAccount))
-      {
-        return null;
-      }
+    /*---------------------------------------------------------
+      Validate due day.
+    ---------------------------------------------------------*/
+    if (request.DueDay < 1 ||
+        request.DueDay > 31)
+    {
+      return null;
     }
 
     var update =
       Builders<RecurringBillTemplate>.Update
         .Set(
-          t => t.PaymentType,
-          paymentType)
+          template =>
+            template.CategoryName,
+          request.CategoryName.Trim())
         .Set(
-          t => t.CategoryName,
-          paymentType == BillPaymentTypes.Expense
-            ? request.CategoryName?.Trim()
-            : null)
-        .Set(
-          t => t.DestinationAccountId,
-          paymentType == BillPaymentTypes.Transfer
-            ? destinationAccount?.Id
-            : null)
-        .Set(
-          t => t.Name,
+          template =>
+            template.Name,
           request.Name.Trim())
         .Set(
-          t => t.ExpectedAmount,
+          template =>
+            template.ExpectedAmount,
           request.ExpectedAmount)
         .Set(
-          t => t.DueDay,
+          template =>
+            template.DueDay,
           request.DueDay)
         .Set(
-          t => t.IsActive,
+          template =>
+            template.IsActive,
           request.IsActive)
         .Set(
-          t => t.Notes,
+          template =>
+            template.Notes,
           request.Notes);
 
     var result =
       await RecurringBillTemplates.UpdateOneAsync(
-        t =>
-          t.Id == templateId &&
-          t.UserId == userId,
+        template =>
+          template.Id == templateId &&
+          template.UserId == userId,
         update);
 
     if (result.MatchedCount == 0)
@@ -245,19 +274,22 @@ public class RecurringBillTemplateService : BudgetBaseService
 
   /*===========================================================
     DeleteTemplateAsync:
-    => Deletes a recurring bill template.
-    => Previously generated bills remain unchanged.
+    => Deletes one recurring bill template.
+    => Previously-generated bills remain unchanged.
   ===========================================================*/
   public async Task<RecurringBillTemplateResponse?>
     DeleteTemplateAsync(
       string templateId,
       string userId)
   {
+    /*---------------------------------------------------------
+      Find the template before deleting it.
+    ---------------------------------------------------------*/
     var template =
       await RecurringBillTemplates
-        .Find(t =>
-          t.Id == templateId &&
-          t.UserId == userId)
+        .Find(existingTemplate =>
+          existingTemplate.Id == templateId &&
+          existingTemplate.UserId == userId)
         .FirstOrDefaultAsync();
 
     if (template == null)
@@ -265,16 +297,21 @@ public class RecurringBillTemplateService : BudgetBaseService
       return null;
     }
 
+    /*---------------------------------------------------------
+      Build the response before deletion.
+    ---------------------------------------------------------*/
     var deletedTemplate =
-      await BuildTemplateResponseAsync(
-        template,
-        userId);
+      RecurringBillTemplateMapper.ToResponse(
+        template);
 
+    /*---------------------------------------------------------
+      Delete the template.
+    ---------------------------------------------------------*/
     var result =
       await RecurringBillTemplates.DeleteOneAsync(
-        t =>
-          t.Id == templateId &&
-          t.UserId == userId);
+        existingTemplate =>
+          existingTemplate.Id == templateId &&
+          existingTemplate.UserId == userId);
 
     if (result.DeletedCount == 0)
     {
@@ -286,63 +323,97 @@ public class RecurringBillTemplateService : BudgetBaseService
 
   /*===========================================================
     GenerateBillsAsync:
-    => Generates bills from all active recurring templates.
-    => Expense templates find a matching category by name.
-    => Transfer templates use their CreditCard destination.
-    => Duplicate bills are skipped.
+    => Generates Fixed Expense bills from all active recurring
+       templates for a selected budget month.
+
+    Process:
+
+    1. Find the target budget month.
+    2. Load all active templates.
+    3. Load categories for the target month.
+    4. Find each template's matching Fixed Expense category.
+    5. Skip duplicates.
+    6. Create the bill.
+
+    IMPORTANT:
+    => Account transfers and credit-card payments are not
+       generated here.
   ===========================================================*/
   public async Task<GenerateBillsResponse?>
     GenerateBillsAsync(
       GenerateBillsRequest request,
       string userId)
   {
-    var budgetMonth = await BudgetMonths
-      .Find(b =>
-        b.UserId == userId &&
-        b.Month == request.Month &&
-        b.Year == request.Year)
-      .FirstOrDefaultAsync();
+    /*---------------------------------------------------------
+      Find the selected budget month.
+    ---------------------------------------------------------*/
+    var budgetMonth =
+      await BudgetMonths
+        .Find(month =>
+          month.UserId == userId &&
+          month.Month == request.Month &&
+          month.Year == request.Year)
+        .FirstOrDefaultAsync();
 
     if (budgetMonth == null)
     {
       return null;
     }
 
+    /*---------------------------------------------------------
+      Load all active recurring templates.
+    ---------------------------------------------------------*/
     var templates =
       await RecurringBillTemplates
-        .Find(t =>
-          t.UserId == userId &&
-          t.IsActive)
-        .SortBy(t => t.DueDay)
+        .Find(template =>
+          template.UserId == userId &&
+          template.IsActive)
+        .SortBy(template =>
+          template.DueDay)
         .ToListAsync();
 
+    /*---------------------------------------------------------
+      Load categories belonging to the target budget month.
+    ---------------------------------------------------------*/
     var categories =
       await BudgetCategories
-        .Find(c =>
-          c.UserId == userId &&
-          c.BudgetMonthId == budgetMonth.Id)
+        .Find(category =>
+          category.UserId == userId &&
+          category.BudgetMonthId ==
+            budgetMonth.Id)
         .ToListAsync();
 
     var response =
       new GenerateBillsResponse
       {
-        TargetMonth = request.Month,
-        TargetYear = request.Year,
-        TotalTemplates = templates.Count
+        TargetMonth =
+          request.Month,
+
+        TargetYear =
+          request.Year,
+
+        TotalTemplates =
+          templates.Count
       };
 
+    /*---------------------------------------------------------
+      Process each recurring template.
+    ---------------------------------------------------------*/
     foreach (var template in templates)
     {
-      /*
-        Skip if this template already generated
-        a bill for this budget month.
-      */
-      var existingBill = await Bills
-        .Find(b =>
-          b.UserId == userId &&
-          b.BudgetMonthId == budgetMonth.Id &&
-          b.RecurringBillTemplateId == template.Id)
-        .FirstOrDefaultAsync();
+      /*-------------------------------------------------------
+        Prevent the same recurring template from generating
+        more than one bill for the same budget month.
+      -------------------------------------------------------*/
+      var existingBill =
+        await Bills
+          .Find(bill =>
+            bill.UserId == userId &&
+            bill.BudgetMonthId ==
+              budgetMonth.Id &&
+            bill.RecurringBillTemplateId ==
+              template.Id)
+          .FirstOrDefaultAsync();
 
       if (existingBill != null)
       {
@@ -354,135 +425,115 @@ public class RecurringBillTemplateService : BudgetBaseService
         continue;
       }
 
-      BudgetCategory? category = null;
-      FinancialAccount? destinationAccount = null;
-
-      /*
-        Expense template:
-        Find matching Expense category.
-      */
-      if (template.PaymentType ==
-          BillPaymentTypes.Expense)
+      /*-------------------------------------------------------
+        Every recurring template requires a category name.
+      -------------------------------------------------------*/
+      if (string.IsNullOrWhiteSpace(
+        template.CategoryName))
       {
-        if (string.IsNullOrWhiteSpace(
-          template.CategoryName))
-        {
-          response.SkippedMissingCategories++;
+        response.SkippedMissingCategories++;
 
-          response.Messages.Add(
-            $"{template.Name} was skipped because no category was configured.");
+        response.Messages.Add(
+          $"{template.Name} was skipped because no category was configured.");
 
-          continue;
-        }
-
-        category = categories.FirstOrDefault(c =>
-          string.Equals(
-            c.Name,
-            template.CategoryName,
-            StringComparison.OrdinalIgnoreCase) &&
-          string.Equals(
-            c.Type,
-            BudgetCategoryTypes.Expense,
-            StringComparison.OrdinalIgnoreCase));
-
-        if (category == null)
-        {
-          response.SkippedMissingCategories++;
-
-          response.Messages.Add(
-            $"{template.Name} was skipped because Expense category " +
-            $"'{template.CategoryName}' was not found.");
-
-          continue;
-        }
+        continue;
       }
 
-      /*
-        Transfer template:
-        Validate destination CreditCard account.
-      */
-      if (template.PaymentType ==
-          BillPaymentTypes.Transfer)
+      /*-------------------------------------------------------
+        Find the matching Fixed Expense category.
+
+        Required:
+
+        Category Name matches template.CategoryName
+        Type        = Expense
+        ExpenseType = Fixed
+      -------------------------------------------------------*/
+      var category =
+        categories.FirstOrDefault(
+          existingCategory =>
+            string.Equals(
+              existingCategory.Name,
+              template.CategoryName,
+              StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(
+              existingCategory.Type,
+              BudgetCategoryTypes.Expense,
+              StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(
+              existingCategory.ExpenseType,
+              ExpenseTypes.Fixed,
+              StringComparison.OrdinalIgnoreCase));
+
+      if (category == null)
       {
-        if (string.IsNullOrWhiteSpace(
-          template.DestinationAccountId))
-        {
-          response.Messages.Add(
-            $"{template.Name} was skipped because no destination account was configured.");
+        response.SkippedMissingCategories++;
 
-          continue;
-        }
+        response.Messages.Add(
+          $"{template.Name} was skipped because Fixed Expense category " +
+          $"'{template.CategoryName}' was not found.");
 
-        destinationAccount =
-          await GetAccountByIdAsync(
-            template.DestinationAccountId,
-            userId);
-
-        if (destinationAccount == null ||
-            !IsCreditCardAccount(
-              destinationAccount))
-        {
-          response.Messages.Add(
-            $"{template.Name} was skipped because its CreditCard account was not found.");
-
-          continue;
-        }
+        continue;
       }
 
-      var dueDate = BuildDueDate(
-        request.Year,
-        request.Month,
-        template.DueDay);
+      /*-------------------------------------------------------
+        Build a valid due date.
 
-      var bill = new Bill
-      {
-        UserId = userId,
+        Example:
 
-        BudgetMonthId =
-          budgetMonth.Id,
+        DueDay = 31
+        February 2027 has 28 days
 
-        PaymentType =
-          template.PaymentType,
+        Generated DueDate:
+        February 28, 2027
+      -------------------------------------------------------*/
+      var dueDate =
+        BuildDueDate(
+          request.Year,
+          request.Month,
+          template.DueDay);
 
-        BudgetCategoryId =
-          template.PaymentType ==
-          BillPaymentTypes.Expense
-            ? category?.Id
-            : null,
+      /*-------------------------------------------------------
+        Create the Fixed Expense bill.
+      -------------------------------------------------------*/
+      var bill =
+        new Bill
+        {
+          UserId =
+            userId,
 
-        DestinationAccountId =
-          template.PaymentType ==
-          BillPaymentTypes.Transfer
-            ? destinationAccount?.Id
-            : null,
+          BudgetMonthId =
+            budgetMonth.Id,
 
-        RecurringBillTemplateId =
-          template.Id,
+          BudgetCategoryId =
+            category.Id,
 
-        Name =
-          template.Name,
+          RecurringBillTemplateId =
+            template.Id,
 
-        ExpectedAmount =
-          template.ExpectedAmount,
+          Name =
+            template.Name,
 
-        DueDate =
-          dueDate,
+          ExpectedAmount =
+            template.ExpectedAmount,
 
-        IsPaid =
-          false,
+          DueDate =
+            dueDate,
 
-        ExpenseRecordId =
-          null,
+          IsPaid =
+            false,
 
-        PaidDate =
-          null,
+          ExpenseRecordId =
+            null,
 
-        Notes =
-          template.Notes,
+          PaidDate =
+            null,
 
-        CreatedAtUtc =
-          DateTime.UtcNow
-      };
+          Notes =
+            template.Notes,
+
+          CreatedAtUtc =
+            DateTime.UtcNow
+        };
 
       await Bills.InsertOneAsync(
         bill);
@@ -492,48 +543,27 @@ public class RecurringBillTemplateService : BudgetBaseService
       response.Bills.Add(
         BillMapper.ToResponse(
           bill,
-          category: category,
-          expense: null,
-          transfers: null,
-          expenseAccount: null,
-          destinationAccount:
-            destinationAccount,
-          accountLookup: null));
+          category: category));
     }
 
     return response;
   }
 
   /*===========================================================
-    BuildTemplateResponseAsync:
-    => Builds a complete recurring template response.
-    => Includes the CreditCard name for Transfer templates.
-  ===========================================================*/
-  private async Task<RecurringBillTemplateResponse>
-    BuildTemplateResponseAsync(
-      RecurringBillTemplate template,
-      string userId)
-  {
-    FinancialAccount? destinationAccount = null;
-
-    if (!string.IsNullOrWhiteSpace(
-      template.DestinationAccountId))
-    {
-      destinationAccount =
-        await GetAccountByIdAsync(
-          template.DestinationAccountId,
-          userId);
-    }
-
-    return RecurringBillTemplateMapper.ToResponse(
-      template,
-      destinationAccount);
-  }
-
-  /*===========================================================
     BuildDueDate:
-    => Creates a valid due date for the target month.
-    => A due day of 31 becomes the month's final day when needed.
+    => Creates a valid due date for the selected month.
+    => If DueDay exceeds the number of days in the month,
+       the month's final day is used.
+
+    Example:
+
+    DueDay = 31
+
+    April:
+    => April 30
+
+    February 2027:
+    => February 28
   ===========================================================*/
   private static DateTime BuildDueDate(
     int year,
@@ -558,18 +588,5 @@ public class RecurringBillTemplateService : BudgetBaseService
       0,
       0,
       DateTimeKind.Utc);
-  }
-
-  /*===========================================================
-    IsCreditCardAccount:
-    => Checks whether the destination account is a CreditCard.
-  ===========================================================*/
-  private static bool IsCreditCardAccount(
-    FinancialAccount account)
-  {
-    return string.Equals(
-      account.Type,
-      FinancialAccountTypes.CreditCard,
-      StringComparison.OrdinalIgnoreCase);
   }
 }

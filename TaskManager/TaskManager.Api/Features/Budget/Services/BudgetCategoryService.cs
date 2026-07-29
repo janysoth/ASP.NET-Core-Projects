@@ -120,9 +120,9 @@ public class BudgetCategoryService : BudgetBaseService
     => Returns the updated category response.
 
     Important:
-    => A category containing fixed Expense bills cannot be
-       changed into Savings or Variable while those bills
-       still reference the category.
+    => A category containing bills cannot be changed into
+       Savings or Variable while those bills still reference
+       the category.
   ===========================================================*/
   public async Task<BudgetCategoryResponse?>
     UpdateBudgetCategoryAsync(
@@ -158,8 +158,8 @@ public class BudgetCategoryService : BudgetBaseService
     /*
       Load bills currently using this category.
 
-      Fixed Expense bills depend on their BudgetCategoryId
-      remaining connected to a Fixed Expense category.
+      Bills depend on their BudgetCategoryId remaining
+      connected to a Fixed Expense category.
     */
     var existingBills =
       await GetBillsForCategoryAsync(
@@ -170,7 +170,7 @@ public class BudgetCategoryService : BudgetBaseService
       existingBills.Count > 0;
 
     /*
-      A category with Expense bills must remain:
+      A category with bills must remain:
 
       Type        = Expense
       ExpenseType = Fixed
@@ -318,7 +318,7 @@ public class BudgetCategoryService : BudgetBaseService
     }
 
     /*
-      Load Expense bills currently linked to this category.
+      Load bills currently linked to this category.
     */
     var bills =
       await GetBillsForCategoryAsync(
@@ -393,10 +393,9 @@ public class BudgetCategoryService : BudgetBaseService
 
   /*===========================================================
     GetBillsForCategoryAsync:
-    => Gets Expense bills linked to the selected category.
+    => Gets bills linked to the selected category.
     => Matches using Bill.BudgetCategoryId.
-    => Only Expense bills are included.
-    => Transfer bills are not part of category spending.
+    => Every Bill now represents a Fixed Expense obligation.
   ===========================================================*/
   private async Task<List<Bill>>
     GetBillsForCategoryAsync(
@@ -409,9 +408,7 @@ public class BudgetCategoryService : BudgetBaseService
         bill.BudgetMonthId ==
           category.BudgetMonthId &&
         bill.BudgetCategoryId ==
-          category.Id &&
-        bill.PaymentType ==
-          BillPaymentTypes.Expense)
+          category.Id)
       .ToListAsync();
   }
 

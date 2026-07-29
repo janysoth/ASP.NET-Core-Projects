@@ -3,6 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace TaskManager.Api.Features.Budget.Models;
 
+[BsonIgnoreExtraElements]
 public class Bill
 {
   [BsonId]
@@ -14,33 +15,13 @@ public class Bill
   public string BudgetMonthId { get; set; } = string.Empty;
 
   /*===========================================================
-    PaymentType:
-    => Determines what happens when the bill is paid.
-    => Expense creates an ExpenseRecord.
-    => Transfer creates an AccountTransfer.
-  ===========================================================*/
-  public string PaymentType { get; set; } =
-    BillPaymentTypes.Expense;
-
-  /*===========================================================
     BudgetCategoryId:
-    => Used only for Expense bills.
-    => Links the bill to an Expense budget category.
-    => Transfer bills leave this null.
+    => Links the bill to a Fixed Expense budget category.
+    => Every bill must belong to an Expense category.
   ===========================================================*/
   [BsonRepresentation(BsonType.ObjectId)]
-  [BsonIgnoreIfNull]
-  public string? BudgetCategoryId { get; set; }
-
-  /*===========================================================
-    DestinationAccountId:
-    => Used only for Transfer bills.
-    => Identifies the CreditCard account being paid.
-    => Expense bills leave this null.
-  ===========================================================*/
-  [BsonRepresentation(BsonType.ObjectId)]
-  [BsonIgnoreIfNull]
-  public string? DestinationAccountId { get; set; }
+  public string BudgetCategoryId { get; set; } =
+    string.Empty;
 
   /*===========================================================
     RecurringBillTemplateId:
@@ -51,7 +32,8 @@ public class Bill
   [BsonIgnoreIfNull]
   public string? RecurringBillTemplateId { get; set; }
 
-  public string Name { get; set; } = string.Empty;
+  public string Name { get; set; } =
+    string.Empty;
 
   public decimal ExpectedAmount { get; set; }
 
@@ -61,7 +43,7 @@ public class Bill
 
   /*===========================================================
     ExpenseRecordId:
-    => Set only when an Expense bill is paid.
+    => Set when the bill is paid.
     => Links to the automatically created ExpenseRecord.
   ===========================================================*/
   [BsonRepresentation(BsonType.ObjectId)]

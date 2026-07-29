@@ -32,8 +32,8 @@ public static class BudgetCategoryMapper
     /*
       Use an empty bill collection when bills were not supplied.
 
-      This keeps the mapper compatible with existing code while
-      we update the remaining services step-by-step.
+      This keeps the mapper compatible with code paths that
+      do not need bill calculations.
     */
     var availableBills =
       bills ?? Array.Empty<Bill>();
@@ -83,7 +83,13 @@ public static class BudgetCategoryMapper
     /*---------------------------------------------------------
       Calculate the amount automatically budgeted from bills.
 
-      Only Expense bills linked to this category count.
+      Every Bill now represents a Fixed Expense obligation.
+
+      Therefore, we only need to match:
+
+      Bill.BudgetCategoryId
+      ==
+      BudgetCategory.Id
 
       Example:
 
@@ -91,18 +97,10 @@ public static class BudgetCategoryMapper
       Phone    = $120
 
       BillPlannedAmount = $200
-
-      Transfer bills such as credit-card payments are NOT
-      included because they are movements between accounts,
-      not new expenses.
     ---------------------------------------------------------*/
     var billPlannedAmount =
       availableBills
         .Where(bill =>
-          string.Equals(
-            bill.PaymentType,
-            "Expense",
-            StringComparison.OrdinalIgnoreCase) &&
           bill.BudgetCategoryId ==
             category.Id)
         .Sum(bill =>

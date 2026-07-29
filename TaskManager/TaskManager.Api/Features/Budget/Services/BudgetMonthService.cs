@@ -10,7 +10,8 @@ public class BudgetMonthService : BudgetBaseService
   /*===========================================================
     BudgetMonthService Constructor
   ===========================================================*/
-  public BudgetMonthService(IMongoDatabase database)
+  public BudgetMonthService(
+    IMongoDatabase database)
     : base(database)
   {
   }
@@ -23,21 +24,16 @@ public class BudgetMonthService : BudgetBaseService
   public async Task<List<BudgetMonthResponse>> GetBudgetMonthsAsync(
     string userId)
   {
-    /*---------------------------------------------------------
-      Get user's budget months from MongoDB.
-    ---------------------------------------------------------*/
-    var budgetMonths = await BudgetMonths
-      .Find(budgetMonth =>
-        budgetMonth.UserId == userId)
-      .SortByDescending(budgetMonth =>
-        budgetMonth.Year)
-      .ThenByDescending(budgetMonth =>
-        budgetMonth.Month)
-      .ToListAsync();
+    var budgetMonths =
+      await BudgetMonths
+        .Find(budgetMonth =>
+          budgetMonth.UserId == userId)
+        .SortByDescending(budgetMonth =>
+          budgetMonth.Year)
+        .ThenByDescending(budgetMonth =>
+          budgetMonth.Month)
+        .ToListAsync();
 
-    /*---------------------------------------------------------
-      Build complete response objects.
-    ---------------------------------------------------------*/
     var responses =
       new List<BudgetMonthResponse>();
 
@@ -60,11 +56,12 @@ public class BudgetMonthService : BudgetBaseService
     string id,
     string userId)
   {
-    var budgetMonth = await BudgetMonths
-      .Find(budgetMonth =>
-        budgetMonth.Id == id &&
-        budgetMonth.UserId == userId)
-      .FirstOrDefaultAsync();
+    var budgetMonth =
+      await BudgetMonths
+        .Find(existingBudgetMonth =>
+          existingBudgetMonth.Id == id &&
+          existingBudgetMonth.UserId == userId)
+        .FirstOrDefaultAsync();
 
     if (budgetMonth is null)
     {
@@ -84,12 +81,13 @@ public class BudgetMonthService : BudgetBaseService
     CreateBudgetMonthRequest request,
     string userId)
   {
-    var existingBudgetMonth = await BudgetMonths
-      .Find(budgetMonth =>
-        budgetMonth.UserId == userId &&
-        budgetMonth.Month == request.Month &&
-        budgetMonth.Year == request.Year)
-      .FirstOrDefaultAsync();
+    var existingBudgetMonth =
+      await BudgetMonths
+        .Find(budgetMonth =>
+          budgetMonth.UserId == userId &&
+          budgetMonth.Month == request.Month &&
+          budgetMonth.Year == request.Year)
+        .FirstOrDefaultAsync();
 
     if (existingBudgetMonth is not null)
     {
@@ -160,6 +158,8 @@ public class BudgetMonthService : BudgetBaseService
     DeleteBudgetMonthAsync:
     => Deletes one budget month owned by the current user.
     => Deletes related bills, categories, income, and expenses.
+    => AccountTransfers are NOT deleted because transfers are
+       independent financial activity.
     => Returns the deleted budget month response.
   ===========================================================*/
   public async Task<BudgetMonthResponse?> DeleteBudgetMonthAsync(
@@ -169,11 +169,12 @@ public class BudgetMonthService : BudgetBaseService
     /*---------------------------------------------------------
       Find the budget month before deleting it.
     ---------------------------------------------------------*/
-    var budgetMonth = await BudgetMonths
-      .Find(existingBudgetMonth =>
-        existingBudgetMonth.Id == id &&
-        existingBudgetMonth.UserId == userId)
-      .FirstOrDefaultAsync();
+    var budgetMonth =
+      await BudgetMonths
+        .Find(existingBudgetMonth =>
+          existingBudgetMonth.Id == id &&
+          existingBudgetMonth.UserId == userId)
+        .FirstOrDefaultAsync();
 
     if (budgetMonth is null)
     {
@@ -181,55 +182,17 @@ public class BudgetMonthService : BudgetBaseService
     }
 
     /*---------------------------------------------------------
-      Build the response before related records are removed.
+      Build the response before deleting child records.
     ---------------------------------------------------------*/
     var deletedBudgetMonth =
       await BuildBudgetMonthResponseAsync(
         budgetMonth);
 
     /*---------------------------------------------------------
-      Load bills before deleting them.
-
-      Transfer bills may have AccountTransfer records pointing
-      to BillId.
-
-      We keep those real account transfers as financial history,
-      but remove the BillId before deleting the bill.
-    ---------------------------------------------------------*/
-    var monthBills = await Bills
-      .Find(bill =>
-        bill.BudgetMonthId == id &&
-        bill.UserId == userId)
-      .ToListAsync();
-
-    var transferBillIds = monthBills
-      .Where(bill =>
-        string.Equals(
-          bill.PaymentType,
-          BillPaymentTypes.Transfer,
-          StringComparison.OrdinalIgnoreCase))
-      .Select(bill =>
-        bill.Id)
-      .ToList();
-
-    if (transferBillIds.Count > 0)
-    {
-      var unlinkTransferUpdate =
-        Builders<AccountTransfer>.Update
-          .Unset(transfer =>
-            transfer.BillId);
-
-      await AccountTransfers.UpdateManyAsync(
-        transfer =>
-          transfer.UserId == userId &&
-          transfer.BillId != null &&
-          transferBillIds.Contains(
-            transfer.BillId),
-        unlinkTransferUpdate);
-    }
-
-    /*---------------------------------------------------------
       Delete related child records.
+
+      AccountTransfers are intentionally NOT deleted because
+      they are no longer connected to bills or budget months.
     ---------------------------------------------------------*/
     await Bills.DeleteManyAsync(
       bill =>
@@ -289,9 +252,9 @@ public class BudgetMonthService : BudgetBaseService
     => Planned budget comes from
        BudgetCategory.PlannedAmount.
 
-    Transfer Bill:
-    => Does NOT count as another expense.
-    => It represents money moving between accounts.
+    Account Transfers:
+    => Do NOT count as expenses.
+    => They only move money between accounts.
   ===========================================================*/
   private async Task<BudgetMonthResponse>
     BuildBudgetMonthResponseAsync(
@@ -300,46 +263,49 @@ public class BudgetMonthService : BudgetBaseService
     /*---------------------------------------------------------
       Load all categories for this budget month.
     ---------------------------------------------------------*/
-    var budgetCategories = await BudgetCategories
-      .Find(category =>
-        category.BudgetMonthId ==
-          budgetMonth.Id &&
-        category.UserId ==
-          budgetMonth.UserId)
-      .SortBy(category =>
-        category.Name)
-      .ToListAsync();
+    var budgetCategories =
+      await BudgetCategories
+        .Find(category =>
+          category.BudgetMonthId ==
+            budgetMonth.Id &&
+          category.UserId ==
+            budgetMonth.UserId)
+        .SortBy(category =>
+          category.Name)
+        .ToListAsync();
 
     /*---------------------------------------------------------
       Load all income records for this budget month.
     ---------------------------------------------------------*/
-    var incomeRecords = await IncomeRecords
-      .Find(income =>
-        income.BudgetMonthId ==
-          budgetMonth.Id &&
-        income.UserId ==
-          budgetMonth.UserId)
-      .SortByDescending(income =>
-        income.IncomeDate)
-      .ToListAsync();
+    var incomeRecords =
+      await IncomeRecords
+        .Find(income =>
+          income.BudgetMonthId ==
+            budgetMonth.Id &&
+          income.UserId ==
+            budgetMonth.UserId)
+        .SortByDescending(income =>
+          income.IncomeDate)
+        .ToListAsync();
 
     /*---------------------------------------------------------
       Load all expense records for this budget month.
     ---------------------------------------------------------*/
-    var expenseRecords = await ExpenseRecords
-      .Find(expense =>
-        expense.BudgetMonthId ==
-          budgetMonth.Id &&
-        expense.UserId ==
-          budgetMonth.UserId)
-      .SortByDescending(expense =>
-        expense.ExpenseDate)
-      .ToListAsync();
+    var expenseRecords =
+      await ExpenseRecords
+        .Find(expense =>
+          expense.BudgetMonthId ==
+            budgetMonth.Id &&
+          expense.UserId ==
+            budgetMonth.UserId)
+        .SortByDescending(expense =>
+          expense.ExpenseDate)
+        .ToListAsync();
 
     /*---------------------------------------------------------
-      Load Expense bills for this budget month.
+      Load all bills for this budget month.
 
-      These are the bills that represent real budget expenses.
+      Every Bill now represents a Fixed Expense obligation.
 
       Examples:
 
@@ -348,26 +314,15 @@ public class BudgetMonthService : BudgetBaseService
       Phone
       Insurance
       Utilities
-
-      Transfer bills are intentionally excluded.
-
-      Example Transfer bill:
-
-      Checking
-      →
-      Credit Card
-
-      A credit-card payment is not a new expense.
     ---------------------------------------------------------*/
-    var expenseBills = await Bills
-      .Find(bill =>
-        bill.BudgetMonthId ==
-          budgetMonth.Id &&
-        bill.UserId ==
-          budgetMonth.UserId &&
-        bill.PaymentType ==
-          BillPaymentTypes.Expense)
-      .ToListAsync();
+    var bills =
+      await Bills
+        .Find(bill =>
+          bill.BudgetMonthId ==
+            budgetMonth.Id &&
+          bill.UserId ==
+            budgetMonth.UserId)
+        .ToListAsync();
 
     /*---------------------------------------------------------
       Calculate actual income and expense totals.
@@ -385,91 +340,81 @@ public class BudgetMonthService : BudgetBaseService
 
       Savings categories are not regular spending categories.
     ---------------------------------------------------------*/
-    var expenseCategories = budgetCategories
-      .Where(category =>
-        string.Equals(
-          category.Type,
-          BudgetCategoryTypes.Expense,
-          StringComparison.OrdinalIgnoreCase))
-      .ToList();
+    var expenseCategories =
+      budgetCategories
+        .Where(category =>
+          string.Equals(
+            category.Type,
+            BudgetCategoryTypes.Expense,
+            StringComparison.OrdinalIgnoreCase))
+        .ToList();
 
     /*---------------------------------------------------------
       Separate Expense categories into Fixed and Variable.
     ---------------------------------------------------------*/
-    var fixedCategories = expenseCategories
-      .Where(category =>
-        string.Equals(
-          category.ExpenseType,
-          ExpenseTypes.Fixed,
-          StringComparison.OrdinalIgnoreCase))
-      .ToList();
+    var fixedCategories =
+      expenseCategories
+        .Where(category =>
+          string.Equals(
+            category.ExpenseType,
+            ExpenseTypes.Fixed,
+            StringComparison.OrdinalIgnoreCase))
+        .ToList();
 
-    var variableCategories = expenseCategories
-      .Where(category =>
-        string.Equals(
-          category.ExpenseType,
-          ExpenseTypes.Variable,
-          StringComparison.OrdinalIgnoreCase))
-      .ToList();
+    var variableCategories =
+      expenseCategories
+        .Where(category =>
+          string.Equals(
+            category.ExpenseType,
+            ExpenseTypes.Variable,
+            StringComparison.OrdinalIgnoreCase))
+        .ToList();
 
     /*---------------------------------------------------------
       Create sets of category IDs.
 
-      Using CategoryId means category renames do not break
+      Using IDs means category renames do not break
       expense or bill relationships.
     ---------------------------------------------------------*/
-    var fixedCategoryIds = fixedCategories
-      .Select(category =>
-        category.Id)
-      .ToHashSet();
+    var fixedCategoryIds =
+      fixedCategories
+        .Select(category =>
+          category.Id)
+        .ToHashSet();
 
-    var variableCategoryIds = variableCategories
-      .Select(category =>
-        category.Id)
-      .ToHashSet();
+    var variableCategoryIds =
+      variableCategories
+        .Select(category =>
+          category.Id)
+        .ToHashSet();
 
     /*---------------------------------------------------------
       Calculate PLANNED FIXED expenses.
 
-      IMPORTANT CHANGE:
-
-      OLD:
-      => FixedCategory.PlannedAmount
-
-      NEW:
-      => Sum of Bill.ExpectedAmount for bills connected to
-         Fixed Expense categories.
+      Fixed planned budget comes from Bill.ExpectedAmount.
 
       Example:
 
-      Mortgage bill = $1,600
-      Internet bill = $80
-      Phone bill = $120
+      Mortgage = $1,600
+      Internet = $80
+      Phone    = $120
 
       TotalPlannedFixedExpenses = $1,800
     ---------------------------------------------------------*/
-    var totalPlannedFixedExpenses = expenseBills
-      .Where(bill =>
-        !string.IsNullOrWhiteSpace(
-          bill.BudgetCategoryId) &&
-        fixedCategoryIds.Contains(
-          bill.BudgetCategoryId))
-      .Sum(bill =>
-        bill.ExpectedAmount);
+    var totalPlannedFixedExpenses =
+      bills
+        .Where(bill =>
+          !string.IsNullOrWhiteSpace(
+            bill.BudgetCategoryId) &&
+          fixedCategoryIds.Contains(
+            bill.BudgetCategoryId))
+        .Sum(bill =>
+          bill.ExpectedAmount);
 
     /*---------------------------------------------------------
       Calculate PLANNED VARIABLE expenses.
 
-      Variable categories continue using their manually
-      assigned PlannedAmount.
-
-      Example:
-
-      Groceries = $500
-      Dining    = $200
-      Shopping  = $300
-
-      TotalPlannedVariableExpenses = $1,000
+      Variable categories continue using PlannedAmount.
     ---------------------------------------------------------*/
     var totalPlannedVariableExpenses =
       variableCategories.Sum(category =>
@@ -488,55 +433,47 @@ public class BudgetMonthService : BudgetBaseService
 
     /*---------------------------------------------------------
       Calculate ACTUAL Fixed expenses.
-
-      An expense is Fixed when its CategoryId points to a
-      Fixed Expense category.
     ---------------------------------------------------------*/
-    var totalFixedExpenses = expenseRecords
-      .Where(expense =>
-        fixedCategoryIds.Contains(
-          expense.CategoryId))
-      .Sum(expense =>
-        expense.Amount);
+    var totalFixedExpenses =
+      expenseRecords
+        .Where(expense =>
+          fixedCategoryIds.Contains(
+            expense.CategoryId))
+        .Sum(expense =>
+          expense.Amount);
 
     /*---------------------------------------------------------
       Calculate ACTUAL Variable expenses.
-
-      An expense is Variable when its CategoryId points to a
-      Variable Expense category.
     ---------------------------------------------------------*/
-    var totalVariableExpenses = expenseRecords
-      .Where(expense =>
-        variableCategoryIds.Contains(
-          expense.CategoryId))
-      .Sum(expense =>
-        expense.Amount);
+    var totalVariableExpenses =
+      expenseRecords
+        .Where(expense =>
+          variableCategoryIds.Contains(
+            expense.CategoryId))
+        .Sum(expense =>
+          expense.Amount);
 
     /*---------------------------------------------------------
       Calculate planned Savings.
-
-      Savings continue using BudgetCategory.PlannedAmount.
     ---------------------------------------------------------*/
-    var totalPlannedSavings = budgetCategories
-      .Where(category =>
-        string.Equals(
-          category.Type,
-          BudgetCategoryTypes.Savings,
-          StringComparison.OrdinalIgnoreCase))
-      .Sum(category =>
-        category.PlannedAmount);
+    var totalPlannedSavings =
+      budgetCategories
+        .Where(category =>
+          string.Equals(
+            category.Type,
+            BudgetCategoryTypes.Savings,
+            StringComparison.OrdinalIgnoreCase))
+        .Sum(category =>
+          category.PlannedAmount);
 
     /*---------------------------------------------------------
       Calculate total assigned for zero-based budgeting.
-
-      We only have:
 
       Expenses
       +
       Savings
 
-      Credit-card payments are AccountTransfers and are NOT
-      assigned again here.
+      Account transfers are NOT assigned again here.
     ---------------------------------------------------------*/
     var totalAssigned =
       totalPlannedExpenses +
@@ -545,32 +482,30 @@ public class BudgetMonthService : BudgetBaseService
     /*---------------------------------------------------------
       Build category responses.
 
-      We now provide expenseBills to the mapper.
-
-      This lets a Fixed category calculate:
+      Fixed categories receive bill data so they can calculate:
 
       BillPlannedAmount
       TotalPlannedAmount
       RemainingAmount
     ---------------------------------------------------------*/
-    var categoryResponses = budgetCategories
-      .Select(category =>
-        BudgetCategoryMapper.ToResponse(
-          category,
-          expenseRecords,
-          expenseBills))
-      .ToList();
+    var categoryResponses =
+      budgetCategories
+        .Select(category =>
+          BudgetCategoryMapper.ToResponse(
+            category,
+            expenseRecords,
+            bills))
+        .ToList();
 
     /*---------------------------------------------------------
-      Load accounts once for IncomeResponse account data.
-
-      This avoids repeatedly querying MongoDB for each income.
+      Load accounts once for income response account names.
     ---------------------------------------------------------*/
-    var accounts = await FinancialAccounts
-      .Find(account =>
-        account.UserId ==
-          budgetMonth.UserId)
-      .ToListAsync();
+    var accounts =
+      await FinancialAccounts
+        .Find(account =>
+          account.UserId ==
+            budgetMonth.UserId)
+        .ToListAsync();
 
     var accountLookup =
       accounts.ToDictionary(
@@ -582,28 +517,22 @@ public class BudgetMonthService : BudgetBaseService
     /*---------------------------------------------------------
       Build income responses.
     ---------------------------------------------------------*/
-    var incomeResponses = incomeRecords
-      .Select(income =>
-      {
-        accountLookup.TryGetValue(
-          income.AccountId,
-          out var account);
+    var incomeResponses =
+      incomeRecords
+        .Select(income =>
+        {
+          accountLookup.TryGetValue(
+            income.AccountId,
+            out var account);
 
-        return IncomeMapper.ToResponse(
-          income,
-          account);
-      })
-      .ToList();
+          return IncomeMapper.ToResponse(
+            income,
+            account);
+        })
+        .ToList();
 
     /*---------------------------------------------------------
-      Create a category-name lookup.
-
-      ExpenseResponse returns:
-
-      CategoryId
-      CategoryName
-
-      ExpenseRecord stores only CategoryId.
+      Create a category-name lookup for ExpenseResponse.
     ---------------------------------------------------------*/
     var categoryNameLookup =
       budgetCategories.ToDictionary(
@@ -615,19 +544,20 @@ public class BudgetMonthService : BudgetBaseService
     /*---------------------------------------------------------
       Build expense responses.
     ---------------------------------------------------------*/
-    var expenseResponses = expenseRecords
-      .Select(expense =>
-      {
-        var categoryName =
-          categoryNameLookup.GetValueOrDefault(
-            expense.CategoryId,
-            "Unknown Category");
+    var expenseResponses =
+      expenseRecords
+        .Select(expense =>
+        {
+          var categoryName =
+            categoryNameLookup.GetValueOrDefault(
+              expense.CategoryId,
+              "Unknown Category");
 
-        return ExpenseMapper.ToResponse(
-          expense,
-          categoryName);
-      })
-      .ToList();
+          return ExpenseMapper.ToResponse(
+            expense,
+            categoryName);
+        })
+        .ToList();
 
     /*---------------------------------------------------------
       Build the complete BudgetMonthResponse.

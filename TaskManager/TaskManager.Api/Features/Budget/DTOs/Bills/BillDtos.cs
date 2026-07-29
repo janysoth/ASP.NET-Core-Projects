@@ -1,31 +1,32 @@
 namespace TaskManager.Api.Features.Budget.DTOs.Bills;
 
+/*=============================================================
+  CreateBillRequest:
+  => Creates a Fixed Expense bill for one budget month.
+  => Every bill must belong to a Fixed Expense category.
+=============================================================*/
 public sealed record CreateBillRequest
 {
   /*===========================================================
-    PaymentType:
-    => Expense for normal bills.
-    => Transfer for credit-card payment bills.
-  ===========================================================*/
-  public string PaymentType { get; set; } =
-    BillPaymentTypes.Expense;
-
-  /*===========================================================
     BudgetCategoryId:
-    => Required when PaymentType is Expense.
-    => Must reference an Expense category in the budget month.
+    => Required for every bill.
+    => Must reference a Fixed Expense category belonging
+       to the selected budget month.
   ===========================================================*/
-  public string? BudgetCategoryId { get; set; }
+  public string BudgetCategoryId { get; set; } =
+    string.Empty;
 
-  /*===========================================================
-    DestinationAccountId:
-    => Required when PaymentType is Transfer.
-    => Must reference a CreditCard account.
-  ===========================================================*/
-  public string? DestinationAccountId { get; set; }
+  public string Name { get; set; } =
+    string.Empty;
 
-  public string Name { get; set; } = string.Empty;
+  /*
+    Amount we expect this bill to cost.
 
+    Example:
+
+    Mortgage = $1,600
+    Internet = $80
+  */
   public decimal ExpectedAmount { get; set; }
 
   public DateTime DueDate { get; set; }
@@ -33,16 +34,17 @@ public sealed record CreateBillRequest
   public string? Notes { get; set; }
 }
 
+/*=============================================================
+  UpdateBillRequest:
+  => Updates an existing Fixed Expense bill.
+=============================================================*/
 public sealed record UpdateBillRequest
 {
-  public string PaymentType { get; set; } =
-    BillPaymentTypes.Expense;
+  public string BudgetCategoryId { get; set; } =
+    string.Empty;
 
-  public string? BudgetCategoryId { get; set; }
-
-  public string? DestinationAccountId { get; set; }
-
-  public string Name { get; set; } = string.Empty;
+  public string Name { get; set; } =
+    string.Empty;
 
   public decimal ExpectedAmount { get; set; }
 
@@ -51,15 +53,40 @@ public sealed record UpdateBillRequest
   public string? Notes { get; set; }
 }
 
+/*=============================================================
+  MarkBillPaidRequest:
+  => Pays a Fixed Expense bill.
+  => Creates one ExpenseRecord.
+=============================================================*/
 public sealed record MarkBillPaidRequest
 {
   /*===========================================================
     AccountId:
-    => Expense bill: account used to pay the expense.
-    => Transfer bill: source Checking/Savings account.
-  ===========================================================*/
-  public string AccountId { get; set; } = string.Empty;
+    => Account used to pay the bill.
 
+    Examples:
+
+    Checking
+    Savings
+    CreditCard
+  ===========================================================*/
+  public string AccountId { get; set; } =
+    string.Empty;
+
+  /*
+    Actual amount paid.
+
+    This may be different from ExpectedAmount.
+
+    Example:
+
+    Expected Internet = $80
+    Actual Payment    = $74
+
+    The bill becomes Paid.
+
+    The $6 difference remains available in the budget.
+  */
   public decimal ActualAmount { get; set; }
 
   public DateTime PaidDate { get; set; }
@@ -67,50 +94,71 @@ public sealed record MarkBillPaidRequest
   public string? Notes { get; set; }
 }
 
+/*=============================================================
+  BillResponse:
+  => Complete API representation of one Fixed Expense bill.
+=============================================================*/
 public sealed record BillResponse
 {
-  public string Id { get; set; } = string.Empty;
+  public string Id { get; set; } =
+    string.Empty;
 
-  public string BudgetMonthId { get; set; } = string.Empty;
-
-  public string PaymentType { get; set; } = string.Empty;
-
-  /*===========================================================
-    Expense bill details:
-  ===========================================================*/
-  public string? BudgetCategoryId { get; set; }
-
-  public string? BudgetCategoryName { get; set; }
+  public string BudgetMonthId { get; set; } =
+    string.Empty;
 
   /*===========================================================
-    Transfer bill details:
+    Budget Category:
+    => Every bill belongs to a Fixed Expense category.
   ===========================================================*/
-  public string? DestinationAccountId { get; set; }
+  public string BudgetCategoryId { get; set; } =
+    string.Empty;
 
-  public string? DestinationAccountName { get; set; }
+  public string BudgetCategoryName { get; set; } =
+    string.Empty;
 
-  public string Name { get; set; } = string.Empty;
+  public string Name { get; set; } =
+    string.Empty;
 
+  /*
+    Planned amount for this bill.
+  */
   public decimal ExpectedAmount { get; set; }
 
+  /*
+    Actual amount paid.
+
+    null means the bill has not been paid yet.
+  */
   public decimal? ActualAmount { get; set; }
 
   public DateTime DueDate { get; set; }
 
   public bool IsPaid { get; set; }
 
-  public string Status { get; set; } = string.Empty;
+  /*
+    Example statuses:
+
+    Paid
+    Overdue
+    Due Today
+    Due Soon
+    Upcoming
+  */
+  public string Status { get; set; } =
+    string.Empty;
 
   /*===========================================================
-    Created payment record:
-    => ExpenseRecordId is used for Expense bills.
+    ExpenseRecordId:
+    => Links to the ExpenseRecord created when the bill
+       is marked paid.
+    => null while unpaid.
   ===========================================================*/
   public string? ExpenseRecordId { get; set; }
 
   /*===========================================================
-    Payment source:
-    => Expense bill: account used for the expense.
-    => Transfer bill: Checking/Savings source account.
+    Payment Account:
+    => Account used to pay the bill.
+    => null while unpaid.
   ===========================================================*/
   public string? AccountId { get; set; }
 
@@ -118,51 +166,86 @@ public sealed record BillResponse
 
   public DateTime? PaidDate { get; set; }
 
-  public decimal TotalPaid { get; set; }
+  /*===========================================================
+    RemainingAmount:
 
+    Unpaid bill:
+    => ExpectedAmount
+
+    Paid bill:
+    => 0
+
+    IMPORTANT:
+    => Budget variance is calculated by the budget category,
+       not by this field.
+
+    Example:
+
+    Expected = $80
+    Actual   = $74
+
+    Bill Remaining   = $0
+    Budget Remaining = $6
+  ===========================================================*/
   public decimal RemainingAmount { get; set; }
 
-  public int PaymentCount { get; set; }
-
-  public List<BillPaymentResponse> Payments { get; set; } = [];
-
   public string? Notes { get; set; }
 
   public DateTime CreatedAtUtc { get; set; }
 }
 
+/*=============================================================
+  CreateRecurringBillTemplateRequest:
+  => Creates a recurring Fixed Expense bill template.
+  => CategoryName is used because category IDs differ from
+     one budget month to another.
+=============================================================*/
 public sealed record CreateRecurringBillTemplateRequest
 {
-  public string PaymentType { get; set; } =
-    BillPaymentTypes.Expense;
+  /*===========================================================
+    CategoryName:
+    => Fixed Expense category that generated bills should use.
 
-  // Required for Expense templates.
-  public string? CategoryName { get; set; }
+    Example:
 
-  // Required for Transfer templates.
-  public string? DestinationAccountId { get; set; }
+    Housing
+    Utilities
+    Kids Activities
+  ===========================================================*/
+  public string CategoryName { get; set; } =
+    string.Empty;
 
-  public string Name { get; set; } = string.Empty;
+  public string Name { get; set; } =
+    string.Empty;
 
   public decimal ExpectedAmount { get; set; }
 
+  /*
+    Day of the month the bill is normally due.
+
+    Example:
+    Mortgage = 1
+    Internet = 15
+  */
   public int DueDay { get; set; }
 
-  public bool IsActive { get; set; } = true;
+  public bool IsActive { get; set; } =
+    true;
 
   public string? Notes { get; set; }
 }
 
+/*=============================================================
+  UpdateRecurringBillTemplateRequest:
+  => Updates a recurring Fixed Expense bill template.
+=============================================================*/
 public sealed record UpdateRecurringBillTemplateRequest
 {
-  public string PaymentType { get; set; } =
-    BillPaymentTypes.Expense;
+  public string CategoryName { get; set; } =
+    string.Empty;
 
-  public string? CategoryName { get; set; }
-
-  public string? DestinationAccountId { get; set; }
-
-  public string Name { get; set; } = string.Empty;
+  public string Name { get; set; } =
+    string.Empty;
 
   public decimal ExpectedAmount { get; set; }
 
@@ -173,19 +256,20 @@ public sealed record UpdateRecurringBillTemplateRequest
   public string? Notes { get; set; }
 }
 
+/*=============================================================
+  RecurringBillTemplateResponse:
+  => Returns one recurring Fixed Expense bill template.
+=============================================================*/
 public sealed record RecurringBillTemplateResponse
 {
-  public string Id { get; set; } = string.Empty;
+  public string Id { get; set; } =
+    string.Empty;
 
-  public string PaymentType { get; set; } = string.Empty;
+  public string CategoryName { get; set; } =
+    string.Empty;
 
-  public string? CategoryName { get; set; }
-
-  public string? DestinationAccountId { get; set; }
-
-  public string? DestinationAccountName { get; set; }
-
-  public string Name { get; set; } = string.Empty;
+  public string Name { get; set; } =
+    string.Empty;
 
   public decimal ExpectedAmount { get; set; }
 
@@ -198,6 +282,10 @@ public sealed record RecurringBillTemplateResponse
   public DateTime CreatedAtUtc { get; set; }
 }
 
+/*=============================================================
+  GenerateBillsRequest:
+  => Selects the month/year for recurring bill generation.
+=============================================================*/
 public sealed record GenerateBillsRequest
 {
   public int Month { get; set; }
@@ -205,6 +293,10 @@ public sealed record GenerateBillsRequest
   public int Year { get; set; }
 }
 
+/*=============================================================
+  GenerateBillsResponse:
+  => Summarizes recurring bill generation.
+=============================================================*/
 public sealed record GenerateBillsResponse
 {
   public int TargetMonth { get; set; }
@@ -219,32 +311,9 @@ public sealed record GenerateBillsResponse
 
   public int SkippedMissingCategories { get; set; }
 
-  public List<BillResponse> Bills { get; set; } = [];
+  public List<BillResponse> Bills { get; set; } =
+    [];
 
-  public List<string> Messages { get; set; } = [];
+  public List<string> Messages { get; set; } =
+    [];
 }
-
-public sealed record BillPaymentResponse
-{
-  public string Id { get; set; } =
-    string.Empty;
-
-  public string FromAccountId { get; set; } =
-    string.Empty;
-
-  public string FromAccountName { get; set; } =
-    string.Empty;
-
-  public string ToAccountId { get; set; } =
-    string.Empty;
-
-  public string ToAccountName { get; set; } =
-    string.Empty;
-
-  public decimal Amount { get; set; }
-
-  public DateTime PaymentDate { get; set; }
-
-  public string? Notes { get; set; }
-}
-

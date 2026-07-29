@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using TaskManager.Api.Features.Budget.DTOs.Admin;
 using TaskManager.Api.Features.Budget.Services;
 
 namespace TaskManager.Api.Features.Budget.Controllers;
@@ -235,7 +234,7 @@ public class BudgetAdminController
     DeleteBudgetGroupResponse>>
     DeleteAllCategories(
       [FromBody]
-      DeleteBudgetGroupRequest request)
+    DeleteBudgetGroupRequest request)
   {
     var userId =
       GetUserId();
@@ -258,9 +257,14 @@ public class BudgetAdminController
         .DeleteAllCategoriesAsync(
           userId);
 
+    if (result == null)
+    {
+      return Conflict(
+        "Categories cannot be deleted while bills still reference them. Delete the bills first.");
+    }
+
     return Ok(result);
   }
-
   /*===========================================================
     DeleteAllBudgetMonths
   ===========================================================*/
