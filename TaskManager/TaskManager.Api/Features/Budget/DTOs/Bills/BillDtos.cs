@@ -307,13 +307,13 @@ public sealed record GenerateBillsResponse
 
   public int CreatedBills { get; set; }
 
+  public int CreatedCategories { get; set; }
+
   public int SkippedExistingBills { get; set; }
 
   public int SkippedMissingCategories { get; set; }
 
-  public List<BillResponse> Bills { get; set; } =
-    [];
+  public List<BillResponse> Bills { get; set; } = [];
 
-  public List<string> Messages { get; set; } =
-    [];
+  public List<string> Messages { get; set; } = [];
 }

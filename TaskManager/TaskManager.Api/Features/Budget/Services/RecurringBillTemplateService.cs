@@ -329,15 +329,19 @@ public class RecurringBillTemplateService : BudgetBaseService
     Process:
 
     1. Find the target budget month.
-    2. Load all active templates.
-    3. Load categories for the target month.
-    4. Find each template's matching Fixed Expense category.
-    5. Skip duplicates.
-    6. Create the bill.
+    2. Load all active recurring templates.
+    3. Load existing categories for the target month.
+    4. Find each template's category by name.
+    5. Automatically create the Fixed Expense category when
+       no category with that name exists.
+    6. Refuse to reuse a same-name category when it is not
+       a Fixed Expense category.
+    7. Skip duplicate bills.
+    8. Create the bill.
 
     IMPORTANT:
-    => Account transfers and credit-card payments are not
-       generated here.
+    => Missing categories are created automatically.
+    => Existing categories are never silently changed.
   ===========================================================*/
   public async Task<GenerateBillsResponse?>
     GenerateBillsAsync(
@@ -370,10 +374,15 @@ public class RecurringBillTemplateService : BudgetBaseService
           template.IsActive)
         .SortBy(template =>
           template.DueDay)
+        .ThenBy(template =>
+          template.Name)
         .ToListAsync();
 
     /*---------------------------------------------------------
-      Load categories belonging to the target budget month.
+      Load categories for the target month.
+
+      This list will also be updated in memory whenever the
+      generator automatically creates a new category.
     ---------------------------------------------------------*/
     var categories =
       await BudgetCategories
@@ -402,8 +411,8 @@ public class RecurringBillTemplateService : BudgetBaseService
     foreach (var template in templates)
     {
       /*-------------------------------------------------------
-        Prevent the same recurring template from generating
-        more than one bill for the same budget month.
+        Prevent the same template from generating more than
+        one bill for the same budget month.
       -------------------------------------------------------*/
       var existingBill =
         await Bills
@@ -426,7 +435,7 @@ public class RecurringBillTemplateService : BudgetBaseService
       }
 
       /*-------------------------------------------------------
-        Every recurring template requires a category name.
+        Every recurring template requires CategoryName.
       -------------------------------------------------------*/
       if (string.IsNullOrWhiteSpace(
         template.CategoryName))
@@ -434,57 +443,136 @@ public class RecurringBillTemplateService : BudgetBaseService
         response.SkippedMissingCategories++;
 
         response.Messages.Add(
-          $"{template.Name} was skipped because no category was configured.");
+          $"{template.Name} was skipped because no category name was configured.");
 
         continue;
       }
 
+      var normalizedCategoryName =
+        template.CategoryName.Trim();
+
       /*-------------------------------------------------------
-        Find the matching Fixed Expense category.
+        Look for ANY category with the same name first.
 
-        Required:
+        We intentionally do not filter by type yet.
 
-        Category Name matches template.CategoryName
-        Type        = Expense
-        ExpenseType = Fixed
+        Why?
+
+        If "Payment" already exists as Variable or Savings,
+        we should detect that conflict instead of creating a
+        second "Payment" category automatically.
       -------------------------------------------------------*/
       var category =
         categories.FirstOrDefault(
           existingCategory =>
             string.Equals(
               existingCategory.Name,
-              template.CategoryName,
-              StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(
-              existingCategory.Type,
-              BudgetCategoryTypes.Expense,
-              StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(
-              existingCategory.ExpenseType,
-              ExpenseTypes.Fixed,
+              normalizedCategoryName,
               StringComparison.OrdinalIgnoreCase));
 
+      /*-------------------------------------------------------
+        Category does not exist:
+
+        Automatically create a Fixed Expense category.
+
+        PlannedAmount remains zero because Fixed Expense
+        planning comes from linked Bill.ExpectedAmount.
+      -------------------------------------------------------*/
       if (category == null)
       {
-        response.SkippedMissingCategories++;
+        category =
+          new BudgetCategory
+          {
+            UserId =
+              userId,
+
+            BudgetMonthId =
+              budgetMonth.Id,
+
+            Name =
+              normalizedCategoryName,
+
+            Type =
+              BudgetCategoryTypes.Expense,
+
+            ExpenseType =
+              ExpenseTypes.Fixed,
+
+            PlannedAmount =
+              0,
+
+            CreatedAtUtc =
+              DateTime.UtcNow
+          };
+
+        await BudgetCategories.InsertOneAsync(
+          category);
+
+        /*
+          Add the newly created category to our in-memory list.
+
+          This is important because another recurring template
+          may use the same category later in this loop.
+
+          Example:
+
+          Electric Bill → Utilities
+          Internet Bill → Utilities
+
+          The first template creates Utilities.
+          The second template reuses it.
+        */
+        categories.Add(
+          category);
+
+        response.CreatedCategories++;
 
         response.Messages.Add(
-          $"{template.Name} was skipped because Fixed Expense category " +
-          $"'{template.CategoryName}' was not found.");
+          $"Fixed Expense category '{category.Name}' was created automatically.");
+      }
+      else
+      {
+        /*-----------------------------------------------------
+          Category already exists.
 
-        continue;
+          It MUST already be:
+
+          Type        = Expense
+          ExpenseType = Fixed
+
+          Never silently change an existing category.
+        -----------------------------------------------------*/
+        var categoryType =
+          BudgetCategoryTypes.Normalize(
+            category.Type);
+
+        var expenseType =
+          ExpenseTypes.Normalize(
+            category.ExpenseType);
+
+        var isFixedExpense =
+          categoryType ==
+            BudgetCategoryTypes.Expense &&
+          expenseType ==
+            ExpenseTypes.Fixed;
+
+        if (!isFixedExpense)
+        {
+          response.SkippedMissingCategories++;
+
+          response.Messages.Add(
+            $"{template.Name} was skipped because category " +
+            $"'{normalizedCategoryName}' already exists but is not a Fixed Expense category.");
+
+          continue;
+        }
       }
 
       /*-------------------------------------------------------
         Build a valid due date.
 
-        Example:
-
-        DueDay = 31
-        February 2027 has 28 days
-
-        Generated DueDate:
-        February 28, 2027
+        DueDay = 31 automatically becomes the final valid day
+        when the selected month has fewer than 31 days.
       -------------------------------------------------------*/
       var dueDate =
         BuildDueDate(
