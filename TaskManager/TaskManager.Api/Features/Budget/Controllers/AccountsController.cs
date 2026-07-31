@@ -133,35 +133,60 @@ public class AccountsController : BudgetControllerBase
     return Ok(updatedAccount);
   }
 
-  // ==========================================
-  // DELETE: api/budget/accounts/{accountId}
-  // Deletes an existing financial account.
-  // ==========================================
+  /*===========================================================
+    DeleteAccount:
+    => Deletes an account owned by the current user.
+    => Prevents deletion when the account has transaction
+       history.
+  ===========================================================*/
   [HttpDelete("{accountId}")]
-  public async Task<ActionResult<FinancialAccountResponse>> DeleteAccount(
-    string accountId)
+  public async Task<ActionResult<FinancialAccountResponse>>
+    DeleteAccount(
+      string accountId)
   {
-    // Get the authenticated user's ID
     var userId = GetUserId();
 
-    // Return 401 if the user is not authenticated
-    if (userId == null)
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    // Delete the account
-    var deletedAccount = await _accountService.DeleteAccountAsync(
-      accountId,
-      userId);
-
-    // Return 404 if the account was not found
-    if (deletedAccount == null)
+    if (string.IsNullOrWhiteSpace(accountId))
     {
-      return NotFound("Account not found.");
+      return BadRequest(
+        new
+        {
+          message = "Account ID is required."
+        });
     }
 
-    // Return the deleted account
-    return Ok(deletedAccount);
+    try
+    {
+      var deletedAccount =
+        await _accountService.DeleteAccountAsync(
+          accountId,
+          userId);
+
+      if (deletedAccount is null)
+      {
+        return NotFound(
+          new
+          {
+            message = "Account was not found."
+          });
+      }
+
+      return Ok(deletedAccount);
+    }
+    catch (InvalidOperationException)
+    {
+      return Conflict(
+        new
+        {
+          message =
+            "This account cannot be deleted because it has transaction history."
+        });
+    }
   }
+
 }

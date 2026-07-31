@@ -118,71 +118,112 @@ public sealed class ExpenseController : BudgetControllerBase
       string budgetMonthId,
       [FromBody] CreateExpenseRequest request)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId is null)
     {
       return Unauthorized();
     }
 
-    if (string.IsNullOrWhiteSpace(budgetMonthId))
+    if (string.IsNullOrWhiteSpace(
+        budgetMonthId))
     {
       return BadRequest(
-        "Budget month ID is required.");
+        new
+        {
+          message =
+            "Budget month ID is required."
+        });
     }
 
-    if (string.IsNullOrWhiteSpace(request.AccountId))
+    if (string.IsNullOrWhiteSpace(
+        request.AccountId))
     {
       return BadRequest(
-        "AccountId is required.");
+        new
+        {
+          message =
+            "AccountId is required."
+        });
     }
 
-    // Expenses now reference the category by ID
-    // instead of storing the category name.
-    if (string.IsNullOrWhiteSpace(request.CategoryId))
+    if (string.IsNullOrWhiteSpace(
+        request.CategoryId))
     {
       return BadRequest(
-        "CategoryId is required.");
+        new
+        {
+          message =
+            "CategoryId is required."
+        });
     }
 
-    if (string.IsNullOrWhiteSpace(request.Name))
+    if (string.IsNullOrWhiteSpace(
+        request.Name))
     {
       return BadRequest(
-        "Expense name is required.");
+        new
+        {
+          message =
+            "Expense name is required."
+        });
     }
 
     if (request.Amount <= 0)
     {
       return BadRequest(
-        "Expense amount must be greater than zero.");
+        new
+        {
+          message =
+            "Expense amount must be greater than zero."
+        });
     }
 
     if (request.ExpenseDate == default)
     {
       return BadRequest(
-        "Expense date is required.");
+        new
+        {
+          message =
+            "Expense date is required."
+        });
     }
 
-    var expense =
-      await _expenseService.AddExpenseAsync(
-        budgetMonthId,
-        request,
-        userId);
+    try
+    {
+      var expense =
+        await _expenseService.AddExpenseAsync(
+          budgetMonthId,
+          request,
+          userId);
 
-    if (expense is null)
+      if (expense is null)
+      {
+        return BadRequest(
+          new
+          {
+            message =
+              "Unable to create expense. Verify the budget month, account, and category."
+          });
+      }
+
+      return CreatedAtAction(
+        nameof(GetExpenseById),
+        new
+        {
+          expenseId = expense.Id
+        },
+        expense);
+    }
+    catch (ArgumentException exception)
     {
       return BadRequest(
-        "Unable to create expense. Verify the budget month, " +
-        "account, category, category type, and expense date.");
+        new
+        {
+          message = exception.Message
+        });
     }
-
-    return CreatedAtAction(
-      nameof(GetExpenseById),
-      new
-      {
-        expenseId = expense.Id
-      },
-      expense);
   }
 
   /*===========================================================
@@ -198,66 +239,107 @@ public sealed class ExpenseController : BudgetControllerBase
       string expenseId,
       [FromBody] UpdateExpenseRequest request)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId is null)
     {
       return Unauthorized();
     }
 
-    if (string.IsNullOrWhiteSpace(expenseId))
+    if (string.IsNullOrWhiteSpace(
+        expenseId))
     {
       return BadRequest(
-        "Expense ID is required.");
+        new
+        {
+          message =
+            "Expense ID is required."
+        });
     }
 
-    if (string.IsNullOrWhiteSpace(request.AccountId))
+    if (string.IsNullOrWhiteSpace(
+        request.AccountId))
     {
       return BadRequest(
-        "AccountId is required.");
+        new
+        {
+          message =
+            "AccountId is required."
+        });
     }
 
-    // This used to validate request.Category.
-    //
-    // The new expense architecture uses CategoryId.
-    if (string.IsNullOrWhiteSpace(request.CategoryId))
+    if (string.IsNullOrWhiteSpace(
+        request.CategoryId))
     {
       return BadRequest(
-        "CategoryId is required.");
+        new
+        {
+          message =
+            "CategoryId is required."
+        });
     }
 
-    if (string.IsNullOrWhiteSpace(request.Name))
+    if (string.IsNullOrWhiteSpace(
+        request.Name))
     {
       return BadRequest(
-        "Expense name is required.");
+        new
+        {
+          message =
+            "Expense name is required."
+        });
     }
 
     if (request.Amount <= 0)
     {
       return BadRequest(
-        "Expense amount must be greater than zero.");
+        new
+        {
+          message =
+            "Expense amount must be greater than zero."
+        });
     }
 
     if (request.ExpenseDate == default)
     {
       return BadRequest(
-        "Expense date is required.");
+        new
+        {
+          message =
+            "Expense date is required."
+        });
     }
 
-    var expense =
-      await _expenseService.UpdateExpenseAsync(
-        expenseId,
-        request,
-        userId);
-
-    if (expense is null)
+    try
     {
-      return NotFound(
-        "Unable to update expense. Verify the expense, account, " +
-        "category, category type, and expense date.");
-    }
+      var expense =
+        await _expenseService.UpdateExpenseAsync(
+          expenseId,
+          request,
+          userId);
 
-    return Ok(expense);
+      if (expense is null)
+      {
+        return NotFound(
+          new
+          {
+            message =
+              "Unable to update expense. Verify the expense, account, and category."
+          });
+      }
+
+      return Ok(
+        expense);
+    }
+    catch (ArgumentException exception)
+    {
+      return BadRequest(
+        new
+        {
+          message = exception.Message
+        });
+    }
   }
 
   /*===========================================================
@@ -273,40 +355,65 @@ public sealed class ExpenseController : BudgetControllerBase
       string expenseId,
       [FromBody] PatchExpenseRequest request)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId is null)
     {
       return Unauthorized();
     }
 
-    if (string.IsNullOrWhiteSpace(expenseId))
+    if (string.IsNullOrWhiteSpace(
+        expenseId))
     {
       return BadRequest(
-        "Expense ID is required.");
+        new
+        {
+          message =
+            "Expense ID is required."
+        });
     }
 
     if (request.Amount.HasValue &&
         request.Amount.Value <= 0)
     {
       return BadRequest(
-        "Expense amount must be greater than zero.");
+        new
+        {
+          message =
+            "Expense amount must be greater than zero."
+        });
     }
 
-    var expense =
-      await _expenseService.PatchExpenseAsync(
-        expenseId,
-        request,
-        userId);
-
-    if (expense is null)
+    try
     {
-      return NotFound(
-        "Unable to update expense. Verify the expense and any " +
-        "account or category values supplied.");
-    }
+      var expense =
+        await _expenseService.PatchExpenseAsync(
+          expenseId,
+          request,
+          userId);
 
-    return Ok(expense);
+      if (expense is null)
+      {
+        return NotFound(
+          new
+          {
+            message =
+              "Unable to update expense. Verify the expense and any account or category values supplied."
+          });
+      }
+
+      return Ok(
+        expense);
+    }
+    catch (ArgumentException exception)
+    {
+      return BadRequest(
+        new
+        {
+          message = exception.Message
+        });
+    }
   }
 
   /*===========================================================
