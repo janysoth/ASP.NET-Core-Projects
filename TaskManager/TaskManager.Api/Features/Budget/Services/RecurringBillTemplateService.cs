@@ -76,92 +76,140 @@ public class RecurringBillTemplateService : BudgetBaseService
   }
 
   /*===========================================================
-    CreateTemplateAsync:
-    => Creates a recurring Fixed Expense bill template.
+      CreateTemplateAsync:
+      => Creates a recurring bill template for the logged-in user.
+      => Prevents duplicate templates.
+      => Returns the newly created template.
 
-    Required:
-    => CategoryName
-    => Name
-    => ExpectedAmount greater than zero
-    => DueDay between 1 and 31
+      Duplicate rule:
+      => The same user cannot have two recurring templates
+         with the same category name and bill name.
 
-    IMPORTANT:
-    => CategoryName is stored instead of CategoryId because
-       each monthly budget has different category IDs.
-  ===========================================================*/
+      Examples treated as duplicates:
+      => Phone / Phone Bill
+      => phone / phone bill
+      => " Phone " / " Phone Bill "
+    ===========================================================*/
   public async Task<RecurringBillTemplateResponse?>
     CreateTemplateAsync(
       CreateRecurringBillTemplateRequest request,
       string userId)
   {
-    /*---------------------------------------------------------
-      Category name is required.
-    ---------------------------------------------------------*/
-    if (string.IsNullOrWhiteSpace(
-      request.CategoryName))
+    /*
+    Normalize text values before validating or saving them.
+
+    Trim removes accidental spaces from the beginning
+    and end of the values.
+  */
+    var normalizedCategoryName =
+      request.CategoryName.Trim();
+
+    var normalizedName =
+      request.Name.Trim();
+
+    /*
+      A recurring template needs both a category name
+      and a bill name.
+    */
+    if (string.IsNullOrWhiteSpace(normalizedCategoryName))
     {
-      return null;
+      throw new ArgumentException(
+        "Category name is required.");
     }
 
-    /*---------------------------------------------------------
-      Template name is required.
-    ---------------------------------------------------------*/
-    if (string.IsNullOrWhiteSpace(
-      request.Name))
+    if (string.IsNullOrWhiteSpace(normalizedName))
     {
-      return null;
+      throw new ArgumentException(
+        "Bill name is required.");
     }
 
-    /*---------------------------------------------------------
-      Expected amount must be positive.
-    ---------------------------------------------------------*/
+    /*
+      Expected amount must be greater than zero.
+    */
     if (request.ExpectedAmount <= 0)
     {
-      return null;
+      throw new ArgumentException(
+        "Expected amount must be greater than zero.");
     }
 
-    /*---------------------------------------------------------
-      Due day must represent a possible calendar day.
+    /*
+      DueDay represents the calendar day on which the
+      recurring bill is normally due.
 
-      Months with fewer days are handled during generation.
-    ---------------------------------------------------------*/
+      We allow values from 1 through 31.
+      Months with fewer days should be handled during
+      bill generation.
+    */
     if (request.DueDay < 1 ||
         request.DueDay > 31)
     {
-      return null;
+      throw new ArgumentException(
+        "Due day must be between 1 and 31.");
     }
 
+    /*
+      Check whether this user already has a template with
+      the same category name and bill name.
+
+      ToLower provides a case-insensitive comparison.
+
+      Trimmed request values also prevent whitespace from
+      bypassing the duplicate check.
+    */
+    var duplicateTemplate =
+      await RecurringBillTemplates
+        .Find(existingTemplate =>
+          existingTemplate.UserId == userId &&
+          existingTemplate.CategoryName.ToLower() ==
+            normalizedCategoryName.ToLower() &&
+          existingTemplate.Name.ToLower() ==
+            normalizedName.ToLower())
+        .FirstOrDefaultAsync();
+
+    /*
+      Reject the request when an equivalent template
+      already exists.
+
+      This applies whether the existing template is active
+      or inactive. An inactive template should be updated
+      or reactivated instead of creating another copy.
+    */
+    if (duplicateTemplate is not null)
+    {
+      throw new InvalidOperationException(
+        "A recurring bill template with this category and name already exists.");
+    }
+
+    /*
+      Create the MongoDB model.
+
+      IsActive comes from the request so the user can create
+      either an active or inactive template.
+    */
     var template =
       new RecurringBillTemplate
       {
-        UserId =
-          userId,
-
-        CategoryName =
-          request.CategoryName.Trim(),
-
-        Name =
-          request.Name.Trim(),
-
-        ExpectedAmount =
-          request.ExpectedAmount,
-
-        DueDay =
-          request.DueDay,
-
-        IsActive =
-          request.IsActive,
-
-        Notes =
-          request.Notes,
-
-        CreatedAtUtc =
-          DateTime.UtcNow
+        UserId = userId,
+        CategoryName = normalizedCategoryName,
+        Name = normalizedName,
+        ExpectedAmount = request.ExpectedAmount,
+        DueDay = request.DueDay,
+        IsActive = request.IsActive,
+        Notes = string.IsNullOrWhiteSpace(request.Notes)
+          ? null
+          : request.Notes.Trim(),
+        CreatedAtUtc = DateTime.UtcNow
       };
 
+    /*
+      Insert the new recurring template.
+    */
     await RecurringBillTemplates.InsertOneAsync(
       template);
 
+    /*
+      Convert the saved MongoDB model into the API response.
+    */
     return RecurringBillTemplateMapper.ToResponse(
       template);
   }

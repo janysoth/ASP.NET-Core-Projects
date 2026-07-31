@@ -79,28 +79,43 @@ public class RecurringBillTemplateController : BudgetControllerBase
   }
 
   /*===========================================================
-    CreateTemplate:
-    => Creates a recurring Fixed Expense bill template.
+      POST: /api/budget/bill-templates
 
-    Required:
-    => CategoryName
-    => Name
-    => ExpectedAmount greater than 0
-    => DueDay between 1 and 31
-  ===========================================================*/
+      => Creates a recurring bill template.
+      => Returns 201 Created when successful.
+      => Returns 400 Bad Request when validation fails.
+      => Returns 409 Conflict when a duplicate template exists.
+    ===========================================================*/
   [HttpPost("bill-templates")]
   public async Task<ActionResult<RecurringBillTemplateResponse>>
     CreateTemplate(
       CreateRecurringBillTemplateRequest request)
   {
+    /*
+      Get the logged-in user's ID from the JWT token.
+    */
     var userId =
       GetUserId();
 
+    /*
+      Reject the request when the token does not contain
+      a valid user ID.
+    */
     if (userId == null)
     {
       return Unauthorized();
     }
 
+    /*
+      Validate the request before sending it to the service.
+
+      This checks values such as:
+
+      - Category name
+      - Bill name
+      - Expected amount
+      - Due day
+    */
     var validationError =
       ValidateTemplate(
         request.CategoryName,
@@ -108,30 +123,71 @@ public class RecurringBillTemplateController : BudgetControllerBase
         request.ExpectedAmount,
         request.DueDay);
 
+    /*
+      Return 400 Bad Request when the request values
+      are invalid.
+    */
     if (validationError != null)
     {
       return BadRequest(
-        validationError);
+        new
+        {
+          message = validationError
+        });
     }
 
-    var template =
-      await _templateService.CreateTemplateAsync(
-        request,
-        userId);
-
-    if (template == null)
+    try
     {
-      return BadRequest(
-        "The recurring bill template could not be created.");
-    }
+      /*
+        Ask the service to create the recurring template.
 
-    return CreatedAtAction(
-      nameof(GetTemplateById),
-      new
+        The service also checks whether a duplicate
+        template already exists.
+      */
+      var template =
+        await _templateService.CreateTemplateAsync(
+          request,
+          userId);
+
+      /*
+        Protect against an unexpected null result.
+      */
+      if (template == null)
       {
-        templateId = template.Id
-      },
-      template);
+        return BadRequest(
+          new
+          {
+            message =
+              "The recurring bill template could not be created."
+          });
+      }
+
+      /*
+        Return 201 Created and include the new template
+        in the response body.
+      */
+      return CreatedAtAction(
+        nameof(GetTemplateById),
+        new
+        {
+          templateId = template.Id
+        },
+        template);
+    }
+    catch (InvalidOperationException exception)
+    {
+      /*
+        A duplicate template conflicts with existing data.
+
+        Return 409 Conflict instead of exposing an
+        unhandled exception and stack trace.
+      */
+      return Conflict(
+        new
+        {
+          message = exception.Message
+        });
+    }
   }
 
   /*===========================================================
