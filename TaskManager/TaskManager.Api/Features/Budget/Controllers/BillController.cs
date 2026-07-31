@@ -264,36 +264,72 @@ public class BillsController : BudgetControllerBase
   }
 
   /*===========================================================
-    DeleteBill:
-    => Deletes one bill.
-    => If the bill was paid, also deletes the linked
-       ExpenseRecord created by that payment.
-  ===========================================================*/
+      DELETE: /api/budget/bills/{billId}
+
+      => Deletes an unpaid bill.
+      => Returns the deleted bill.
+      => Returns 404 when the bill cannot be found.
+      => Returns 409 when the bill has already been paid.
+    ===========================================================*/
   [HttpDelete("bills/{billId}")]
   public async Task<ActionResult<BillResponse>> DeleteBill(
     string billId)
   {
-    var userId =
-      GetUserId();
+    /*
+      Get the logged-in user's ID from the JWT token.
+    */
+    var userId = GetUserId();
 
-    if (userId == null)
+    /*
+      Reject the request when the token does not contain
+      a valid user ID.
+    */
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    var deletedBill =
-      await _billService.DeleteBillAsync(
-        billId,
-        userId);
-
-    if (deletedBill == null)
+    try
     {
-      return NotFound(
-        "Bill not found.");
-    }
+      /*
+        Ask the service to delete the bill.
+      */
+      var deletedBill =
+        await _billService.DeleteBillAsync(
+          billId,
+          userId);
 
-    return Ok(
-      deletedBill);
+      /*
+        A null result means the bill was not found or does
+        not belong to the logged-in user.
+      */
+      if (deletedBill is null)
+      {
+        return NotFound(new
+        {
+          message = "Bill not found."
+        });
+      }
+
+      /*
+        Return the bill information that was deleted.
+      */
+      return Ok(deletedBill);
+    }
+    catch (InvalidOperationException exception)
+    {
+      /*
+        The request is valid, but the bill's current state
+        prevents it from being deleted.
+
+        A paid bill conflicts with the delete operation
+        because it is linked to an expense record.
+      */
+      return Conflict(new
+      {
+        message = exception.Message
+      });
+    }
   }
 
   /*===========================================================

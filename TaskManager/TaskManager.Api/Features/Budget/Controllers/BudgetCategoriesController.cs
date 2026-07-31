@@ -145,26 +145,36 @@ public class BudgetCategoriesController : BudgetControllerBase
     => Returns the deleted category information.
   ===========================================================*/
   [HttpDelete("categories/{categoryId}")]
-  public async Task<ActionResult<BudgetCategoryResponse>>
-    DeleteBudgetCategory(string categoryId)
+  public async Task<ActionResult<BudgetCategoryResponse>> DeleteBudgetCategory(
+  string categoryId)
   {
     var userId = GetUserId();
 
-    if (userId == null)
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    var deletedCategory =
-      await _categoryService.DeleteBudgetCategoryAsync(
-        categoryId,
-        userId);
-
-    if (deletedCategory == null)
+    try
     {
-      return NotFound("Budget category not found.");
-    }
+      var deletedCategory =
+        await _categoryService.DeleteBudgetCategoryAsync(
+          categoryId,
+          userId);
 
-    return Ok(deletedCategory);
+      if (deletedCategory is null)
+      {
+        return NotFound("Budget category not found.");
+      }
+
+      return Ok(deletedCategory);
+    }
+    catch (InvalidOperationException exception)
+    {
+      return Conflict(new
+      {
+        message = exception.Message
+      });
+    }
   }
 }

@@ -431,24 +431,29 @@ public class BillService : BudgetBaseService
   }
 
   /*===========================================================
-    DeleteBillAsync:
-    => Deletes one bill owned by the logged-in user.
+      DeleteBillAsync:
+      => Deletes an unpaid bill owned by the logged-in user.
+      => Returns the deleted bill information.
 
-    If the bill is paid:
-    => Deletes the ExpenseRecord created by the bill.
+      Important:
+      => A paid bill cannot be deleted because it is linked
+         to an ExpenseRecord.
 
-    This reverses:
-    => Transaction history.
-    => Category spending.
-    => Account balance impact.
-  ===========================================================*/
+      => The payment must be reversed before the bill can
+         be deleted.
+
+      => Deleting an unpaid bill does not delete its category.
+    ===========================================================*/
   public async Task<BillResponse?> DeleteBillAsync(
     string billId,
     string userId)
   {
-    /*---------------------------------------------------------
-      Find the bill before deleting it.
-    ---------------------------------------------------------*/
+    /*
+      Find the bill before attempting to delete it.
+
+      The userId condition ensures that users can only
+      delete their own bills.
+    */
     var bill =
       await Bills
         .Find(existingBill =>
@@ -456,42 +461,68 @@ public class BillService : BudgetBaseService
           existingBill.UserId == userId)
         .FirstOrDefaultAsync();
 
-    if (bill == null)
+    /*
+      Return null when the bill does not exist or does not
+      belong to the logged-in user.
+    */
+    if (bill is null)
     {
       return null;
     }
 
-    /*---------------------------------------------------------
-      Build the response before deleting related records.
-    ---------------------------------------------------------*/
-    var deletedBill =
-      await BuildBillResponseAsync(
-        bill,
-        userId);
+    /*
+      Protect paid bills from deletion.
 
-    /*---------------------------------------------------------
-      If this bill created an ExpenseRecord, delete it too.
-    ---------------------------------------------------------*/
-    if (!string.IsNullOrWhiteSpace(
-      bill.ExpenseRecordId))
+      A paid bill should have an ExpenseRecordId linking it
+      to the expense created when the bill was paid.
+
+      Deleting the bill while preserving the expense would
+      remove important bill-payment history.
+    */
+    if (bill.IsPaid ||
+        !string.IsNullOrWhiteSpace(bill.ExpenseRecordId))
     {
-      await ExpenseRecords.DeleteOneAsync(
-        expense =>
-          expense.Id ==
-            bill.ExpenseRecordId &&
-          expense.UserId ==
-            userId);
+      throw new InvalidOperationException(
+        "A paid bill cannot be deleted because it is part of the payment history.");
     }
 
-    /*---------------------------------------------------------
-      Delete the bill itself.
-    ---------------------------------------------------------*/
+    /*
+      Load the budget category used by the bill.
+
+      This allows the deleted response to include the
+      category name.
+    */
+    var category =
+      await BudgetCategories
+        .Find(existingCategory =>
+          existingCategory.Id == bill.BudgetCategoryId &&
+          existingCategory.UserId == userId)
+        .FirstOrDefaultAsync();
+
+    /*
+      Build the response before deleting the bill.
+
+      After the document is deleted, we still want to return
+      the bill information to the client.
+    */
+    var deletedBill =
+      BillMapper.ToResponse(
+        bill,
+        category);
+
+    /*
+      Delete the unpaid bill.
+    */
     var deleteResult =
       await Bills.DeleteOneAsync(
         existingBill =>
           existingBill.Id == billId &&
           existingBill.UserId == userId);
 
+    /*
+      This protects against an unexpected situation where
+      the bill was found but was not actually deleted.
+    */
     if (deleteResult.DeletedCount == 0)
     {
       return null;
@@ -505,6 +536,8 @@ public class BillService : BudgetBaseService
     => Marks a Fixed Expense bill as paid.
     => Creates one ExpenseRecord for the actual payment.
     => PaidDate cannot be in the future.
+    => PaidDate may be up to 14 days before the budget month.
+    => PaidDate cannot be after the budget month ends.
 
     Option A:
 
@@ -520,8 +553,8 @@ public class BillService : BudgetBaseService
     => RemainingAmount = $0
 
     Budget:
-    => Planned = $80
-    => Spent   = $74
+    => Planned   = $80
+    => Spent     = $74
     => Remaining = $6
   ===========================================================*/
   public async Task<BillResponse?> MarkBillPaidAsync(
@@ -561,12 +594,127 @@ public class BillService : BudgetBaseService
     }
 
     /*---------------------------------------------------------
+      Normalize the payment date.
+
+      Using .Date ensures that time-of-day differences do not
+      affect date validation.
+    ---------------------------------------------------------*/
+    var paidDate =
+      request.PaidDate.Date;
+
+    /*---------------------------------------------------------
       A payment represents money that has already moved.
 
       Future payment dates are not allowed.
     ---------------------------------------------------------*/
-    if (request.PaidDate.Date >
+    if (paidDate >
         DateTime.UtcNow.Date)
+    {
+      return null;
+    }
+
+    /*---------------------------------------------------------
+      Load the budget month that owns this bill.
+
+      We need the month and year to calculate the allowed
+      payment-date window.
+    ---------------------------------------------------------*/
+    var budgetMonth =
+      await BudgetMonths
+        .Find(existingMonth =>
+          existingMonth.Id ==
+            bill.BudgetMonthId &&
+          existingMonth.UserId ==
+            userId)
+        .FirstOrDefaultAsync();
+
+    if (budgetMonth == null)
+    {
+      return null;
+    }
+
+    /*---------------------------------------------------------
+      Validate the stored month before creating DateTime values.
+
+      The application currently stores months using:
+
+      January  = 1
+      August   = 8
+      December = 12
+    ---------------------------------------------------------*/
+    if (budgetMonth.Month < 1 ||
+        budgetMonth.Month > 12)
+    {
+      return null;
+    }
+
+    /*---------------------------------------------------------
+      Determine the first and last days of the budget month.
+
+      Example:
+
+      Budget month:
+      August 2026
+
+      Start:
+      August 1, 2026
+
+      End:
+      August 31, 2026
+    ---------------------------------------------------------*/
+    var budgetMonthStart =
+      new DateTime(
+        budgetMonth.Year,
+        budgetMonth.Month,
+        1,
+        0,
+        0,
+        0,
+        DateTimeKind.Utc);
+
+    var budgetMonthEnd =
+      budgetMonthStart
+        .AddMonths(1)
+        .AddDays(-1);
+
+    /*---------------------------------------------------------
+      A bill may be paid up to 14 days before its budget month.
+
+      Example:
+
+      August 2026 bill
+
+      Earliest allowed payment:
+      July 18, 2026
+    ---------------------------------------------------------*/
+    var earliestAllowedPaidDate =
+      budgetMonthStart
+        .AddDays(-14);
+
+    /*---------------------------------------------------------
+      Prevent a bill from being paid too early.
+
+      This avoids assigning an August bill to a payment made
+      several months before August.
+    ---------------------------------------------------------*/
+    if (paidDate <
+        earliestAllowedPaidDate)
+    {
+      return null;
+    }
+
+    /*---------------------------------------------------------
+      Prevent a bill from being paid after its budget month.
+
+      Example:
+
+      An August bill cannot be paid with a September date.
+
+      The future-date validation will normally catch future
+      dates first, but this also protects older budget months.
+    ---------------------------------------------------------*/
+    if (paidDate >
+        budgetMonthEnd)
     {
       return null;
     }
@@ -636,7 +784,7 @@ public class BillService : BudgetBaseService
           request.ActualAmount,
 
         ExpenseDate =
-          request.PaidDate,
+          paidDate,
 
         Notes =
           request.Notes ??
@@ -665,7 +813,7 @@ public class BillService : BudgetBaseService
         .Set(
           existingBill =>
             existingBill.PaidDate,
-          request.PaidDate);
+          paidDate);
 
     /*---------------------------------------------------------
       !IsPaid protects against two requests trying to pay
@@ -674,8 +822,10 @@ public class BillService : BudgetBaseService
     var updateResult =
       await Bills.UpdateOneAsync(
         existingBill =>
-          existingBill.Id == bill.Id &&
-          existingBill.UserId == userId &&
+          existingBill.Id ==
+            bill.Id &&
+          existingBill.UserId ==
+            userId &&
           !existingBill.IsPaid,
         billUpdate);
 
@@ -701,8 +851,10 @@ public class BillService : BudgetBaseService
     var updatedBill =
       await Bills
         .Find(existingBill =>
-          existingBill.Id == bill.Id &&
-          existingBill.UserId == userId)
+          existingBill.Id ==
+            bill.Id &&
+          existingBill.UserId ==
+            userId)
         .FirstOrDefaultAsync();
 
     if (updatedBill == null)

@@ -333,7 +333,8 @@ public class BudgetCategoryService : BudgetBaseService
     */
     if (bills.Count > 0)
     {
-      return null;
+      throw new InvalidOperationException(
+        "This budget category cannot be deleted because one or more bills still reference it. Delete or move the linked bills first.");
     }
 
     /*
