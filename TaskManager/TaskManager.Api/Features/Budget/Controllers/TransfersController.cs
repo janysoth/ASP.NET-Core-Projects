@@ -7,28 +7,42 @@ namespace TaskManager.Api.Features.Budget.Controllers;
 [ApiController]
 
 // Base route for account transfer endpoints.
-// Example:
-// GET    /api/budget/transfers
-// POST   /api/budget/transfers
-// PATCH  /api/budget/transfers/{transferId}
-// DELETE /api/budget/transfers/{transferId}
+//
+// Examples:
+//
+// GET:
+// /api/budget/transfers
+//
+// POST:
+// /api/budget/transfers
+//
+// PATCH:
+// /api/budget/transfers/{transferId}
+//
+// DELETE:
+// /api/budget/transfers/{transferId}
 [Route("api/budget/transfers")]
 public class TransfersController : BudgetControllerBase
 {
   // Service responsible for account transfer business logic.
   private readonly TransferService _transferService;
 
-  // Constructor used for Dependency Injection (DI).
+  /*===========================================================
+    TransfersController Constructor
+  ===========================================================*/
   public TransfersController(
     TransferService transferService)
   {
-    _transferService = transferService;
+    _transferService =
+      transferService;
   }
 
   /*===========================================================
     GetTransfers:
-    => GET: api/budget/transfers
-    => Gets all account transfers for the logged-in user.
+    => Gets all account transfers belonging to the
+       logged-in user.
+
+    GET /api/budget/transfers
   ===========================================================*/
   [HttpGet]
   public async Task<ActionResult<List<AccountTransferResponse>>>
@@ -37,15 +51,14 @@ public class TransfersController : BudgetControllerBase
     var userId =
       GetUserId();
 
-    if (userId == null)
+    if (userId is null)
     {
       return Unauthorized();
     }
 
     var transfers =
-      await _transferService
-        .GetTransfersAsync(
-          userId);
+      await _transferService.GetTransfersAsync(
+        userId);
 
     return Ok(
       transfers);
@@ -53,19 +66,23 @@ public class TransfersController : BudgetControllerBase
 
   /*===========================================================
     CreateTransfer:
-    => POST: api/budget/transfers
-    => Creates a transfer between two accounts.
+    => Creates a transfer between two financial accounts.
 
     Supported examples:
 
-    Checking → Savings
-    Savings  → Checking
-    Checking → CreditCard
-    Savings  → CreditCard
+    Checking -> Savings
+    Savings  -> Checking
+    Checking -> CreditCard
+    Savings  -> CreditCard
 
-    IMPORTANT:
+    Important:
+
     => Transfers do not create expenses.
     => Transfers are not linked to bills.
+    => Source and destination accounts must be different.
+    => Future transfer dates are not allowed.
+
+    POST /api/budget/transfers
   ===========================================================*/
   [HttpPost]
   public async Task<ActionResult<AccountTransferResponse>>
@@ -75,54 +92,79 @@ public class TransfersController : BudgetControllerBase
     var userId =
       GetUserId();
 
-    if (userId == null)
+    if (userId is null)
     {
       return Unauthorized();
     }
 
     if (string.IsNullOrWhiteSpace(
-      request.FromAccountId))
+        request.FromAccountId))
     {
       return BadRequest(
-        "Source account is required.");
+        new
+        {
+          message =
+            "Source account is required."
+        });
     }
 
     if (string.IsNullOrWhiteSpace(
-      request.ToAccountId))
+        request.ToAccountId))
     {
       return BadRequest(
-        "Destination account is required.");
+        new
+        {
+          message =
+            "Destination account is required."
+        });
     }
 
-    if (request.FromAccountId ==
-        request.ToAccountId)
+    if (string.Equals(
+        request.FromAccountId,
+        request.ToAccountId,
+        StringComparison.Ordinal))
     {
       return BadRequest(
-        "Source and destination accounts cannot be the same.");
+        new
+        {
+          message =
+            "Source and destination accounts cannot be the same."
+        });
     }
 
     if (request.Amount <= 0)
     {
       return BadRequest(
-        "Transfer amount must be greater than 0.");
+        new
+        {
+          message =
+            "Transfer amount must be greater than 0."
+        });
     }
 
     if (request.TransferDate == default)
     {
       return BadRequest(
-        "Transfer date is required.");
+        new
+        {
+          message =
+            "Transfer date is required."
+        });
     }
 
     var transfer =
-      await _transferService
-        .CreateTransferAsync(
-          request,
-          userId);
+      await _transferService.CreateTransferAsync(
+        request,
+        userId);
 
-    if (transfer == null)
+    if (transfer is null)
     {
       return BadRequest(
-        "The transfer could not be created. Check the accounts, transfer date, amount, or credit-card balance.");
+        new
+        {
+          message =
+            "The transfer could not be created. Check the accounts, transfer date, amount, or credit-card balance."
+        });
     }
 
     return Ok(
@@ -131,9 +173,10 @@ public class TransfersController : BudgetControllerBase
 
   /*===========================================================
     PatchTransfer:
-    => PATCH: api/budget/transfers/{transferId}
     => Partially updates an existing account transfer.
     => Only supplied fields are changed.
+
+    PATCH /api/budget/transfers/{transferId}
   ===========================================================*/
   [HttpPatch("{transferId}")]
   public async Task<ActionResult<AccountTransferResponse>>
@@ -144,22 +187,97 @@ public class TransfersController : BudgetControllerBase
     var userId =
       GetUserId();
 
-    if (userId == null)
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    var updatedTransfer =
-      await _transferService
-        .PatchTransferAsync(
-          transferId,
-          request,
-          userId);
-
-    if (updatedTransfer == null)
+    if (string.IsNullOrWhiteSpace(
+        transferId))
     {
       return BadRequest(
-        "The transfer could not be updated. Check the accounts, transfer date, amount, or credit-card balance.");
+        new
+        {
+          message =
+            "Transfer ID is required."
+        });
+    }
+
+    if (request.FromAccountId is not null &&
+        string.IsNullOrWhiteSpace(
+          request.FromAccountId))
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "Source account cannot be empty."
+        });
+    }
+
+    if (request.ToAccountId is not null &&
+        string.IsNullOrWhiteSpace(
+          request.ToAccountId))
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "Destination account cannot be empty."
+        });
+    }
+
+    if (request.FromAccountId is not null &&
+        request.ToAccountId is not null &&
+        string.Equals(
+          request.FromAccountId,
+          request.ToAccountId,
+          StringComparison.Ordinal))
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "Source and destination accounts cannot be the same."
+        });
+    }
+
+    if (request.Amount.HasValue &&
+        request.Amount.Value <= 0)
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "Transfer amount must be greater than 0."
+        });
+    }
+
+    if (request.TransferDate.HasValue &&
+        request.TransferDate.Value == default)
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "Transfer date is invalid."
+        });
+    }
+
+    var updatedTransfer =
+      await _transferService.PatchTransferAsync(
+        transferId,
+        request,
+        userId);
+
+    if (updatedTransfer is null)
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "The transfer could not be updated. Check the accounts, transfer date, amount, or credit-card balance."
+        });
     }
 
     return Ok(
@@ -168,9 +286,10 @@ public class TransfersController : BudgetControllerBase
 
   /*===========================================================
     DeleteTransfer:
-    => DELETE: api/budget/transfers/{transferId}
     => Deletes an existing account transfer.
     => Account balances recalculate from the remaining data.
+
+    DELETE /api/budget/transfers/{transferId}
   ===========================================================*/
   [HttpDelete("{transferId}")]
   public async Task<ActionResult<AccountTransferResponse>>
@@ -180,21 +299,35 @@ public class TransfersController : BudgetControllerBase
     var userId =
       GetUserId();
 
-    if (userId == null)
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    var deletedTransfer =
-      await _transferService
-        .DeleteTransferAsync(
-          transferId,
-          userId);
+    if (string.IsNullOrWhiteSpace(
+        transferId))
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "Transfer ID is required."
+        });
+    }
 
-    if (deletedTransfer == null)
+    var deletedTransfer =
+      await _transferService.DeleteTransferAsync(
+        transferId,
+        userId);
+
+    if (deletedTransfer is null)
     {
       return NotFound(
-        "Transfer not found.");
+        new
+        {
+          message =
+            "Transfer not found."
+        });
     }
 
     return Ok(

@@ -34,28 +34,35 @@ public sealed class ExpenseController : BudgetControllerBase
       [FromQuery] int? month,
       [FromQuery] int? year)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId is null)
     {
       return Unauthorized();
     }
 
-    // DateTime.Month uses:
-    //
-    // January = 1
-    // December = 12
     if (month.HasValue &&
-        (month.Value < 1 || month.Value > 12))
+        (month.Value < 1 ||
+         month.Value > 12))
     {
       return BadRequest(
-        "Month must be between 1 and 12.");
+        new
+        {
+          message =
+            "Month must be between 1 and 12."
+        });
     }
 
-    if (year.HasValue && year.Value < 2000)
+    if (year.HasValue &&
+        year.Value < 2000)
     {
       return BadRequest(
-        "Year is invalid.");
+        new
+        {
+          message =
+            "Year is invalid."
+        });
     }
 
     var expenses =
@@ -64,7 +71,8 @@ public sealed class ExpenseController : BudgetControllerBase
         month,
         year);
 
-    return Ok(expenses);
+    return Ok(
+      expenses);
   }
 
   /*===========================================================
@@ -78,17 +86,23 @@ public sealed class ExpenseController : BudgetControllerBase
     GetExpenseById(
       string expenseId)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId is null)
     {
       return Unauthorized();
     }
 
-    if (string.IsNullOrWhiteSpace(expenseId))
+    if (string.IsNullOrWhiteSpace(
+        expenseId))
     {
       return BadRequest(
-        "Expense ID is required.");
+        new
+        {
+          message =
+            "Expense ID is required."
+        });
     }
 
     var expense =
@@ -99,10 +113,15 @@ public sealed class ExpenseController : BudgetControllerBase
     if (expense is null)
     {
       return NotFound(
-        "Expense was not found.");
+        new
+        {
+          message =
+            "Expense was not found."
+        });
     }
 
-    return Ok(expense);
+    return Ok(
+      expense);
   }
 
   /*===========================================================
@@ -417,28 +436,34 @@ public sealed class ExpenseController : BudgetControllerBase
   }
 
   /*===========================================================
-    DeleteExpense:
-    => Deletes one expense owned by the current user.
-    => Returns the deleted expense.
+   DeleteExpense:
+   => Deletes one expense owned by the current user.
+   => Returns the deleted expense.
 
-    DELETE /api/budget/expenses/{expenseId}
-  ===========================================================*/
+   DELETE /api/budget/expenses/{expenseId}
+ ===========================================================*/
   [HttpDelete("expenses/{expenseId}")]
   public async Task<ActionResult<ExpenseResponse>>
     DeleteExpense(
       string expenseId)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId is null)
     {
       return Unauthorized();
     }
 
-    if (string.IsNullOrWhiteSpace(expenseId))
+    if (string.IsNullOrWhiteSpace(
+        expenseId))
     {
       return BadRequest(
-        "Expense ID is required.");
+        new
+        {
+          message =
+            "Expense ID is required."
+        });
     }
 
     var expense =
@@ -449,9 +474,15 @@ public sealed class ExpenseController : BudgetControllerBase
     if (expense is null)
     {
       return NotFound(
-        "Expense was not found.");
+        new
+        {
+          message =
+            "Expense was not found."
+        });
     }
 
-    return Ok(expense);
+    return Ok(
+      expense);
   }
+
 }

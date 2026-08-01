@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-// using TaskManager.Api.Features.Budget.DTOs;
 using TaskManager.Api.Features.Budget.Services;
 
 namespace TaskManager.Api.Features.Budget.Controllers;
@@ -17,196 +16,290 @@ namespace TaskManager.Api.Features.Budget.Controllers;
 [Route("api/budget/months")]
 public class BudgetMonthsController : BudgetControllerBase
 {
-  // Service responsible for budget month business logic
+  // Service responsible for budget month business logic.
   private readonly BudgetMonthService _budgetMonthService;
 
-  // Constructor used for Dependency Injection (DI)
-  public BudgetMonthsController(BudgetMonthService budgetMonthService)
+  /*===========================================================
+    BudgetMonthsController Constructor
+  ===========================================================*/
+  public BudgetMonthsController(
+    BudgetMonthService budgetMonthService)
   {
-    _budgetMonthService = budgetMonthService;
+    _budgetMonthService =
+      budgetMonthService;
   }
 
-  // ==========================================
-  // GET: api/budget/months
-  // Gets all budget months for the logged-in user.
-  // ==========================================
+  /*===========================================================
+    GetBudgetMonths:
+    => Gets all budget months for the logged-in user.
+
+    GET /api/budget/months
+  ===========================================================*/
   [HttpGet]
-  public async Task<ActionResult<List<BudgetMonthResponse>>> GetBudgetMonths()
+  public async Task<ActionResult<List<BudgetMonthResponse>>>
+    GetBudgetMonths()
   {
-    // Get the authenticated user's ID
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
-    // Return 401 if the user is not authenticated
-    if (userId == null)
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    // Get all budget months that belong to this user
-    var budgetMonths = await _budgetMonthService.GetBudgetMonthsAsync(userId);
+    var budgetMonths =
+      await _budgetMonthService
+        .GetBudgetMonthsAsync(
+          userId);
 
-    // Return the budget month list
-    return Ok(budgetMonths);
+    return Ok(
+      budgetMonths);
   }
 
-  // ==========================================
-  // GET: api/budget/months/{id}
-  // Gets one budget month by ID.
-  // ==========================================
+  /*===========================================================
+    GetBudgetMonthById:
+    => Gets one budget month by ID.
+    => Returns 404 when the budget month does not exist or
+       does not belong to the logged-in user.
+
+    GET /api/budget/months/{id}
+  ===========================================================*/
   [HttpGet("{id}")]
-  public async Task<ActionResult<BudgetMonthResponse>> GetBudgetMonthById(
-    string id)
+  public async Task<ActionResult<BudgetMonthResponse>>
+    GetBudgetMonthById(
+      string id)
   {
-    // Get the authenticated user's ID
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
-    // Return 401 if the user is not authenticated
-    if (userId == null)
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    // Get the selected budget month
-    var budgetMonth = await _budgetMonthService.GetBudgetMonthByIdAsync(id, userId);
-
-    // Return 404 if the budget month does not exist
-    // or does not belong to the current user
-    if (budgetMonth == null)
+    if (string.IsNullOrWhiteSpace(
+        id))
     {
-      return NotFound("Budget month not found.");
+      return BadRequest(
+        new
+        {
+          message =
+            "Budget month ID is required."
+        });
     }
 
-    // Return the selected budget month
-    return Ok(budgetMonth);
+    var budgetMonth =
+      await _budgetMonthService
+        .GetBudgetMonthByIdAsync(
+          id,
+          userId);
+
+    if (budgetMonth is null)
+    {
+      return NotFound(
+        new
+        {
+          message =
+            "Budget month not found."
+        });
+    }
+
+    return Ok(
+      budgetMonth);
   }
 
-  // ==========================================
-  // POST: api/budget/months
-  // Creates a new budget month.
-  // ==========================================
-  [HttpPost]
-  public async Task<ActionResult<BudgetMonthResponse>> CreateBudgetMonth(
-    CreateBudgetMonthRequest request)
-  {
-    // Get the authenticated user's ID
-    var userId = GetUserId();
+  /*===========================================================
+    CreateBudgetMonth:
+    => Creates a new budget month.
+    => Prevents duplicate month and year combinations.
 
-    // Return 401 if the user is not authenticated
-    if (userId == null)
+    POST /api/budget/months
+  ===========================================================*/
+  [HttpPost]
+  public async Task<ActionResult<BudgetMonthResponse>>
+    CreateBudgetMonth(
+      CreateBudgetMonthRequest request)
+  {
+    var userId =
+      GetUserId();
+
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    // Validate that the month is between January (1)
-    // and December (12)
-    if (request.Month < 1 || request.Month > 12)
+    if (request.Month < 1 ||
+        request.Month > 12)
     {
-      return BadRequest("Month must be between 1 and 12.");
+      return BadRequest(
+        new
+        {
+          message =
+            "Month must be between 1 and 12."
+        });
     }
 
-    // Validate that the year is reasonable
     if (request.Year < 2000)
     {
-      return BadRequest("Year is invalid.");
+      return BadRequest(
+        new
+        {
+          message =
+            "Year is invalid."
+        });
     }
 
-    // Prevent negative planned income
     if (request.PlannedIncome < 0)
     {
-      return BadRequest("Planned income cannot be negative.");
+      return BadRequest(
+        new
+        {
+          message =
+            "Planned income cannot be negative."
+        });
     }
 
-    // Create the new budget month
-    var createdBudgetMonth = await _budgetMonthService.CreateBudgetMonthAsync(
-      request,
-      userId);
+    var createdBudgetMonth =
+      await _budgetMonthService
+        .CreateBudgetMonthAsync(
+          request,
+          userId);
 
-    // Return 409 if a budget month already exists
-    // for the same month and year
-    if (createdBudgetMonth == null)
+    if (createdBudgetMonth is null)
     {
-      return Conflict("A budget month already exists for this month and year.");
+      return Conflict(
+        new
+        {
+          message =
+            "A budget month already exists for this month and year."
+        });
     }
 
-    // Return HTTP 201 Created with the location
-    // of the newly created budget month
     return CreatedAtAction(
       nameof(GetBudgetMonthById),
-      new { id = createdBudgetMonth.Id },
+      new
+      {
+        id =
+          createdBudgetMonth.Id
+      },
       createdBudgetMonth);
   }
 
-  // ==========================================
-  // PUT: api/budget/months/{id}
-  // Updates an existing budget month.
-  // ==========================================
-  [HttpPut("{id}")]
-  public async Task<ActionResult<BudgetMonthResponse>> UpdateBudgetMonth(
-    string id,
-    UpdateBudgetMonthRequest request)
-  {
-    // Get the authenticated user's ID
-    var userId = GetUserId();
+  /*===========================================================
+    UpdateBudgetMonth:
+    => Updates the planned income for an existing budget month.
+    => Returns 404 when the budget month does not exist or
+       does not belong to the logged-in user.
 
-    // Return 401 if the user is not authenticated
-    if (userId == null)
+    PUT /api/budget/months/{id}
+  ===========================================================*/
+  [HttpPut("{id}")]
+  public async Task<ActionResult<BudgetMonthResponse>>
+    UpdateBudgetMonth(
+      string id,
+      UpdateBudgetMonthRequest request)
+  {
+    var userId =
+      GetUserId();
+
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    // Prevent negative planned income
+    if (string.IsNullOrWhiteSpace(
+        id))
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "Budget month ID is required."
+        });
+    }
+
     if (request.PlannedIncome < 0)
     {
-      return BadRequest("Planned income cannot be negative.");
+      return BadRequest(
+        new
+        {
+          message =
+            "Planned income cannot be negative."
+        });
     }
 
-    // Update the selected budget month
-    var updatedBudgetMonth = await _budgetMonthService.UpdateBudgetMonthAsync(
-      id,
-      request,
-      userId);
+    var updatedBudgetMonth =
+      await _budgetMonthService
+        .UpdateBudgetMonthAsync(
+          id,
+          request,
+          userId);
 
-    // Return 404 if the budget month does not exist
-    // or does not belong to the current user
-    if (updatedBudgetMonth == null)
+    if (updatedBudgetMonth is null)
     {
-      return NotFound("Budget month not found.");
+      return NotFound(
+        new
+        {
+          message =
+            "Budget month not found."
+        });
     }
 
-    // Return the updated budget month
-    return Ok(updatedBudgetMonth);
+    return Ok(
+      updatedBudgetMonth);
   }
 
-  // ==========================================
-  // DELETE: api/budget/months/{id}
-  // Deletes an existing budget month.
-  // ==========================================
-  [HttpDelete("{id}")]
-  public async Task<ActionResult<BudgetMonthResponse>> DeleteBudgetMonth(
-    string id)
-  {
-    // Get the authenticated user's ID
-    var userId = GetUserId();
+  /*===========================================================
+    DeleteBudgetMonth:
+    => Deletes an existing budget month.
+    => Also deletes its related budget records through the
+       service's cascade-delete logic.
+    => Returns 404 when the budget month does not exist or
+       does not belong to the logged-in user.
 
-    // Return 401 if the user is not authenticated
-    if (userId == null)
+    DELETE /api/budget/months/{id}
+  ===========================================================*/
+  [HttpDelete("{id}")]
+  public async Task<ActionResult<BudgetMonthResponse>>
+    DeleteBudgetMonth(
+      string id)
+  {
+    var userId =
+      GetUserId();
+
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    // Delete the selected budget month
-    var deletedBudgetMonth = await _budgetMonthService.DeleteBudgetMonthAsync(
-      id,
-      userId);
-
-    // Return 404 if the budget month does not exist
-    // or does not belong to the current user
-    if (deletedBudgetMonth == null)
+    if (string.IsNullOrWhiteSpace(
+        id))
     {
-      return NotFound("Budget month not found.");
+      return BadRequest(
+        new
+        {
+          message =
+            "Budget month ID is required."
+        });
     }
 
-    // Return the deleted budget month
-    return Ok(deletedBudgetMonth);
+    var deletedBudgetMonth =
+      await _budgetMonthService
+        .DeleteBudgetMonthAsync(
+          id,
+          userId);
+
+    if (deletedBudgetMonth is null)
+    {
+      return NotFound(
+        new
+        {
+          message =
+            "Budget month not found."
+        });
+    }
+
+    return Ok(
+      deletedBudgetMonth);
   }
 }

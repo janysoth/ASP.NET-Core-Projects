@@ -22,46 +22,67 @@ public class DashboardController : BudgetControllerBase
     _dashboardService = dashboardService;
   }
 
-  // ==========================================
-  // GET: api/budget/dashboard
-  // Returns a dashboard summary for the selected
-  // month and year.
-  // ==========================================
-  [HttpGet]
-  public async Task<ActionResult<DashboardSummaryResponse>> GetDashboardSummary(
-    [FromQuery] int month,
-    [FromQuery] int year)
-  {
-    // Get the authenticated user's ID
-    var userId = GetUserId();
+  /*===========================================================
+   GetDashboardSummary:
+   => Returns the dashboard summary for a selected
+      budget month.
 
-    // Return 401 if the user is not authenticated
-    if (userId == null)
+   GET /api/budget/dashboard?month=7&year=2026
+ ===========================================================*/
+  [HttpGet]
+  public async Task<ActionResult<DashboardSummaryResponse>>
+    GetDashboardSummary(
+      [FromQuery] int month,
+      [FromQuery] int year)
+  {
+    /*---------------------------------------------------------
+      Get the authenticated user's ID
+    ---------------------------------------------------------*/
+    var userId =
+      GetUserId();
+
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    // Validate that the month is between January (1)
-    // and December (12)
+    /*---------------------------------------------------------
+      Validate month
+    ---------------------------------------------------------*/
     if (month < 1 || month > 12)
     {
-      return BadRequest("Month must be between 1 and 12.");
+      return BadRequest(
+        new
+        {
+          message =
+            "Month must be between 1 and 12."
+        });
     }
 
-    // Validate that the year is reasonable
+    /*---------------------------------------------------------
+      Validate year
+    ---------------------------------------------------------*/
     if (year < 2000)
     {
-      return BadRequest("Year is invalid.");
+      return BadRequest(
+        new
+        {
+          message =
+            "Year is invalid."
+        });
     }
 
-    // Build the dashboard summary for the selected
-    // month and year
-    var summary = await _dashboardService.GetDashboardSummaryAsync(
-      userId,
-      month,
-      year);
+    /*---------------------------------------------------------
+      Build dashboard summary
+    ---------------------------------------------------------*/
+    var summary =
+      await _dashboardService.GetDashboardSummaryAsync(
+        userId,
+        month,
+        year);
 
-    // Return the dashboard summary
-    return Ok(summary);
+    return Ok(
+      summary);
   }
+
 }

@@ -5,9 +5,11 @@ namespace TaskManager.Api.Features.Budget.Controllers;
 
 [ApiController]
 [Route("api/budget")]
-public class BudgetCategoriesController : BudgetControllerBase
+public class BudgetCategoriesController
+  : BudgetControllerBase
 {
-  private readonly BudgetCategoryService _categoryService;
+  private readonly BudgetCategoryService
+    _categoryService;
 
   /*===========================================================
     BudgetCategoriesController Constructor:
@@ -16,7 +18,8 @@ public class BudgetCategoriesController : BudgetControllerBase
   public BudgetCategoriesController(
     BudgetCategoryService categoryService)
   {
-    _categoryService = categoryService;
+    _categoryService =
+      categoryService;
   }
 
   /*===========================================================
@@ -24,6 +27,8 @@ public class BudgetCategoriesController : BudgetControllerBase
     => Creates a category inside a budget month.
     => Requires Fixed or Variable for Expense categories.
     => Returns the newly created category.
+
+    POST /api/budget/months/{budgetMonthId}/categories
   ===========================================================*/
   [HttpPost("months/{budgetMonthId}/categories")]
   public async Task<ActionResult<BudgetCategoryResponse>>
@@ -31,22 +36,45 @@ public class BudgetCategoriesController : BudgetControllerBase
       string budgetMonthId,
       CreateBudgetCategoryRequest request)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
-    if (userId == null)
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    if (string.IsNullOrWhiteSpace(request.Name))
-    {
-      return BadRequest("Category name is required.");
-    }
-
-    if (!IsValidCategoryType(request.Type))
+    if (string.IsNullOrWhiteSpace(
+        budgetMonthId))
     {
       return BadRequest(
-        "Category type must be Expense, or Savings.");
+        new
+        {
+          message =
+            "Budget month ID is required."
+        });
+    }
+
+    if (string.IsNullOrWhiteSpace(
+        request.Name))
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "Category name is required."
+        });
+    }
+
+    if (!IsValidCategoryType(
+        request.Type))
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "Category type must be Expense or Savings."
+        });
     }
 
     var classificationError =
@@ -54,29 +82,45 @@ public class BudgetCategoriesController : BudgetControllerBase
         request.Type,
         request.ExpenseType);
 
-    if (classificationError != null)
+    if (classificationError is not null)
     {
-      return BadRequest(classificationError);
+      return BadRequest(
+        new
+        {
+          message =
+            classificationError
+        });
     }
 
     if (request.PlannedAmount < 0)
     {
       return BadRequest(
-        "Planned amount cannot be negative.");
+        new
+        {
+          message =
+            "Planned amount cannot be negative."
+        });
     }
 
     var category =
-      await _categoryService.AddBudgetCategoryAsync(
-        budgetMonthId,
-        request,
-        userId);
+      await _categoryService
+        .AddBudgetCategoryAsync(
+          budgetMonthId,
+          request,
+          userId);
 
-    if (category == null)
+    if (category is null)
     {
-      return NotFound("Budget month not found.");
+      return NotFound(
+        new
+        {
+          message =
+            "Budget month not found."
+        });
     }
 
-    return Ok(category);
+    return Ok(
+      category);
   }
 
   /*===========================================================
@@ -84,6 +128,8 @@ public class BudgetCategoriesController : BudgetControllerBase
     => Updates a budget category.
     => Validates its main type and expense classification.
     => Returns the updated category.
+
+    PUT /api/budget/categories/{categoryId}
   ===========================================================*/
   [HttpPut("categories/{categoryId}")]
   public async Task<ActionResult<BudgetCategoryResponse>>
@@ -91,22 +137,45 @@ public class BudgetCategoriesController : BudgetControllerBase
       string categoryId,
       UpdateBudgetCategoryRequest request)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
-    if (userId == null)
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    if (string.IsNullOrWhiteSpace(request.Name))
-    {
-      return BadRequest("Category name is required.");
-    }
-
-    if (!IsValidCategoryType(request.Type))
+    if (string.IsNullOrWhiteSpace(
+        categoryId))
     {
       return BadRequest(
-        "Category type must be Expense, or Savings.");
+        new
+        {
+          message =
+            "Budget category ID is required."
+        });
+    }
+
+    if (string.IsNullOrWhiteSpace(
+        request.Name))
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "Category name is required."
+        });
+    }
+
+    if (!IsValidCategoryType(
+        request.Type))
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "Category type must be Expense or Savings."
+        });
     }
 
     var classificationError =
@@ -114,67 +183,109 @@ public class BudgetCategoriesController : BudgetControllerBase
         request.Type,
         request.ExpenseType);
 
-    if (classificationError != null)
+    if (classificationError is not null)
     {
-      return BadRequest(classificationError);
+      return BadRequest(
+        new
+        {
+          message =
+            classificationError
+        });
     }
 
     if (request.PlannedAmount < 0)
     {
       return BadRequest(
-        "Planned amount cannot be negative.");
+        new
+        {
+          message =
+            "Planned amount cannot be negative."
+        });
     }
 
     var updatedCategory =
-      await _categoryService.UpdateBudgetCategoryAsync(
-        categoryId,
-        request,
-        userId);
+      await _categoryService
+        .UpdateBudgetCategoryAsync(
+          categoryId,
+          request,
+          userId);
 
-    if (updatedCategory == null)
+    if (updatedCategory is null)
     {
-      return NotFound("Budget category not found.");
+      return NotFound(
+        new
+        {
+          message =
+            "Budget category not found or could not be updated."
+        });
     }
 
-    return Ok(updatedCategory);
+    return Ok(
+      updatedCategory);
   }
 
   /*===========================================================
     DeleteBudgetCategory:
     => Deletes one budget category.
     => Returns the deleted category information.
+    => Returns 409 Conflict when bills still reference it.
+
+    DELETE /api/budget/categories/{categoryId}
   ===========================================================*/
   [HttpDelete("categories/{categoryId}")]
-  public async Task<ActionResult<BudgetCategoryResponse>> DeleteBudgetCategory(
-  string categoryId)
+  public async Task<ActionResult<BudgetCategoryResponse>>
+    DeleteBudgetCategory(
+      string categoryId)
   {
-    var userId = GetUserId();
+    var userId =
+      GetUserId();
 
     if (userId is null)
     {
       return Unauthorized();
     }
 
+    if (string.IsNullOrWhiteSpace(
+        categoryId))
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "Budget category ID is required."
+        });
+    }
+
     try
     {
       var deletedCategory =
-        await _categoryService.DeleteBudgetCategoryAsync(
-          categoryId,
-          userId);
+        await _categoryService
+          .DeleteBudgetCategoryAsync(
+            categoryId,
+            userId);
 
       if (deletedCategory is null)
       {
-        return NotFound("Budget category not found.");
+        return NotFound(
+          new
+          {
+            message =
+              "Budget category not found."
+          });
       }
 
-      return Ok(deletedCategory);
+      return Ok(
+        deletedCategory);
     }
     catch (InvalidOperationException exception)
     {
-      return Conflict(new
-      {
-        message = exception.Message
-      });
+      return Conflict(
+        new
+        {
+          message =
+            exception.Message
+        });
     }
   }
+
 }
