@@ -9,7 +9,6 @@ import PreferencesCard from '../../components/profile/PreferencesCard';
 import ProfileCard from '../../components/profile/ProfileCard';
 import ProfileOverviewCard from '../../components/profile/ProfileOverviewCard';
 
-import { USER_PASSWORD_FIELDS } from '../../features/user/userFields';
 import { useAuth } from '../../hooks/useAuth';
 import { useForm } from '../../hooks/useForm';
 import {
@@ -17,6 +16,7 @@ import {
   updateProfileImage,
   updateProfileInfo,
 } from '../../services/api';
+import { USER_PASSWORD_FIELDS } from '../../utils/user/userFields';
 
 const UserInfoPage = () => {
   const { user, token, updateUser } = useAuth();

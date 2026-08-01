@@ -124,3 +124,5 @@ export const updateProfileInfo = async (data, token) => {
     },
   });
 };
+
+export default api;

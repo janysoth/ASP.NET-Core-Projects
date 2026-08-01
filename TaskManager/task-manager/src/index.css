@@ -19,6 +19,12 @@
   --navbar-active: #4338ca;
   --navbar-text: #ffffff;
   --navbar-text-muted: rgba(255, 255, 255, 0.8);
+
+  --budget-sidebar-bg: #172554;
+  --budget-sidebar-hover: #1e3a8a;
+  --budget-positive: #059669;
+  --budget-warning: #d97706;
+  --budget-danger: #dc2626;
 }
 
 .dark {
@@ -38,6 +44,12 @@
   --navbar-active: #1e293b;
   --navbar-text: #f8fafc;
   --navbar-text-muted: #cbd5e1;
+
+  --budget-sidebar-bg: #020617;
+  --budget-sidebar-hover: #172554;
+  --budget-positive: #34d399;
+  --budget-warning: #fbbf24;
+  --budget-danger: #f87171;
 }
 
 .reduce-motion *,

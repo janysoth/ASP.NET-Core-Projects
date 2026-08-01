@@ -8,7 +8,7 @@ const AppLayout = () => {
     <div className="min-h-screen bg-[var(--app-bg)] text-[var(--app-text)]">
       <Navbar />
 
-      <main className="pt-4">
+      <main>
         <Outlet />
       </main>
 

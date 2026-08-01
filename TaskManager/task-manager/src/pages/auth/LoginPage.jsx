@@ -4,10 +4,10 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import AuthForm from '../../components/forms/AuthForm';
 
-import { LOGIN_FIELDS } from '../../features/auth/authFields';
 import { useAuth } from '../../hooks/useAuth';
 import { useForm } from '../../hooks/useForm';
 import { login as loginApi } from '../../services/api';
+import { LOGIN_FIELDS } from '../../utils/auth/authFields';
 import { getLoginFormState } from '../../utils/formStates';
 import { getPreferences } from '../../utils/userPreferences';
 

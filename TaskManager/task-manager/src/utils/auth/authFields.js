@@ -13,7 +13,7 @@ import {
   validateEmail,
   validateFullName,
   validatePassword,
-} from '../../utils/validation';
+} from '../validation';
 
 // =========================
 // Login

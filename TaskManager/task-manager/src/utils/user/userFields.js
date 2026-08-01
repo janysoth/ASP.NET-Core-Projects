@@ -6,7 +6,7 @@ import {
 import {
   validateConfirmPassword,
   validatePassword
-} from "../../utils/validation";
+} from "../validation";
 
 export const CHANGE_PASSWORD_FIELDS = [
   {

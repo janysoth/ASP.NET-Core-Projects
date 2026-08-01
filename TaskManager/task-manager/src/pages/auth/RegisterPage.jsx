@@ -17,7 +17,7 @@ import { useForm } from '../../hooks/useForm';
 
 import { register as registerApi } from '../../services/api';
 
-import { REGISTER_FIELDS } from '../../features/auth/authFields';
+import { REGISTER_FIELDS } from '../../utils/auth/authFields';
 
 import { getApiError } from '../../utils/apiError';
 import { getRegisterFormState } from '../../utils/formStates';

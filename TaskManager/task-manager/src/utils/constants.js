@@ -7,6 +7,13 @@ export const APP_CARDS = [
     route: '/todos',
     description: 'Manage your daily tasks efficiently',
   },
+
+  {
+    title: 'Budget App',
+    icon: '📝',
+    route: '/budget',
+    description: 'Manage your daily tasks efficiently',
+  },
 ];
 
 export const TODO_INITIAL_FORM_STATE = {
