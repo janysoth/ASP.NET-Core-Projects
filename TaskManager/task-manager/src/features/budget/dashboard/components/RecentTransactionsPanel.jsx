@@ -4,7 +4,7 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   TransactionIcon,
-} from '../../../components/icons/Icons';
+} from '../../../../components/icons/Icons';
 
 /*===========================================================
   formatCurrency:

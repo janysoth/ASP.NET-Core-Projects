@@ -5,7 +5,7 @@ import {
   ArrowUpIcon,
   BudgetIcon,
   WalletIcon,
-} from '../../../components/icons/Icons';
+} from '../../../../components/icons/Icons';
 
 import AccountsPanel from '../components/AccountsPanel';
 import BudgetProgressPanel from '../components/BudgetProgressPanel';
@@ -308,7 +308,9 @@ const BudgetDashboardPage = () => {
       </section>
 
       <section className="app-section-gap mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <BudgetProgressPanel />
+        <BudgetProgressPanel
+          dashboardSummary={dashboardSummary}
+        />
 
         <RecentTransactionsPanel
           transactions={transactions}

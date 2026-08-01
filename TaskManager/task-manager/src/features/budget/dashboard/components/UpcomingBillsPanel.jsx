@@ -3,7 +3,7 @@ import React from 'react';
 import {
   CalendarIcon,
   ChevronRightIcon,
-} from '../../../components/icons/Icons';
+} from '../../../../components/icons/Icons';
 
 /*===========================================================
   formatCurrency:

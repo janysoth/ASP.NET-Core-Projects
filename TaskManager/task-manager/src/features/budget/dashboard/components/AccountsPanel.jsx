@@ -3,7 +3,7 @@ import React from 'react';
 import {
   ChevronRightIcon,
   WalletIcon,
-} from '../../../components/icons/Icons';
+} from '../../../../components/icons/Icons';
 
 /*===========================================================
   formatCurrency:
