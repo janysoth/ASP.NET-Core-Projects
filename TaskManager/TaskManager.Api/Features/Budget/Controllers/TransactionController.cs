@@ -25,51 +25,150 @@ public class TransactionsController : BudgetControllerBase
     _transactionService = transactionService;
   }
 
-  // ==========================================
-  // GET: api/budget/transactions
-  // Gets all transactions for the logged-in user.
-  //
-  // Results can optionally be filtered by
-  // transaction month, year, or both.
-  // ==========================================
-  [HttpGet]
-  public async Task<ActionResult<List<TransactionResponse>>> GetTransactions(
-    [FromQuery] int? month,
-    [FromQuery] int? year)
-  {
-    // Get the authenticated user's ID
-    var userId = GetUserId();
+  /*===========================================================
+    GetTransactions:
+    => Gets transactions for the logged-in user.
+    => Supports optional filters for:
+       - Month
+       - Year
+       - Account type
+       - Transaction type
 
-    // Return 401 if the user is not authenticated
-    if (userId == null)
+    Examples:
+
+    GET /api/budget/transactions
+
+    GET /api/budget/transactions
+        ?accountType=Checking
+
+    GET /api/budget/transactions
+        ?transactionType=Expense
+
+    GET /api/budget/transactions
+        ?accountType=Checking
+        &transactionType=Income
+
+    GET /api/budget/transactions
+        ?month=7
+        &year=2026
+        &accountType=Checking
+        &transactionType=Expense
+  ===========================================================*/
+  [HttpGet]
+  public async Task<ActionResult<List<TransactionResponse>>>
+    GetTransactions(
+      [FromQuery] int? month,
+      [FromQuery] int? year,
+      [FromQuery] string? accountType,
+      [FromQuery] string? transactionType)
+  {
+    /*---------------------------------------------------------
+      Get the authenticated user's ID
+    ---------------------------------------------------------*/
+    var userId =
+      GetUserId();
+
+    if (userId is null)
     {
       return Unauthorized();
     }
 
-    // Validate the month if one was provided.
-    // A valid month must be between January (1)
-    // and December (12).
-    if (month.HasValue && (month.Value < 1 || month.Value > 12))
+    /*---------------------------------------------------------
+      Validate the month
+    ---------------------------------------------------------*/
+    if (month.HasValue &&
+        (month.Value < 1 ||
+         month.Value > 12))
     {
-      return BadRequest("Month must be between 1 and 12.");
+      return BadRequest(
+        new
+        {
+          message =
+            "Month must be between 1 and 12."
+        });
     }
 
-    // Validate the year if one was provided
-    if (year.HasValue && year.Value < 2000)
+    /*---------------------------------------------------------
+      Validate the year
+    ---------------------------------------------------------*/
+    if (year.HasValue &&
+        year.Value < 2000)
     {
-      return BadRequest("Year is invalid.");
+      return BadRequest(
+        new
+        {
+          message =
+            "Year is invalid."
+        });
     }
 
-    // Get the user's income, expenses, and transfers.
-    //
-    // The service filters each record by its own date:
-    // IncomeDate, ExpenseDate, or TransferDate.
-    var transactions = await _transactionService.GetTransactionsAsync(
-      userId,
-      month,
-      year);
+    /*---------------------------------------------------------
+      When month is supplied without year, use the current year.
 
-    // Return the combined and sorted transaction list
-    return Ok(transactions);
+      This matches your existing transaction behavior.
+    ---------------------------------------------------------*/
+
+    /*---------------------------------------------------------
+      Validate accountType
+    ---------------------------------------------------------*/
+    var validAccountTypes =
+      new[]
+      {
+      "Checking",
+      "Savings",
+      "CreditCard"
+      };
+
+    if (!string.IsNullOrWhiteSpace(accountType) &&
+        !validAccountTypes.Contains(
+          accountType.Trim(),
+          StringComparer.OrdinalIgnoreCase))
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "Account type must be Checking, Savings, or CreditCard."
+        });
+    }
+
+    /*---------------------------------------------------------
+      Validate transactionType
+    ---------------------------------------------------------*/
+    var validTransactionTypes =
+      new[]
+      {
+      TransactionTypes.Income,
+      TransactionTypes.Expense,
+      TransactionTypes.Transfer
+      };
+
+    if (!string.IsNullOrWhiteSpace(transactionType) &&
+        !validTransactionTypes.Contains(
+          transactionType.Trim(),
+          StringComparer.OrdinalIgnoreCase))
+    {
+      return BadRequest(
+        new
+        {
+          message =
+            "Transaction type must be Income, Expense, or Transfer."
+        });
+    }
+
+    /*---------------------------------------------------------
+      Get the filtered transactions
+    ---------------------------------------------------------*/
+    var transactions =
+      await _transactionService.GetTransactionsAsync(
+        userId,
+        month,
+        year,
+        accountType,
+        transactionType);
+
+    return Ok(
+      transactions);
   }
+
 }

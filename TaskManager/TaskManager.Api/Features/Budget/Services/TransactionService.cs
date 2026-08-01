@@ -16,184 +16,420 @@ public class TransactionService : BudgetBaseService
   /*===========================================================
     GetTransactionsAsync:
     => Gets income, expenses, and transfers for the user.
-    => Can optionally filter by transaction month and year.
+    => Can optionally filter by:
+       - Transaction month
+       - Transaction year
+       - Financial account type
+       - Transaction type
     => Resolves account names and expense category names.
-    => Returns all transaction types in one combined list.
+    => Returns all matching transaction types in one list.
+
+    Supported account types:
+    - Checking
+    - Savings
+    - CreditCard
+
+    Supported transaction types:
+    - Income
+    - Expense
+    - Transfer
   ===========================================================*/
-  public async Task<List<TransactionResponse>> GetTransactionsAsync(
-    string userId,
-    int? month,
-    int? year)
+  public async Task<List<TransactionResponse>>
+    GetTransactionsAsync(
+      string userId,
+      int? month,
+      int? year,
+      string? accountType = null,
+      string? transactionType = null)
   {
     /*---------------------------------------------------------
-      Load all financial accounts owned by the current user.
+      Normalize the optional filters.
 
-      We load them once so we can resolve account IDs into
-      readable account names without additional MongoDB queries.
+      This allows values such as:
+
+      checking
+      Checking
+      CHECKING
+
+      to behave the same way.
     ---------------------------------------------------------*/
-    var accounts = await FinancialAccounts
-      .Find(account =>
-        account.UserId == userId)
-      .ToListAsync();
+    var normalizedAccountType =
+      string.IsNullOrWhiteSpace(accountType)
+        ? null
+        : accountType.Trim();
+
+    var normalizedTransactionType =
+      string.IsNullOrWhiteSpace(transactionType)
+        ? null
+        : transactionType.Trim();
 
     /*---------------------------------------------------------
-      Create an account-name lookup.
-
-      Example:
-
-      account-id-1 -> "Checking"
-      account-id-2 -> "Savings"
-      account-id-3 -> "Capital One"
+      Load all accounts owned by the current user
     ---------------------------------------------------------*/
-    var accountLookup = accounts.ToDictionary(
-      account => account.Id,
-      account => account.Name);
+    var accounts =
+      await FinancialAccounts
+        .Find(account =>
+          account.UserId == userId)
+        .ToListAsync();
 
     /*---------------------------------------------------------
-      Load all budget categories owned by the current user.
+      Create an account lookup.
 
-      ExpenseRecord now stores CategoryId instead of the
-      category name.
-
-      We therefore need the categories so we can convert:
-
-      CategoryId -> CategoryName
+      AccountId => FinancialAccount
     ---------------------------------------------------------*/
-    var categories = await BudgetCategories
-      .Find(category =>
-        category.UserId == userId)
-      .ToListAsync();
+    var accountLookup =
+      accounts.ToDictionary(
+        account => account.Id,
+        account => account);
 
     /*---------------------------------------------------------
-      Create a category-name lookup.
+      Find the IDs of accounts matching the accountType filter.
 
-      Example:
-
-      category-id-1 -> "Housing"
-      category-id-2 -> "Groceries"
+      When accountType is null, all account IDs are included.
     ---------------------------------------------------------*/
-    var categoryLookup = categories.ToDictionary(
-      category => category.Id,
-      category => category.Name);
+    var matchingAccountIds =
+      accounts
+        .Where(account =>
+          normalizedAccountType is null ||
+          string.Equals(
+            account.Type,
+            normalizedAccountType,
+            StringComparison.OrdinalIgnoreCase))
+        .Select(account => account.Id)
+        .ToHashSet();
+
+    /*---------------------------------------------------------
+      When an account type was supplied but the user does not
+      have any accounts of that type, no transactions can match.
+    ---------------------------------------------------------*/
+    if (normalizedAccountType is not null &&
+        matchingAccountIds.Count == 0)
+    {
+      return [];
+    }
+
+    /*---------------------------------------------------------
+      Load categories owned by the current user
+    ---------------------------------------------------------*/
+    var categories =
+      await BudgetCategories
+        .Find(category =>
+          category.UserId == userId)
+        .ToListAsync();
+
+    var categoryLookup =
+      categories.ToDictionary(
+        category => category.Id,
+        category => category.Name);
+
+    /*---------------------------------------------------------
+      Determine which transaction types should be loaded.
+
+      When no transaction type is supplied, all three types
+      are included.
+    ---------------------------------------------------------*/
+    var includeIncome =
+      normalizedTransactionType is null ||
+      string.Equals(
+        normalizedTransactionType,
+        TransactionTypes.Income,
+        StringComparison.OrdinalIgnoreCase);
+
+    var includeExpense =
+      normalizedTransactionType is null ||
+      string.Equals(
+        normalizedTransactionType,
+        TransactionTypes.Expense,
+        StringComparison.OrdinalIgnoreCase);
+
+    var includeTransfer =
+      normalizedTransactionType is null ||
+      string.Equals(
+        normalizedTransactionType,
+        TransactionTypes.Transfer,
+        StringComparison.OrdinalIgnoreCase);
 
     /*===========================================================
       INCOME
     ===========================================================*/
 
-    // Always restrict income records to the current user.
-    var incomeFilter =
-      Builders<IncomeRecord>.Filter.Eq(
-        income => income.UserId,
-        userId);
+    var incomes =
+      new List<IncomeRecord>();
 
-    // Filter income by transaction month when provided.
-    if (month.HasValue)
+    if (includeIncome)
     {
-      incomeFilter &=
-        Builders<IncomeRecord>.Filter.Where(
-          income =>
-            income.IncomeDate.Month ==
-            month.Value);
-    }
+      var incomeFilter =
+        Builders<IncomeRecord>.Filter.Eq(
+          income => income.UserId,
+          userId);
 
-    // Filter income by transaction year when provided.
-    if (year.HasValue)
-    {
-      incomeFilter &=
-        Builders<IncomeRecord>.Filter.Where(
-          income =>
-            income.IncomeDate.Year ==
-            year.Value);
-    }
+      /*-------------------------------------------------------
+        Filter by account type using the matching account IDs
+      -------------------------------------------------------*/
+      if (normalizedAccountType is not null)
+      {
+        incomeFilter &=
+          Builders<IncomeRecord>.Filter.In(
+            income => income.AccountId,
+            matchingAccountIds);
+      }
 
-    // Get matching income records.
-    var incomes = await IncomeRecords
-      .Find(incomeFilter)
-      .ToListAsync();
+      /*-------------------------------------------------------
+        Filter by month and year using a UTC date range
+      -------------------------------------------------------*/
+      if (month.HasValue)
+      {
+        var monthStart =
+          new DateTime(
+            year ?? DateTime.UtcNow.Year,
+            month.Value,
+            1,
+            0,
+            0,
+            0,
+            DateTimeKind.Utc);
+
+        var monthEnd =
+          monthStart.AddMonths(1);
+
+        incomeFilter &=
+          Builders<IncomeRecord>.Filter.Gte(
+            income => income.IncomeDate,
+            monthStart)
+          &
+          Builders<IncomeRecord>.Filter.Lt(
+            income => income.IncomeDate,
+            monthEnd);
+      }
+      else if (year.HasValue)
+      {
+        var yearStart =
+          new DateTime(
+            year.Value,
+            1,
+            1,
+            0,
+            0,
+            0,
+            DateTimeKind.Utc);
+
+        var yearEnd =
+          yearStart.AddYears(1);
+
+        incomeFilter &=
+          Builders<IncomeRecord>.Filter.Gte(
+            income => income.IncomeDate,
+            yearStart)
+          &
+          Builders<IncomeRecord>.Filter.Lt(
+            income => income.IncomeDate,
+            yearEnd);
+      }
+
+      incomes =
+        await IncomeRecords
+          .Find(incomeFilter)
+          .ToListAsync();
+    }
 
     /*===========================================================
       EXPENSES
     ===========================================================*/
 
-    // Always restrict expense records to the current user.
-    var expenseFilter =
-      Builders<ExpenseRecord>.Filter.Eq(
-        expense => expense.UserId,
-        userId);
+    var expenses =
+      new List<ExpenseRecord>();
 
-    // Filter expenses by transaction month when provided.
-    if (month.HasValue)
+    if (includeExpense)
     {
-      expenseFilter &=
-        Builders<ExpenseRecord>.Filter.Where(
-          expense =>
-            expense.ExpenseDate.Month ==
-            month.Value);
-    }
+      var expenseFilter =
+        Builders<ExpenseRecord>.Filter.Eq(
+          expense => expense.UserId,
+          userId);
 
-    // Filter expenses by transaction year when provided.
-    if (year.HasValue)
-    {
-      expenseFilter &=
-        Builders<ExpenseRecord>.Filter.Where(
-          expense =>
-            expense.ExpenseDate.Year ==
-            year.Value);
-    }
+      /*-------------------------------------------------------
+        Filter by account type using the matching account IDs
+      -------------------------------------------------------*/
+      if (normalizedAccountType is not null)
+      {
+        expenseFilter &=
+          Builders<ExpenseRecord>.Filter.In(
+            expense => expense.AccountId,
+            matchingAccountIds);
+      }
 
-    // Get matching expense records.
-    var expenses = await ExpenseRecords
-      .Find(expenseFilter)
-      .ToListAsync();
+      /*-------------------------------------------------------
+        Filter by month and year using a UTC date range
+      -------------------------------------------------------*/
+      if (month.HasValue)
+      {
+        var monthStart =
+          new DateTime(
+            year ?? DateTime.UtcNow.Year,
+            month.Value,
+            1,
+            0,
+            0,
+            0,
+            DateTimeKind.Utc);
+
+        var monthEnd =
+          monthStart.AddMonths(1);
+
+        expenseFilter &=
+          Builders<ExpenseRecord>.Filter.Gte(
+            expense => expense.ExpenseDate,
+            monthStart)
+          &
+          Builders<ExpenseRecord>.Filter.Lt(
+            expense => expense.ExpenseDate,
+            monthEnd);
+      }
+      else if (year.HasValue)
+      {
+        var yearStart =
+          new DateTime(
+            year.Value,
+            1,
+            1,
+            0,
+            0,
+            0,
+            DateTimeKind.Utc);
+
+        var yearEnd =
+          yearStart.AddYears(1);
+
+        expenseFilter &=
+          Builders<ExpenseRecord>.Filter.Gte(
+            expense => expense.ExpenseDate,
+            yearStart)
+          &
+          Builders<ExpenseRecord>.Filter.Lt(
+            expense => expense.ExpenseDate,
+            yearEnd);
+      }
+
+      expenses =
+        await ExpenseRecords
+          .Find(expenseFilter)
+          .ToListAsync();
+    }
 
     /*===========================================================
       TRANSFERS
     ===========================================================*/
 
-    // Always restrict transfers to the current user.
-    var transferFilter =
-      Builders<AccountTransfer>.Filter.Eq(
-        transfer => transfer.UserId,
-        userId);
+    var transfers =
+      new List<AccountTransfer>();
 
-    // Filter transfers by transaction month when provided.
-    if (month.HasValue)
+    if (includeTransfer)
     {
-      transferFilter &=
-        Builders<AccountTransfer>.Filter.Where(
-          transfer =>
-            transfer.TransferDate.Month ==
-            month.Value);
-    }
+      var transferFilter =
+        Builders<AccountTransfer>.Filter.Eq(
+          transfer => transfer.UserId,
+          userId);
 
-    // Filter transfers by transaction year when provided.
-    if (year.HasValue)
-    {
-      transferFilter &=
-        Builders<AccountTransfer>.Filter.Where(
-          transfer =>
-            transfer.TransferDate.Year ==
-            year.Value);
-    }
+      /*-------------------------------------------------------
+        A transfer matches an account type when either its
+        source or destination account has that type.
+      -------------------------------------------------------*/
+      if (normalizedAccountType is not null)
+      {
+        var fromAccountFilter =
+          Builders<AccountTransfer>.Filter.In(
+            transfer => transfer.FromAccountId,
+            matchingAccountIds);
 
-    // Get matching transfers.
-    var transfers = await AccountTransfers
-      .Find(transferFilter)
-      .ToListAsync();
+        var toAccountFilter =
+          Builders<AccountTransfer>.Filter.In(
+            transfer => transfer.ToAccountId,
+            matchingAccountIds);
+
+        transferFilter &=
+          Builders<AccountTransfer>.Filter.Or(
+            fromAccountFilter,
+            toAccountFilter);
+      }
+
+      /*-------------------------------------------------------
+        Filter by month and year using a UTC date range
+      -------------------------------------------------------*/
+      if (month.HasValue)
+      {
+        var monthStart =
+          new DateTime(
+            year ?? DateTime.UtcNow.Year,
+            month.Value,
+            1,
+            0,
+            0,
+            0,
+            DateTimeKind.Utc);
+
+        var monthEnd =
+          monthStart.AddMonths(1);
+
+        transferFilter &=
+          Builders<AccountTransfer>.Filter.Gte(
+            transfer => transfer.TransferDate,
+            monthStart)
+          &
+          Builders<AccountTransfer>.Filter.Lt(
+            transfer => transfer.TransferDate,
+            monthEnd);
+      }
+      else if (year.HasValue)
+      {
+        var yearStart =
+          new DateTime(
+            year.Value,
+            1,
+            1,
+            0,
+            0,
+            0,
+            DateTimeKind.Utc);
+
+        var yearEnd =
+          yearStart.AddYears(1);
+
+        transferFilter &=
+          Builders<AccountTransfer>.Filter.Gte(
+            transfer => transfer.TransferDate,
+            yearStart)
+          &
+          Builders<AccountTransfer>.Filter.Lt(
+            transfer => transfer.TransferDate,
+            yearEnd);
+      }
+
+      transfers =
+        await AccountTransfers
+          .Find(transferFilter)
+          .ToListAsync();
+    }
 
     /*===========================================================
-      BUILD COMBINED TRANSACTION LIST
+      BUILD THE COMBINED TRANSACTION LIST
     ===========================================================*/
 
     var transactions =
       new List<TransactionResponse>();
 
     /*---------------------------------------------------------
-      Convert income records into TransactionResponse objects.
+      Convert income records
     ---------------------------------------------------------*/
     transactions.AddRange(
       incomes.Select(income =>
-        new TransactionResponse
+      {
+        var accountName =
+          accountLookup.TryGetValue(
+            income.AccountId,
+            out var account)
+            ? account.Name
+            : string.Empty;
+
+        return new TransactionResponse
         {
           Id =
             income.Id,
@@ -214,9 +450,7 @@ public class TransactionService : BudgetBaseService
             income.AccountId,
 
           AccountName =
-            accountLookup.GetValueOrDefault(
-              income.AccountId,
-              string.Empty),
+            accountName,
 
           BudgetMonthId =
             income.BudgetMonthId,
@@ -226,25 +460,23 @@ public class TransactionService : BudgetBaseService
 
           CreatedAtUtc =
             income.CreatedAtUtc
-        }));
+        };
+      }));
 
     /*---------------------------------------------------------
-      Convert expense records into TransactionResponse objects.
-
-      ExpenseRecord stores:
-
-        CategoryId
-
-      TransactionResponse still displays:
-
-        Category
-
-      Therefore, we resolve the readable category name using
-      the category lookup dictionary.
+      Convert expense records
     ---------------------------------------------------------*/
     transactions.AddRange(
       expenses.Select(expense =>
-        new TransactionResponse
+      {
+        var accountName =
+          accountLookup.TryGetValue(
+            expense.AccountId,
+            out var account)
+            ? account.Name
+            : string.Empty;
+
+        return new TransactionResponse
         {
           Id =
             expense.Id,
@@ -270,9 +502,7 @@ public class TransactionService : BudgetBaseService
             expense.AccountId,
 
           AccountName =
-            accountLookup.GetValueOrDefault(
-              expense.AccountId,
-              string.Empty),
+            accountName,
 
           BudgetMonthId =
             expense.BudgetMonthId,
@@ -282,14 +512,30 @@ public class TransactionService : BudgetBaseService
 
           CreatedAtUtc =
             expense.CreatedAtUtc
-        }));
+        };
+      }));
 
     /*---------------------------------------------------------
-      Convert transfers into TransactionResponse objects.
+      Convert transfer records
     ---------------------------------------------------------*/
     transactions.AddRange(
       transfers.Select(transfer =>
-        new TransactionResponse
+      {
+        var fromAccountName =
+          accountLookup.TryGetValue(
+            transfer.FromAccountId,
+            out var fromAccount)
+            ? fromAccount.Name
+            : string.Empty;
+
+        var toAccountName =
+          accountLookup.TryGetValue(
+            transfer.ToAccountId,
+            out var toAccount)
+            ? toAccount.Name
+            : string.Empty;
+
+        return new TransactionResponse
         {
           Id =
             transfer.Id,
@@ -310,32 +556,24 @@ public class TransactionService : BudgetBaseService
             transfer.FromAccountId,
 
           FromAccountName =
-            accountLookup.GetValueOrDefault(
-              transfer.FromAccountId,
-              string.Empty),
+            fromAccountName,
 
           ToAccountId =
             transfer.ToAccountId,
 
           ToAccountName =
-            accountLookup.GetValueOrDefault(
-              transfer.ToAccountId,
-              string.Empty),
+            toAccountName,
 
           Notes =
             transfer.Notes,
 
           CreatedAtUtc =
             transfer.CreatedAtUtc
-        }));
+        };
+      }));
 
     /*---------------------------------------------------------
-      Sort all transaction types together.
-
-      Newest transaction first.
-
-      When two records have the same transaction date,
-      CreatedAtUtc is used as the secondary sort.
+      Return all matching transactions with the newest first
     ---------------------------------------------------------*/
     return transactions
       .OrderByDescending(transaction =>
@@ -344,4 +582,5 @@ public class TransactionService : BudgetBaseService
         transaction.CreatedAtUtc)
       .ToList();
   }
+
 }

@@ -44,7 +44,7 @@ public class BudgetAdminController
       "DELETE ALL TRANSACTIONS"))
     {
       return BadRequest(
-        "Confirmation must be exactly: DELETE ALL TRANSACTIONS");
+        "Confirmation must be exactly: YES");
     }
 
     var result =
@@ -78,7 +78,7 @@ public class BudgetAdminController
       "DELETE ALL TRANSFERS"))
     {
       return BadRequest(
-        "Confirmation must be exactly: DELETE ALL TRANSFERS");
+        "Confirmation must be exactly: YES");
     }
 
     var result =
@@ -112,7 +112,7 @@ public class BudgetAdminController
       "DELETE ALL INCOME"))
     {
       return BadRequest(
-        "Confirmation must be exactly: DELETE ALL INCOME");
+        "Confirmation must be exactly: YES");
     }
 
     var result =
@@ -146,7 +146,7 @@ public class BudgetAdminController
       "DELETE ALL EXPENSES"))
     {
       return BadRequest(
-        "Confirmation must be exactly: DELETE ALL EXPENSES");
+        "Confirmation must be exactly: YES");
     }
 
     var result =
@@ -177,10 +177,10 @@ public class BudgetAdminController
 
     if (!IsConfirmed(
       request,
-      "DELETE ALL BILLS"))
+      "YES"))
     {
       return BadRequest(
-        "Confirmation must be exactly: DELETE ALL BILLS");
+        "Confirmation must be exactly: YES");
     }
 
     var result =
@@ -212,10 +212,10 @@ public class BudgetAdminController
 
     if (!IsConfirmed(
       request,
-      "DELETE ALL RECURRING BILL TEMPLATES"))
+      "YES"))
     {
       return BadRequest(
-        "Confirmation must be exactly: DELETE ALL RECURRING BILL TEMPLATES");
+        "Confirmation must be exactly: YES");
     }
 
     var result =
@@ -246,10 +246,10 @@ public class BudgetAdminController
 
     if (!IsConfirmed(
       request,
-      "DELETE ALL CATEGORIES"))
+      "YES"))
     {
       return BadRequest(
-        "Confirmation must be exactly: DELETE ALL CATEGORIES");
+        "Confirmation must be exactly: YES");
     }
 
     var result =
@@ -285,10 +285,10 @@ public class BudgetAdminController
 
     if (!IsConfirmed(
       request,
-      "DELETE ALL BUDGET MONTHS"))
+      "YES"))
     {
       return BadRequest(
-        "Confirmation must be exactly: DELETE ALL BUDGET MONTHS");
+        "Confirmation must be exactly: YES");
     }
 
     var result =
@@ -319,10 +319,10 @@ public class BudgetAdminController
 
     if (!IsConfirmed(
       request,
-      "DELETE ALL ACCOUNTS"))
+      "YES"))
     {
       return BadRequest(
-        "Confirmation must be exactly: DELETE ALL ACCOUNTS");
+        "Confirmation must be exactly: YES");
     }
 
     var result =
@@ -359,10 +359,10 @@ public class BudgetAdminController
 
     if (!IsConfirmed(
       request,
-      "DELETE ALL"))
+      "YES"))
     {
       return BadRequest(
-        "Confirmation must be exactly: DELETE ALL");
+        "Confirmation must be exactly: YES");
     }
 
     var result =
