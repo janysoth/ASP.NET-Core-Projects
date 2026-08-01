@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using TaskManager.Api.Common.Exceptions;
 using TaskManager.Api.Auth;
 using TaskManager.Api.Features.Budget.Services;
 using TaskManager.Api.Repositories;
@@ -28,8 +29,8 @@ var envPath = Path.Combine(
 
 if (!File.Exists(envPath))
 {
-    throw new InvalidOperationException(
-      $".env file not found at: {envPath}");
+  throw new InvalidOperationException(
+    $".env file not found at: {envPath}");
 }
 
 Env.Load(envPath);
@@ -95,11 +96,11 @@ builder.Services
 builder.Services.AddSingleton<IMongoClient>(
   serviceProvider =>
   {
-      var settings = serviceProvider
-        .GetRequiredService<IOptions<MongoDbSettings>>()
-        .Value;
+    var settings = serviceProvider
+      .GetRequiredService<IOptions<MongoDbSettings>>()
+      .Value;
 
-      return new MongoClient(settings.ConnectionString);
+    return new MongoClient(settings.ConnectionString);
   });
 
 /*===========================================================
@@ -110,14 +111,14 @@ builder.Services.AddSingleton<IMongoClient>(
 builder.Services.AddSingleton<IMongoDatabase>(
   serviceProvider =>
   {
-      var settings = serviceProvider
-        .GetRequiredService<IOptions<MongoDbSettings>>()
-        .Value;
+    var settings = serviceProvider
+      .GetRequiredService<IOptions<MongoDbSettings>>()
+      .Value;
 
-      var client = serviceProvider
-        .GetRequiredService<IMongoClient>();
+    var client = serviceProvider
+      .GetRequiredService<IMongoClient>();
 
-      return client.GetDatabase(settings.DatabaseName);
+    return client.GetDatabase(settings.DatabaseName);
   });
 
 /*===========================================================
@@ -158,8 +159,8 @@ builder.Services.AddSingleton<BudgetIndexService>();
 builder.Services.Configure<FormOptions>(
   options =>
   {
-      options.MultipartBodyLengthLimit =
-        10 * 1024 * 1024;
+    options.MultipartBodyLengthLimit =
+      10 * 1024 * 1024;
   });
 
 /*===========================================================
@@ -172,17 +173,17 @@ builder.Services
   .AddControllers()
   .AddJsonOptions(options =>
   {
-      options.JsonSerializerOptions.PropertyNamingPolicy =
-        JsonNamingPolicy.CamelCase;
+    options.JsonSerializerOptions.PropertyNamingPolicy =
+      JsonNamingPolicy.CamelCase;
 
-      options.JsonSerializerOptions.DefaultIgnoreCondition =
-        JsonIgnoreCondition.WhenWritingNull;
+    options.JsonSerializerOptions.DefaultIgnoreCondition =
+      JsonIgnoreCondition.WhenWritingNull;
 
-      options.JsonSerializerOptions.PropertyNameCaseInsensitive =
-        true;
+    options.JsonSerializerOptions.PropertyNameCaseInsensitive =
+      true;
 
-      options.JsonSerializerOptions.IncludeFields =
-        true;
+    options.JsonSerializerOptions.IncludeFields =
+      true;
   });
 
 /*===========================================================
@@ -202,14 +203,14 @@ var frontendOrigin =
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(
-      "DevCors",
-      policy =>
-        policy
-          .WithOrigins(frontendOrigin)
-          .AllowAnyHeader()
-          .AllowAnyMethod()
-          .AllowCredentials());
+  options.AddPolicy(
+    "DevCors",
+    policy =>
+      policy
+        .WithOrigins(frontendOrigin)
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials());
 });
 
 /*===========================================================
@@ -230,30 +231,47 @@ builder.Services
     JwtBearerDefaults.AuthenticationScheme)
   .AddJwtBearer(options =>
   {
-      options.TokenValidationParameters =
-        new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidIssuer = jwtSettings.Issuer,
+    options.TokenValidationParameters =
+      new TokenValidationParameters
+      {
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings.Issuer,
 
-            ValidateAudience = true,
-            ValidAudience = jwtSettings.Audience,
+        ValidateAudience = true,
+        ValidAudience = jwtSettings.Audience,
 
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = signingKey,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = signingKey,
 
-            ValidateLifetime = true,
+        ValidateLifetime = true,
 
-            ClockSkew = TimeSpan.FromMinutes(1)
-        };
+        ClockSkew = TimeSpan.FromMinutes(1)
+      };
   });
 
 builder.Services.AddAuthorization();
 
 /*===========================================================
+  Global exception handling
+===========================================================*/
+builder.Services.AddExceptionHandler<
+  GlobalExceptionHandler>();
+
+builder.Services.AddProblemDetails();
+
+/*===========================================================
   Build the application:
 ===========================================================*/
 var app = builder.Build();
+
+/*===========================================================
+  Global exception handling middleware
+
+  This should appear early in the middleware pipeline so it
+  can catch exceptions thrown by later middleware and API
+  controllers.
+===========================================================*/
+app.UseExceptionHandler();
 
 /*===========================================================
   Ensure wwwroot exists:
@@ -265,7 +283,7 @@ var webRoot = Path.Combine(
 
 if (!Directory.Exists(webRoot))
 {
-    Directory.CreateDirectory(webRoot);
+  Directory.CreateDirectory(webRoot);
 }
 
 /*===========================================================
@@ -274,32 +292,31 @@ if (!Directory.Exists(webRoot))
 ===========================================================*/
 using (var scope = app.Services.CreateScope())
 {
-    var database = scope.ServiceProvider
-      .GetRequiredService<IMongoDatabase>();
+  var database = scope.ServiceProvider
+    .GetRequiredService<IMongoDatabase>();
 
-    var pingResult = await database.RunCommandAsync<BsonDocument>(
-      new BsonDocument("ping", 1));
+  var pingResult = await database.RunCommandAsync<BsonDocument>(
+    new BsonDocument("ping", 1));
 
-    Console.WriteLine(
-      "MongoDB connection OK: " +
-      pingResult.ToJson());
+  Console.WriteLine(
+    "MongoDB connection OK: " +
+    pingResult.ToJson());
 }
 
 /*===========================================================
   Budget index migration and creation:
-  => Temporarily removes older conflicting indexes.
   => Creates the corrected indexes with descriptive names.
   => Remove ReplaceLegacyBudgetIndexesAsync after one successful run.
 ===========================================================*/
 using (var scope = app.Services.CreateScope())
 {
-    var budgetIndexService = scope.ServiceProvider
-      .GetRequiredService<BudgetIndexService>();
+  var budgetIndexService = scope.ServiceProvider
+    .GetRequiredService<BudgetIndexService>();
 
-    await budgetIndexService.CreateIndexesAsync();
+  await budgetIndexService.CreateIndexesAsync();
 
-    Console.WriteLine(
-      "Budget indexes created successfully.");
+  Console.WriteLine(
+    "Budget indexes created successfully.");
 }
 
 /*===========================================================
@@ -308,8 +325,8 @@ using (var scope = app.Services.CreateScope())
 ===========================================================*/
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+  app.UseSwagger();
+  app.UseSwaggerUI();
 }
 
 /*===========================================================
@@ -319,10 +336,10 @@ if (app.Environment.IsDevelopment())
 app.UseStaticFiles(
   new StaticFileOptions
   {
-      FileProvider =
+    FileProvider =
       new PhysicalFileProvider(webRoot),
 
-      RequestPath = ""
+    RequestPath = ""
   });
 
 app.UseRouting();
