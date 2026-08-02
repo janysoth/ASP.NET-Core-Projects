@@ -13,10 +13,11 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   BudgetIcon,
-  CalendarIcon,
   ChevronRightIcon,
   WalletIcon,
 } from '../../../../components/icons/Icons';
+
+import BudgetBillsSection from '../components/BudgetBillsSection';
 
 import {
   getBudgetMonthById,
@@ -44,6 +45,15 @@ const formatCurrency = (value) => {
   formatBudgetMonth:
   => Converts numeric month and year values into a readable
      month label.
+
+  Example:
+
+  month = 7
+  year  = 2026
+
+  Result:
+
+  July 2026
 ===========================================================*/
 const formatBudgetMonth = (
   month,
@@ -70,7 +80,8 @@ const formatBudgetMonth = (
 
 /*===========================================================
   formatDate:
-  => Formats backend UTC dates without shifting the day.
+  => Formats backend UTC dates without shifting the
+     calendar day.
 ===========================================================*/
 const formatDate = (value) => {
   if (!value) {
@@ -117,8 +128,25 @@ const sortIncomeRecords = (
 };
 
 /*===========================================================
+  sortExpenseRecords:
+  => Displays newest expense dates first.
+===========================================================*/
+const sortExpenseRecords = (
+  expenseRecords = []
+) => {
+  return [...expenseRecords].sort(
+    (first, second) =>
+      new Date(second.expenseDate) -
+      new Date(first.expenseDate)
+  );
+};
+
+/*===========================================================
   sortCategories:
-  => Sorts categories by main type, expense type, and name.
+  => Sorts categories by:
+     1. Main type
+     2. Expense type
+     3. Category name
 ===========================================================*/
 const sortCategories = (
   categories = []
@@ -144,8 +172,16 @@ const sortCategories = (
       }
 
       const expenseTypeDifference =
-        (expenseTypeOrder[first.expenseType] ?? 99) -
-        (expenseTypeOrder[second.expenseType] ?? 99);
+        (
+          expenseTypeOrder[
+          first.expenseType
+          ] ?? 99
+        ) -
+        (
+          expenseTypeOrder[
+          second.expenseType
+          ] ?? 99
+        );
 
       if (expenseTypeDifference !== 0) {
         return expenseTypeDifference;
@@ -161,22 +197,33 @@ const sortCategories = (
 /*===========================================================
   BudgetMonthDetailsPage:
   => Displays one complete budget month.
-  => This first version is read-only.
+  => Loads income, categories, expenses, and bills.
+  => This version is read-only.
 ===========================================================*/
 const BudgetMonthDetailsPage = () => {
   const {
     budgetMonthId,
   } = useParams();
 
-  const [budgetMonth, setBudgetMonth] =
-    useState(null);
+  const [
+    budgetMonth,
+    setBudgetMonth,
+  ] = useState(null);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [error, setError] =
-    useState('');
+  const [
+    error,
+    setError,
+  ] = useState('');
 
+  /*===========================================================
+    loadBudgetMonth:
+    => Loads the complete selected budget month.
+  ===========================================================*/
   useEffect(() => {
     const loadBudgetMonth =
       async () => {
@@ -208,6 +255,9 @@ const BudgetMonthDetailsPage = () => {
     budgetMonthId,
   ]);
 
+  /*===========================================================
+    Sorted income records
+  ===========================================================*/
   const sortedIncomeRecords =
     useMemo(
       () =>
@@ -219,6 +269,23 @@ const BudgetMonthDetailsPage = () => {
       ]
     );
 
+  /*===========================================================
+    Sorted expense records
+  ===========================================================*/
+  const sortedExpenseRecords =
+    useMemo(
+      () =>
+        sortExpenseRecords(
+          budgetMonth?.expenseRecords
+        ),
+      [
+        budgetMonth?.expenseRecords,
+      ]
+    );
+
+  /*===========================================================
+    Sorted categories
+  ===========================================================*/
   const sortedCategories =
     useMemo(
       () =>
@@ -230,6 +297,9 @@ const BudgetMonthDetailsPage = () => {
       ]
     );
 
+  /*===========================================================
+    Loading state
+  ===========================================================*/
   if (loading) {
     return (
       <div className="app-page-padding px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -246,6 +316,9 @@ const BudgetMonthDetailsPage = () => {
     );
   }
 
+  /*===========================================================
+    Error state
+  ===========================================================*/
   if (error) {
     return (
       <div className="app-page-padding px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -311,7 +384,8 @@ const BudgetMonthDetailsPage = () => {
             </h1>
 
             <p className="mt-2 text-sm text-[var(--app-text-muted)]">
-              Review income, categories, expenses, and monthly totals.
+              Review income, categories, expenses, bills,
+              and monthly totals.
             </p>
           </div>
         </div>
@@ -363,6 +437,15 @@ const BudgetMonthDetailsPage = () => {
       </section>
 
       {/*=======================================================
+        Bills
+      =======================================================*/}
+      <BudgetBillsSection
+        month={budgetMonth.month}
+        year={budgetMonth.year}
+        monthLabel={monthLabel}
+      />
+
+      {/*=======================================================
         Income records
       =======================================================*/}
       <section className="mt-6 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
@@ -410,7 +493,8 @@ const BudgetMonthDetailsPage = () => {
                     </p>
 
                     <p className="truncate text-xs text-[var(--app-text-muted)]">
-                      {income.accountName || 'Unknown account'}
+                      {income.accountName ||
+                        'Unknown account'}
                     </p>
                   </div>
 
@@ -506,8 +590,8 @@ const BudgetMonthDetailsPage = () => {
 
                         <p
                           className={`mt-1 text-sm font-bold ${category.isOverBudget
-                              ? 'text-red-600 dark:text-red-400'
-                              : 'text-[var(--app-text)]'
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-[var(--app-text)]'
                             }`}
                         >
                           {formatCurrency(
@@ -523,8 +607,8 @@ const BudgetMonthDetailsPage = () => {
 
                         <p
                           className={`mt-1 text-sm font-semibold ${category.isOverBudget
-                              ? 'text-red-600 dark:text-red-400'
-                              : 'text-emerald-600 dark:text-emerald-400'
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-emerald-600 dark:text-emerald-400'
                             }`}
                         >
                           {category.isOverBudget
@@ -561,7 +645,7 @@ const BudgetMonthDetailsPage = () => {
           </div>
         </div>
 
-        {(budgetMonth.expenseRecords ?? []).length === 0 ? (
+        {sortedExpenseRecords.length === 0 ? (
           <div className="px-5 py-10 text-center">
             <p className="text-sm font-semibold text-[var(--app-text)]">
               No expenses
@@ -573,7 +657,7 @@ const BudgetMonthDetailsPage = () => {
           </div>
         ) : (
           <div className="divide-y divide-[var(--app-border)]">
-            {budgetMonth.expenseRecords.map(
+            {sortedExpenseRecords.map(
               (expense) => (
                 <div
                   key={expense.id}
@@ -589,7 +673,8 @@ const BudgetMonthDetailsPage = () => {
                     </p>
 
                     <p className="truncate text-xs text-[var(--app-text-muted)]">
-                      {expense.categoryName}
+                      {expense.categoryName ||
+                        'Unknown category'}
                       {expense.accountName
                         ? ` · ${expense.accountName}`
                         : ''}
@@ -615,22 +700,6 @@ const BudgetMonthDetailsPage = () => {
           </div>
         )}
       </section>
-
-      <div className="mt-6 rounded-2xl border border-dashed border-[var(--app-border)] bg-[var(--app-surface-muted)]/50 p-5">
-        <div className="flex items-start gap-3">
-          <CalendarIcon className="mt-0.5 h-5 w-5 shrink-0 text-[var(--app-primary)]" />
-
-          <div>
-            <p className="text-sm font-semibold text-[var(--app-text)]">
-              Bills are coming next
-            </p>
-
-            <p className="mt-1 text-sm text-[var(--app-text-muted)]">
-              In the next step, we’ll load and display the bills associated with this budget month.
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
