@@ -440,6 +440,10 @@ const BudgetMonthDetailsPage = () => {
         Bills
       =======================================================*/}
       <BudgetBillsSection
+        budgetMonthId={budgetMonth.id}
+        categories={
+          budgetMonth.budgetCategories ?? []
+        }
         month={budgetMonth.month}
         year={budgetMonth.year}
         monthLabel={monthLabel}

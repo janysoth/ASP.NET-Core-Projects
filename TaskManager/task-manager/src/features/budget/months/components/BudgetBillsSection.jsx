@@ -7,12 +7,15 @@ import React, {
 
 import {
   CalendarIcon,
+  PlusIcon,
   ReceiptIcon,
 } from '../../../../components/icons/Icons';
 
 import {
   getBills,
 } from '../../dashboard/api/budgetDashboardApi';
+
+import BillFormModal from './BillFormModal';
 
 /*===========================================================
   formatCurrency:
@@ -71,7 +74,10 @@ const getErrorMessage = (error) => {
 ===========================================================*/
 const sortBills = (bills) => {
   return [...bills].sort(
-    (firstBill, secondBill) => {
+    (
+      firstBill,
+      secondBill
+    ) => {
       if (
         firstBill.isPaid !==
         secondBill.isPaid
@@ -96,7 +102,9 @@ const sortBills = (bills) => {
 const getStatusAppearance = (bill) => {
   if (bill.isPaid) {
     return {
-      label: 'Paid',
+      label:
+        'Paid',
+
       className:
         'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
     };
@@ -109,7 +117,9 @@ const getStatusAppearance = (bill) => {
 
   if (normalizedStatus === 'overdue') {
     return {
-      label: 'Overdue',
+      label:
+        'Overdue',
+
       className:
         'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
     };
@@ -120,14 +130,18 @@ const getStatusAppearance = (bill) => {
     normalizedStatus === 'partial'
   ) {
     return {
-      label: 'Partially Paid',
+      label:
+        'Partially Paid',
+
       className:
         'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
     };
   }
 
   return {
-    label: bill.status || 'Upcoming',
+    label:
+      bill.status || 'Upcoming',
+
     className:
       'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300',
   };
@@ -136,9 +150,12 @@ const getStatusAppearance = (bill) => {
 /*===========================================================
   BudgetBillsSection:
   => Loads and displays bills for one budget month.
-  => This first version is read-only.
+  => Displays an Add Bill button.
+  => This version still uses a temporary form placeholder.
 ===========================================================*/
 const BudgetBillsSection = ({
+  budgetMonthId,
+  categories,
   month,
   year,
   monthLabel,
@@ -158,60 +175,84 @@ const BudgetBillsSection = ({
     setError,
   ] = useState('');
 
+  const [
+    isBillFormOpen,
+    setIsBillFormOpen,
+  ] = useState(false);
+
   /*===========================================================
     loadBills:
     => Loads bills using the selected month and year.
   ===========================================================*/
-  const loadBills = useCallback(async () => {
-    if (!month || !year) {
-      setBills([]);
-      setLoading(false);
-      return;
-    }
+  const loadBills =
+    useCallback(async () => {
+      if (!month || !year) {
+        setBills([]);
+        setLoading(false);
+        return;
+      }
 
-    try {
-      setLoading(true);
-      setError('');
+      try {
+        setLoading(true);
+        setError('');
 
-      const response =
-        await getBills(
-          month,
-          year
+        const response =
+          await getBills(
+            month,
+            year
+          );
+
+        setBills(
+          sortBills(
+            response
+          )
         );
+      } catch (requestError) {
+        setError(
+          getErrorMessage(
+            requestError
+          )
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [
+      month,
+      year,
+    ]);
 
-      setBills(
-        sortBills(response)
-      );
-    } catch (requestError) {
-      setError(
-        getErrorMessage(
-          requestError
-        )
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [month, year]);
-
+  /*===========================================================
+    Reload bills when month or year changes.
+  ===========================================================*/
   useEffect(() => {
     loadBills();
-  }, [loadBills]);
+  }, [
+    loadBills,
+  ]);
 
+  /*===========================================================
+    Bill summary
+  ===========================================================*/
   const summary =
     useMemo(() => {
       const paidBills =
         bills.filter(
-          (bill) => bill.isPaid
+          (bill) =>
+            bill.isPaid
         );
 
       const unpaidBills =
         bills.filter(
-          (bill) => !bill.isPaid
+          (bill) =>
+            !bill.isPaid
         );
 
       const expectedTotal =
         bills.reduce(
-          (total, bill) =>
+          (
+            total,
+            bill
+          ) =>
             total +
             Number(
               bill.expectedAmount ?? 0
@@ -221,7 +262,10 @@ const BudgetBillsSection = ({
 
       const remainingTotal =
         unpaidBills.reduce(
-          (total, bill) =>
+          (
+            total,
+            bill
+          ) =>
             total +
             Number(
               bill.remainingAmount ??
@@ -265,8 +309,22 @@ const BudgetBillsSection = ({
           </p>
         </div>
 
-        <div className="rounded-xl bg-amber-100 p-2.5 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-          <ReceiptIcon className="h-5 w-5" />
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() =>
+              setIsBillFormOpen(true)
+            }
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--app-primary)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--app-primary-hover)]"
+          >
+            <PlusIcon className="h-4 w-4" />
+
+            Add bill
+          </button>
+
+          <div className="hidden rounded-xl bg-amber-100 p-2.5 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 sm:block">
+            <ReceiptIcon className="h-5 w-5" />
+          </div>
         </div>
       </div>
 
@@ -340,76 +398,79 @@ const BudgetBillsSection = ({
         bills.length > 0 && (
           <>
             <div className="divide-y divide-[var(--app-border)]">
-              {bills.map((bill) => {
-                const statusAppearance =
-                  getStatusAppearance(
-                    bill
-                  );
+              {bills.map(
+                (bill) => {
+                  const statusAppearance =
+                    getStatusAppearance(
+                      bill
+                    );
 
-                return (
-                  <button
-                    key={bill.id}
-                    type="button"
-                    className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[var(--app-surface-muted)]"
-                  >
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-                      <CalendarIcon className="h-5 w-5" />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-sm font-semibold text-[var(--app-text)]">
-                          {bill.name}
-                        </p>
-
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusAppearance.className}`}
-                        >
-                          {statusAppearance.label}
-                        </span>
+                  return (
+                    <button
+                      key={bill.id}
+                      type="button"
+                      className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[var(--app-surface-muted)]"
+                    >
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                        <CalendarIcon className="h-5 w-5" />
                       </div>
 
-                      <p className="mt-1 truncate text-xs text-[var(--app-text-muted)]">
-                        {bill.budgetCategoryName ||
-                          'Unknown category'}
-                        {' · '}
-                        Due {formatDate(
-                          bill.dueDate
-                        )}
-                      </p>
-                    </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-sm font-semibold text-[var(--app-text)]">
+                            {bill.name}
+                          </p>
 
-                    <div className="shrink-0 text-right">
-                      <p className="text-sm font-bold text-[var(--app-text)]">
-                        {formatCurrency(
-                          bill.expectedAmount
-                        )}
-                      </p>
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusAppearance.className}`}
+                          >
+                            {statusAppearance.label}
+                          </span>
+                        </div>
 
-                      {!bill.isPaid && (
-                        <p className="mt-1 text-xs text-[var(--app-text-muted)]">
+                        <p className="mt-1 truncate text-xs text-[var(--app-text-muted)]">
+                          {bill.budgetCategoryName ||
+                            'Unknown category'}
+                          {' · '}
+                          Due{' '}
+                          {formatDate(
+                            bill.dueDate
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-bold text-[var(--app-text)]">
                           {formatCurrency(
-                            bill.remainingAmount ??
                             bill.expectedAmount
-                          )}{' '}
-                          remaining
+                          )}
                         </p>
-                      )}
 
-                      {bill.isPaid && (
-                        <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
-                          Paid{' '}
-                          {bill.paidDate
-                            ? formatDate(
-                              bill.paidDate
-                            )
-                            : ''}
-                        </p>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
+                        {!bill.isPaid && (
+                          <p className="mt-1 text-xs text-[var(--app-text-muted)]">
+                            {formatCurrency(
+                              bill.remainingAmount ??
+                              bill.expectedAmount
+                            )}{' '}
+                            remaining
+                          </p>
+                        )}
+
+                        {bill.isPaid && (
+                          <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
+                            Paid{' '}
+                            {bill.paidDate
+                              ? formatDate(
+                                bill.paidDate
+                              )
+                              : ''}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                }
+              )}
             </div>
 
             {/*=================================================
@@ -472,6 +533,23 @@ const BudgetBillsSection = ({
             </div>
           </>
         )}
+
+      <BillFormModal
+        isOpen={isBillFormOpen}
+        onClose={() =>
+          setIsBillFormOpen(false)
+        }
+        onSubmit={(formData) => {
+          console.log(
+            'Bill form submitted:',
+            formData
+          );
+        }}
+        categories={categories}
+        month={month}
+        year={year}
+        monthLabel={monthLabel}
+      />
     </section>
   );
 };
