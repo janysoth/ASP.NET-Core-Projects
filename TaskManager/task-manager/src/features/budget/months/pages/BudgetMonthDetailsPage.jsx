@@ -221,42 +221,96 @@ const BudgetMonthDetailsPage = () => {
     setError,
   ] = useState('');
 
+  const [
+    refreshing,
+    setRefreshing,
+  ] = useState(false);
+
+  const [
+    refreshError,
+    setRefreshError,
+  ] = useState('');
+
   /*===========================================================
-    loadBudgetMonth:
-    => Loads or refreshes the complete selected budget month.
-  ===========================================================*/
-  const loadBudgetMonth =
-    useCallback(async () => {
-      try {
-        setLoading(true);
-        setError('');
+  fetchBudgetMonth:
+  => Loads the selected budget month.
+  => Uses the full-page loading state only on initial load.
+  => Uses the smaller refreshing state for later updates.
+===========================================================*/
+  const fetchBudgetMonth =
+    useCallback(
+      async ({
+        initialLoad = false,
+      } = {}) => {
+        try {
+          if (initialLoad) {
+            setLoading(true);
+            setError('');
+          } else {
+            setRefreshing(true);
+            setRefreshError('');
+          }
 
-        const response =
-          await getBudgetMonthById(
-            budgetMonthId
+          const response =
+            await getBudgetMonthById(
+              budgetMonthId
+            );
+
+          setBudgetMonth(
+            response
           );
+        } catch (requestError) {
+          const message =
+            getErrorMessage(
+              requestError
+            );
 
-        setBudgetMonth(
-          response
-        );
-      } catch (requestError) {
-        setError(
-          getErrorMessage(
-            requestError
-          )
-        );
-      } finally {
-        setLoading(false);
-      }
-    }, [
-      budgetMonthId,
-    ]);
+          if (initialLoad) {
+            setError(
+              message
+            );
+          } else {
+            setRefreshError(
+              message
+            );
+          }
+        } finally {
+          if (initialLoad) {
+            setLoading(false);
+          } else {
+            setRefreshing(false);
+          }
+        }
+      },
+      [
+        budgetMonthId,
+      ]
+    );
 
+  /*===========================================================
+    Initial page load:
+    => Shows the full-page loading spinner.
+  ===========================================================*/
   useEffect(() => {
-    loadBudgetMonth();
+    fetchBudgetMonth({
+      initialLoad: true,
+    });
   }, [
-    loadBudgetMonth,
+    fetchBudgetMonth,
   ]);
+
+  /*===========================================================
+    refreshBudgetMonth:
+    => Refreshes the month without replacing the entire page.
+  ===========================================================*/
+  const refreshBudgetMonth =
+    useCallback(async () => {
+      await fetchBudgetMonth({
+        initialLoad: false,
+      });
+    }, [
+      fetchBudgetMonth,
+    ]);
 
   /*===========================================================
     Sorted income records
@@ -391,8 +445,35 @@ const BudgetMonthDetailsPage = () => {
               and monthly totals.
             </p>
           </div>
+
+          {refreshing && (
+            <div className="inline-flex items-center gap-2 self-start rounded-full border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2 text-xs font-medium text-[var(--app-text-muted)] sm:self-end">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--app-border)] border-t-[var(--app-primary)]" />
+
+              Refreshing...
+            </div>
+          )}
         </div>
       </header>
+
+      {refreshError && (
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-500/30 dark:bg-red-500/10 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-red-700 dark:text-red-300">
+            {refreshError}
+          </p>
+
+          <button
+            type="button"
+            onClick={
+              refreshBudgetMonth
+            }
+            disabled={refreshing}
+            className="self-start text-sm font-semibold text-red-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-300 sm:self-auto"
+          >
+            Try again
+          </button>
+        </div>
+      )}
 
       {/*=======================================================
         Summary cards
@@ -451,7 +532,7 @@ const BudgetMonthDetailsPage = () => {
         year={budgetMonth.year}
         monthLabel={monthLabel}
         onBudgetMonthChanged={
-          loadBudgetMonth
+          refreshBudgetMonth
         }
       />
 
