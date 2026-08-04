@@ -4,6 +4,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import toast from 'react-hot-toast';
 
 import {
   CalendarIcon,
@@ -12,6 +13,7 @@ import {
 } from '../../../../components/icons/Icons';
 
 import {
+  createBill,
   getBills,
 } from '../../dashboard/api/budgetDashboardApi';
 
@@ -197,8 +199,9 @@ const BudgetBillsSection = ({
 
   /*===========================================================
     handleBillSubmit:
-    => Temporarily logs the normalized bill request.
-    => The API call will be connected in the next step.
+    => Creates a new bill.
+    => Closes the modal after success.
+    => Reloads the bill list automatically.
   ===========================================================*/
   const handleBillSubmit = async (
     formData
@@ -206,14 +209,24 @@ const BudgetBillsSection = ({
     try {
       setSubmitting(true);
 
-      console.log(
-        'Budget month ID:',
-        budgetMonthId
+      await createBill(
+        budgetMonthId,
+        formData
       );
 
-      console.log(
-        'Bill form submitted:',
-        formData
+      await loadBills();
+
+      setIsBillFormOpen(false);
+
+      toast.success(
+        'Bill created successfully.'
+      );
+    } catch (requestError) {
+      toast.error(
+        getApiErrorMessage(
+          requestError,
+          'Unable to create bill.'
+        )
       );
     } finally {
       setSubmitting(false);

@@ -146,3 +146,29 @@ export const getTransactions = async (
 
   return response.data;
 };
+
+/*===========================================================
+  createBill:
+  => Creates a bill inside a selected budget month.
+
+  Backend:
+  POST /api/budget/months/{budgetMonthId}/bills
+===========================================================*/
+export const createBill = async (
+  budgetMonthId,
+  billData
+) => {
+  if (!budgetMonthId) {
+    throw new Error(
+      'Budget month ID is required.'
+    );
+  }
+
+  const response =
+    await api.post(
+      `budget/months/${budgetMonthId}/bills`,
+      billData
+    );
+
+  return response.data;
+};
