@@ -19,11 +19,6 @@ export const formatCurrency = (
 /*===========================================================
   formatUtcDate:
   => Formats a UTC date without shifting the calendar day.
-
-  Example:
-
-  2026-08-15T00:00:00Z
-  => Aug 15, 2026
 ===========================================================*/
 export const formatUtcDate = (
   value,
@@ -51,6 +46,47 @@ export const formatUtcDate = (
       day: 'numeric',
       year: 'numeric',
       timeZone: 'UTC',
+    }
+  ).format(date);
+};
+
+/*===========================================================
+  formatBudgetMonth:
+  => Converts numeric month and year values into a readable
+     month label.
+
+  Example:
+  7, 2026 => July 2026
+===========================================================*/
+export const formatBudgetMonth = (
+  month,
+  year,
+  fallbackText = 'Unknown month'
+) => {
+  if (!month || !year) {
+    return fallbackText;
+  }
+
+  const date =
+    new Date(
+      year,
+      month - 1,
+      1
+    );
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return fallbackText;
+  }
+
+  return new Intl.DateTimeFormat(
+    'en-US',
+    {
+      month: 'long',
+      year: 'numeric',
     }
   ).format(date);
 };
