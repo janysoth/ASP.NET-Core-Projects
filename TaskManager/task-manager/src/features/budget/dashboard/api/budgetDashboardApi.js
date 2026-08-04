@@ -172,3 +172,29 @@ export const createBill = async (
 
   return response.data;
 };
+
+/*===========================================================
+  createBudgetCategory:
+  => Creates a category inside a selected budget month.
+
+  Backend:
+  POST /api/budget/months/{budgetMonthId}/categories
+===========================================================*/
+export const createBudgetCategory = async (
+  budgetMonthId,
+  categoryData
+) => {
+  if (!budgetMonthId) {
+    throw new Error(
+      'Budget month ID is required.'
+    );
+  }
+
+  const response =
+    await api.post(
+      `budget/months/${budgetMonthId}/categories`,
+      categoryData
+    );
+
+  return response.data;
+};

@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -222,37 +223,39 @@ const BudgetMonthDetailsPage = () => {
 
   /*===========================================================
     loadBudgetMonth:
-    => Loads the complete selected budget month.
+    => Loads or refreshes the complete selected budget month.
   ===========================================================*/
+  const loadBudgetMonth =
+    useCallback(async () => {
+      try {
+        setLoading(true);
+        setError('');
+
+        const response =
+          await getBudgetMonthById(
+            budgetMonthId
+          );
+
+        setBudgetMonth(
+          response
+        );
+      } catch (requestError) {
+        setError(
+          getErrorMessage(
+            requestError
+          )
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [
+      budgetMonthId,
+    ]);
+
   useEffect(() => {
-    const loadBudgetMonth =
-      async () => {
-        try {
-          setLoading(true);
-          setError('');
-
-          const response =
-            await getBudgetMonthById(
-              budgetMonthId
-            );
-
-          setBudgetMonth(
-            response
-          );
-        } catch (requestError) {
-          setError(
-            getErrorMessage(
-              requestError
-            )
-          );
-        } finally {
-          setLoading(false);
-        }
-      };
-
     loadBudgetMonth();
   }, [
-    budgetMonthId,
+    loadBudgetMonth,
   ]);
 
   /*===========================================================
@@ -447,6 +450,9 @@ const BudgetMonthDetailsPage = () => {
         month={budgetMonth.month}
         year={budgetMonth.year}
         monthLabel={monthLabel}
+        onBudgetMonthChanged={
+          loadBudgetMonth
+        }
       />
 
       {/*=======================================================

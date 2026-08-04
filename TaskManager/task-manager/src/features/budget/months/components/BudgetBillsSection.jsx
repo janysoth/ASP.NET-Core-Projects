@@ -4,6 +4,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+
 import toast from 'react-hot-toast';
 
 import {
@@ -14,19 +15,31 @@ import {
 
 import {
   createBill,
+  createBudgetCategory,
   getBills,
 } from '../../dashboard/api/budgetDashboardApi';
 
-import { getBillStatusAppearance, sortBills } from '../../utils/billUtil';
-import { getApiErrorMessage } from '../../utils/budgetErrors';
-import { formatCurrency, formatUtcDate } from '../../utils/budgetFormatter';
+import {
+  formatCurrency,
+  formatUtcDate,
+} from '../../utils/budgetFormatters';
+
+import {
+  getApiErrorMessage,
+} from '../../utils/budgetErrors';
+
+import {
+  getBillStatusAppearance,
+  sortBills,
+} from '../../utils/billUtils';
+
 import BillFormModal from './BillFormModal';
 
 /*===========================================================
   BudgetBillsSection:
-  => Loads and displays bills for one budget month.
-  => Displays the Add Bill modal.
-  => Bill creation is not connected to the API yet.
+  => Loads bills for one month.
+  => Creates missing Fixed Expense categories.
+  => Creates new bills.
 ===========================================================*/
 const BudgetBillsSection = ({
   budgetMonthId,
@@ -34,11 +47,19 @@ const BudgetBillsSection = ({
   month,
   year,
   monthLabel,
+  onBudgetMonthChanged,
 }) => {
   const [
     bills,
     setBills,
   ] = useState([]);
+
+  const [
+    availableCategories,
+    setAvailableCategories,
+  ] = useState(
+    categories
+  );
 
   const [
     loading,
@@ -61,9 +82,19 @@ const BudgetBillsSection = ({
   ] = useState(false);
 
   /*===========================================================
+    Synchronize categories from the parent budget month.
+  ===========================================================*/
+  useEffect(() => {
+    setAvailableCategories(
+      categories
+    );
+  }, [
+    categories,
+  ]);
+
+  /*===========================================================
     loadBills:
-    => Loads bills for the selected calendar month.
-    => Sorts unpaid bills first and then by due date.
+    => Loads and sorts the selected month's bills.
   ===========================================================*/
   const loadBills =
     useCallback(async () => {
@@ -103,19 +134,12 @@ const BudgetBillsSection = ({
       year,
     ]);
 
-  /*===========================================================
-    Reload bills whenever the selected month changes.
-  ===========================================================*/
   useEffect(() => {
     loadBills();
   }, [
     loadBills,
   ]);
 
-  /*===========================================================
-    Bill summary:
-    => Calculates total, paid, unpaid, expected, and remaining.
-  ===========================================================*/
   const summary =
     useMemo(() => {
       const paidBills =
@@ -176,32 +200,77 @@ const BudgetBillsSection = ({
       bills,
     ]);
 
-  /*===========================================================
-    handleOpenBillForm:
-    => Opens the Add Bill modal.
-  ===========================================================*/
   const handleOpenBillForm = () => {
     setIsBillFormOpen(true);
   };
 
-  /*===========================================================
-    handleCloseBillForm:
-    => Closes the Add Bill modal.
-    => Does not close while a submission is in progress.
-  ===========================================================*/
   const handleCloseBillForm = () => {
-    if (submitting) {
-      return;
+    if (!submitting) {
+      setIsBillFormOpen(false);
     }
+  };
 
-    setIsBillFormOpen(false);
+  /*===========================================================
+    handleCreateCategory:
+    => Creates a Fixed Expense category with PlannedAmount 0.
+    => Returns the created category to BillFormModal.
+  ===========================================================*/
+  const handleCreateCategory = async (
+    categoryData
+  ) => {
+    try {
+      const createdCategory =
+        await createBudgetCategory(
+          budgetMonthId,
+          categoryData
+        );
+
+      setAvailableCategories(
+        (currentCategories) => {
+          const alreadyExists =
+            currentCategories.some(
+              (category) =>
+                category.id ===
+                createdCategory.id
+            );
+
+          if (alreadyExists) {
+            return currentCategories;
+          }
+
+          return [
+            ...currentCategories,
+            createdCategory,
+          ];
+        }
+      );
+
+      toast.success(
+        'Category created successfully.'
+      );
+
+      return createdCategory;
+    } catch (requestError) {
+      const message =
+        getApiErrorMessage(
+          requestError,
+          'Unable to create category.'
+        );
+
+      /*
+        BillFormModal displays this message inside the nested
+        category modal.
+      */
+      throw new Error(
+        message
+      );
+    }
   };
 
   /*===========================================================
     handleBillSubmit:
-    => Creates a new bill.
-    => Closes the modal after success.
-    => Reloads the bill list automatically.
+    => Creates the bill.
+    => Reloads bills and the parent budget month.
   ===========================================================*/
   const handleBillSubmit = async (
     formData
@@ -215,6 +284,10 @@ const BudgetBillsSection = ({
       );
 
       await loadBills();
+
+      if (onBudgetMonthChanged) {
+        await onBudgetMonthChanged();
+      }
 
       setIsBillFormOpen(false);
 
@@ -235,9 +308,6 @@ const BudgetBillsSection = ({
 
   return (
     <section className="mt-6 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
-      {/*=======================================================
-        Header
-      =======================================================*/}
       <div className="flex flex-col gap-4 border-b border-[var(--app-border)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-semibold text-[var(--app-text)]">
@@ -252,7 +322,9 @@ const BudgetBillsSection = ({
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={handleOpenBillForm}
+            onClick={
+              handleOpenBillForm
+            }
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--app-primary)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--app-primary-hover)]"
           >
             <PlusIcon className="h-4 w-4" />
@@ -266,9 +338,6 @@ const BudgetBillsSection = ({
         </div>
       </div>
 
-      {/*=======================================================
-        Loading state
-      =======================================================*/}
       {loading && (
         <div className="flex min-h-[220px] items-center justify-center">
           <div className="text-center">
@@ -281,9 +350,6 @@ const BudgetBillsSection = ({
         </div>
       )}
 
-      {/*=======================================================
-        Error state
-      =======================================================*/}
       {!loading &&
         error && (
           <div className="p-5">
@@ -299,7 +365,7 @@ const BudgetBillsSection = ({
               <button
                 type="button"
                 onClick={loadBills}
-                className="mt-3 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
+                className="mt-3 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700"
               >
                 Try again
               </button>
@@ -307,9 +373,6 @@ const BudgetBillsSection = ({
           </div>
         )}
 
-      {/*=======================================================
-        Empty state
-      =======================================================*/}
       {!loading &&
         !error &&
         bills.length === 0 && (
@@ -328,9 +391,6 @@ const BudgetBillsSection = ({
           </div>
         )}
 
-      {/*=======================================================
-        Bill rows
-      =======================================================*/}
       {!loading &&
         !error &&
         bills.length > 0 && (
@@ -412,9 +472,6 @@ const BudgetBillsSection = ({
               )}
             </div>
 
-            {/*=================================================
-              Bill summary
-            =================================================*/}
             <div className="grid grid-cols-2 border-t border-[var(--app-border)] bg-[var(--app-surface-muted)]/50 sm:grid-cols-5">
               <div className="px-4 py-3 text-center">
                 <p className="text-xs text-[var(--app-text-muted)]">
@@ -473,14 +530,20 @@ const BudgetBillsSection = ({
           </>
         )}
 
-      {/*=======================================================
-        Add/Edit Bill modal
-      =======================================================*/}
       <BillFormModal
         isOpen={isBillFormOpen}
-        onClose={handleCloseBillForm}
-        onSubmit={handleBillSubmit}
-        categories={categories}
+        onClose={
+          handleCloseBillForm
+        }
+        onSubmit={
+          handleBillSubmit
+        }
+        onCreateCategory={
+          handleCreateCategory
+        }
+        categories={
+          availableCategories
+        }
         month={month}
         year={year}
         monthLabel={monthLabel}
