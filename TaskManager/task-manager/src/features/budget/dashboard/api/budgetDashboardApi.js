@@ -174,6 +174,32 @@ export const createBill = async (
 };
 
 /*===========================================================
+  updateBill:
+  => Completely updates an existing bill.
+
+  Backend:
+  PUT /api/budget/bills/{billId}
+===========================================================*/
+export const updateBill = async (
+  billId,
+  billData
+) => {
+  if (!billId) {
+    throw new Error(
+      'Bill ID is required.'
+    );
+  }
+
+  const response =
+    await api.put(
+      `budget/bills/${billId}`,
+      billData
+    );
+
+  return response.data;
+};
+
+/*===========================================================
   createBudgetCategory:
   => Creates a category inside a selected budget month.
 

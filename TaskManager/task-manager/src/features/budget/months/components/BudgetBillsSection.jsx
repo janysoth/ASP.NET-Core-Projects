@@ -17,6 +17,7 @@ import {
   createBill,
   createBudgetCategory,
   getBills,
+  updateBill,
 } from '../../dashboard/api/budgetDashboardApi';
 
 import {
@@ -80,6 +81,11 @@ const BudgetBillsSection = ({
     submitting,
     setSubmitting,
   ] = useState(false);
+
+  const [
+    selectedBill,
+    setSelectedBill,
+  ] = useState(null);
 
   /*===========================================================
     Synchronize categories from the parent budget month.
@@ -200,14 +206,27 @@ const BudgetBillsSection = ({
       bills,
     ]);
 
-  const handleOpenBillForm = () => {
+  /*===========================================================
+    handleOpenCreateBillForm:
+    => Opens an empty modal in create mode.
+  ===========================================================*/
+  const handleOpenCreateBillForm = () => {
+    setSelectedBill(null);
     setIsBillFormOpen(true);
   };
 
+  /*===========================================================
+    handleCloseBillForm:
+    => Closes the create/edit modal.
+    => Clears the selected bill.
+  ===========================================================*/
   const handleCloseBillForm = () => {
-    if (!submitting) {
-      setIsBillFormOpen(false);
+    if (submitting) {
+      return;
     }
+
+    setIsBillFormOpen(false);
+    setSelectedBill(null);
   };
 
   /*===========================================================
@@ -268,9 +287,33 @@ const BudgetBillsSection = ({
   };
 
   /*===========================================================
+  handleOpenEditBillForm:
+  => Opens the modal with an existing unpaid bill.
+  => Paid bills cannot be edited.
+===========================================================*/
+  const handleOpenEditBillForm = (
+    bill
+  ) => {
+    if (bill.isPaid) {
+      toast(
+        'Paid bills cannot be edited. Mark the bill unpaid first.'
+      );
+
+      return;
+    }
+
+    setSelectedBill(
+      bill
+    );
+
+    setIsBillFormOpen(true);
+  };
+
+  /*===========================================================
     handleBillSubmit:
-    => Creates the bill.
-    => Reloads bills and the parent budget month.
+    => Creates a new bill when selectedBill is null.
+    => Updates an existing bill when selectedBill is set.
+    => Reloads bills and refreshes the parent budget month.
   ===========================================================*/
   const handleBillSubmit = async (
     formData
@@ -278,10 +321,17 @@ const BudgetBillsSection = ({
     try {
       setSubmitting(true);
 
-      await createBill(
-        budgetMonthId,
-        formData
-      );
+      if (selectedBill) {
+        await updateBill(
+          selectedBill.id,
+          formData
+        );
+      } else {
+        await createBill(
+          budgetMonthId,
+          formData
+        );
+      }
 
       await loadBills();
 
@@ -290,15 +340,20 @@ const BudgetBillsSection = ({
       }
 
       setIsBillFormOpen(false);
+      setSelectedBill(null);
 
       toast.success(
-        'Bill created successfully.'
+        selectedBill
+          ? 'Bill updated successfully.'
+          : 'Bill created successfully.'
       );
     } catch (requestError) {
       toast.error(
         getApiErrorMessage(
           requestError,
-          'Unable to create bill.'
+          selectedBill
+            ? 'Unable to update bill.'
+            : 'Unable to create bill.'
         )
       );
     } finally {
@@ -323,7 +378,7 @@ const BudgetBillsSection = ({
           <button
             type="button"
             onClick={
-              handleOpenBillForm
+              handleOpenCreateBillForm
             }
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--app-primary)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--app-primary-hover)]"
           >
@@ -407,6 +462,11 @@ const BudgetBillsSection = ({
                     <button
                       key={bill.id}
                       type="button"
+                      onClick={() =>
+                        handleOpenEditBillForm(
+                          bill
+                        )
+                      }
                       className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[var(--app-surface-muted)]"
                     >
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
@@ -547,6 +607,7 @@ const BudgetBillsSection = ({
         month={month}
         year={year}
         monthLabel={monthLabel}
+        bill={selectedBill}
         submitting={submitting}
       />
     </section>
