@@ -2,10 +2,8 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import { XIcon } from '../../../../../components/icons/Icons';
 
-import {
-  XIcon,
-} from '../../../../components/icons/Icons';
 
 /*===========================================================
   CategoryFormModal:
@@ -235,8 +233,8 @@ const CategoryFormModal = ({
               autoFocus
               placeholder="Example: Utilities"
               className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-text-muted)] focus:ring-2 focus:ring-[var(--app-primary)]/20 ${validationError
-                  ? 'border-red-500'
-                  : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
+                ? 'border-red-500'
+                : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
                 }`}
             />
 

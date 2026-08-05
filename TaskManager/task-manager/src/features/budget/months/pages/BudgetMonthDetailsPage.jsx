@@ -7,7 +7,6 @@ import {
   useParams,
 } from 'react-router-dom';
 
-import BudgetBillsSection from '../components/BudgetBillsSection';
 import BudgetMonthHeader from '../components/BudgetMonthHeader';
 import BudgetMonthSummary from '../components/BudgetMonthSummary';
 
@@ -21,6 +20,7 @@ import {
   sortIncomeRecords,
 } from '../utils/budgetMonthUtils';
 
+import BudgetBillsSection from '../components/bills/BudgetBillsSection';
 import BudgetCategoriesSection from '../components/BudgetCategoriesSection';
 import BudgetExpenseSection from '../components/BudgetExpenseSection';
 import BudgetIncomeSection from '../components/BudgetIncomeSection';
