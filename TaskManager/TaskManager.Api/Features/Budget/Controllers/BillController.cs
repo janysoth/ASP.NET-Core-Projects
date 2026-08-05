@@ -423,11 +423,9 @@ public class BillsController : BudgetControllerBase
   /*===========================================================
     MarkBillPaid:
     => Marks a Fixed Expense bill as paid.
-    => Creates one ExpenseRecord.
-    => Payment account may be Checking, Savings, or CreditCard.
-    => Paid date cannot be in the future.
-
-    POST /api/budget/bills/{billId}/mark-paid
+    => Creates an ExpenseRecord inside the budget month that
+       contains PaidDate.
+    => Overdue bills may be paid during a later month.
   ===========================================================*/
   [HttpPost("bills/{billId}/mark-paid")]
   public async Task<ActionResult<BillResponse>>
@@ -438,73 +436,86 @@ public class BillsController : BudgetControllerBase
     var userId =
       GetUserId();
 
-    if (userId is null)
+    if (userId == null)
     {
       return Unauthorized();
     }
 
     if (string.IsNullOrWhiteSpace(
-        billId))
+      billId))
     {
-      return BadRequest(
-        new
-        {
-          message =
-            "Bill ID is required."
-        });
+      return BadRequest(new
+      {
+        message =
+          "Bill ID is required."
+      });
     }
 
     if (string.IsNullOrWhiteSpace(
-        request.AccountId))
+      request.AccountId))
     {
-      return BadRequest(
-        new
-        {
-          message =
-            "Payment account is required."
-        });
+      return BadRequest(new
+      {
+        message =
+          "Payment account is required."
+      });
     }
 
     if (request.ActualAmount <= 0)
     {
-      return BadRequest(
-        new
-        {
-          message =
-            "Actual amount must be greater than 0."
-        });
+      return BadRequest(new
+      {
+        message =
+          "Actual amount must be greater than 0."
+      });
     }
 
     if (request.PaidDate == default)
     {
-      return BadRequest(
-        new
-        {
-          message =
-            "Paid date is required."
-        });
+      return BadRequest(new
+      {
+        message =
+          "Paid date is required."
+      });
     }
 
-    var paidBill =
-      await _billService.MarkBillPaidAsync(
-        billId,
-        request,
-        userId);
-
-    if (paidBill is null)
+    try
     {
-      return BadRequest(
-        new
+      var paidBill =
+        await _billService.MarkBillPaidAsync(
+          billId,
+          request,
+          userId);
+
+      if (paidBill == null)
+      {
+        return NotFound(new
         {
           message =
-            "The bill could not be paid. It may already be paid, the payment account may be invalid, the category may be invalid, or the paid date may be in the future."
+            "Bill was not found."
         });
+      }
+
+      return Ok(
+        paidBill);
     }
-
-    return Ok(
-      paidBill);
+    catch (ArgumentException exception)
+    {
+      return BadRequest(new
+      {
+        message =
+          exception.Message
+      });
+    }
+    catch (InvalidOperationException exception)
+    {
+      return Conflict(new
+      {
+        message =
+          exception.Message
+      });
+    }
   }
-
   /*===========================================================
     MarkBillUnpaid:
     => Reverses a bill payment.

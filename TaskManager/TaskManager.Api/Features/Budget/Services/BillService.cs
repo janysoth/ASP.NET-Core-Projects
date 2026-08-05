@@ -309,6 +309,22 @@ public class BillService : BudgetBaseService
     }
 
     /*---------------------------------------------------------
+  Paid bills cannot be edited directly.
+
+  A paid bill may have created its ExpenseRecord inside a
+  different payment month. Editing it here could break that
+  payment-month category relationship.
+
+  Reverse the payment first, edit the bill, and then pay it
+  again if necessary.
+---------------------------------------------------------*/
+    if (bill.IsPaid)
+    {
+      throw new InvalidOperationException(
+        "A paid bill cannot be updated. Mark it unpaid first.");
+    }
+
+    /*---------------------------------------------------------
       Load the bill's budget month.
     ---------------------------------------------------------*/
     var budgetMonth =
@@ -352,40 +368,6 @@ public class BillService : BudgetBaseService
 
     var normalizedName =
       request.Name.Trim();
-
-    /*---------------------------------------------------------
-      If the bill has already been paid, keep the generated
-      ExpenseRecord synchronized with bill name/category.
-
-      We intentionally DO NOT automatically overwrite the
-      ExpenseRecord.Amount when ExpectedAmount changes.
-
-      ExpectedAmount = planned amount.
-      ExpenseRecord.Amount = actual amount paid.
-    ---------------------------------------------------------*/
-    if (bill.IsPaid &&
-        !string.IsNullOrWhiteSpace(
-          bill.ExpenseRecordId))
-    {
-      var expenseUpdate =
-        Builders<ExpenseRecord>.Update
-          .Set(
-            expense =>
-              expense.CategoryId,
-            category.Id)
-          .Set(
-            expense =>
-              expense.Name,
-            normalizedName);
-
-      await ExpenseRecords.UpdateOneAsync(
-        expense =>
-          expense.Id ==
-            bill.ExpenseRecordId &&
-          expense.UserId ==
-            userId,
-        expenseUpdate);
-    }
 
     /*---------------------------------------------------------
       Update the bill.
@@ -535,27 +517,22 @@ public class BillService : BudgetBaseService
     MarkBillPaidAsync:
     => Marks a Fixed Expense bill as paid.
     => Creates one ExpenseRecord for the actual payment.
+
+    Bill month:
+    => Remains the month when the bill was due.
+
+    Expense month:
+    => Uses the month containing PaidDate.
+
+    Rules:
+    => Bill must be unpaid.
+    => ActualAmount must be greater than zero.
     => PaidDate cannot be in the future.
-    => PaidDate may be up to 14 days before the budget month.
-    => PaidDate cannot be after the budget month ends.
-
-    Option A:
-
-    ExpectedAmount and ActualAmount may differ.
-
-    Example:
-
-    Expected = $80
-    Actual   = $74
-
-    Bill:
-    => Paid
-    => RemainingAmount = $0
-
-    Budget:
-    => Planned   = $80
-    => Spent     = $74
-    => Remaining = $6
+    => Payment may be up to 14 days before the bill month.
+    => Late payments are allowed.
+    => A BudgetMonth must exist for PaidDate.
+    => A matching Fixed Expense category is found or created
+       inside the payment month.
   ===========================================================*/
   public async Task<BillResponse?> MarkBillPaidAsync(
     string billId,
@@ -578,11 +555,22 @@ public class BillService : BudgetBaseService
     }
 
     /*---------------------------------------------------------
-      Bills can only be paid once.
+      Prevent duplicate payments.
     ---------------------------------------------------------*/
     if (bill.IsPaid)
     {
-      return null;
+      throw new InvalidOperationException(
+        "This bill has already been paid.");
+    }
+
+    /*---------------------------------------------------------
+      Validate the payment account ID.
+    ---------------------------------------------------------*/
+    if (string.IsNullOrWhiteSpace(
+      request.AccountId))
+    {
+      throw new ArgumentException(
+        "Payment account is required.");
     }
 
     /*---------------------------------------------------------
@@ -590,143 +578,126 @@ public class BillService : BudgetBaseService
     ---------------------------------------------------------*/
     if (request.ActualAmount <= 0)
     {
-      return null;
+      throw new ArgumentException(
+        "Actual amount must be greater than 0.");
     }
 
     /*---------------------------------------------------------
-      Normalize the payment date.
-
-      Using .Date ensures that time-of-day differences do not
-      affect date validation.
+      Paid date is required.
     ---------------------------------------------------------*/
+    if (request.PaidDate == default)
+    {
+      throw new ArgumentException(
+        "Paid date is required.");
+    }
+
+    /*
+      Normalize the payment date to a UTC calendar date.
+
+      Time-of-day should not affect budget-month assignment.
+    */
     var paidDate =
-      request.PaidDate.Date;
+      DateTime.SpecifyKind(
+        request.PaidDate.Date,
+        DateTimeKind.Utc);
 
     /*---------------------------------------------------------
-      A payment represents money that has already moved.
+      Future payments are not allowed.
 
-      Future payment dates are not allowed.
+      Paying a bill means that money has already moved.
     ---------------------------------------------------------*/
     if (paidDate >
         DateTime.UtcNow.Date)
     {
-      return null;
+      throw new ArgumentException(
+        "Paid date cannot be in the future.");
     }
 
     /*---------------------------------------------------------
-      Load the budget month that owns this bill.
+      Load the bill's original budget month.
 
-      We need the month and year to calculate the allowed
-      payment-date window.
+      This remains the bill's obligation month.
     ---------------------------------------------------------*/
-    var budgetMonth =
+    var billBudgetMonth =
       await BudgetMonths
-        .Find(existingMonth =>
-          existingMonth.Id ==
+        .Find(budgetMonth =>
+          budgetMonth.Id ==
             bill.BudgetMonthId &&
-          existingMonth.UserId ==
+          budgetMonth.UserId ==
             userId)
         .FirstOrDefaultAsync();
 
-    if (budgetMonth == null)
+    if (billBudgetMonth == null)
     {
       return null;
     }
 
-    /*---------------------------------------------------------
-      Validate the stored month before creating DateTime values.
-
-      The application currently stores months using:
-
-      January  = 1
-      August   = 8
-      December = 12
-    ---------------------------------------------------------*/
-    if (budgetMonth.Month < 1 ||
-        budgetMonth.Month > 12)
+    if (
+      billBudgetMonth.Month < 1 ||
+      billBudgetMonth.Month > 12)
     {
-      return null;
+      throw new InvalidOperationException(
+        "The bill's budget month contains an invalid month value.");
     }
 
     /*---------------------------------------------------------
-      Determine the first and last days of the budget month.
+      Keep the existing early-payment allowance.
 
       Example:
 
-      Budget month:
-      August 2026
+      August bill:
+      Earliest allowed payment is 14 days before August 1.
 
-      Start:
-      August 1, 2026
-
-      End:
-      August 31, 2026
+      Unlike the previous version, there is no latest payment
+      date. An overdue bill may be paid in a later month.
     ---------------------------------------------------------*/
-    var budgetMonthStart =
+    var billMonthStart =
       new DateTime(
-        budgetMonth.Year,
-        budgetMonth.Month,
+        billBudgetMonth.Year,
+        billBudgetMonth.Month,
         1,
         0,
         0,
         0,
         DateTimeKind.Utc);
 
-    var budgetMonthEnd =
-      budgetMonthStart
-        .AddMonths(1)
-        .AddDays(-1);
-
-    /*---------------------------------------------------------
-      A bill may be paid up to 14 days before its budget month.
-
-      Example:
-
-      August 2026 bill
-
-      Earliest allowed payment:
-      July 18, 2026
-    ---------------------------------------------------------*/
     var earliestAllowedPaidDate =
-      budgetMonthStart
-        .AddDays(-14);
+      billMonthStart.AddDays(-14);
 
-    /*---------------------------------------------------------
-      Prevent a bill from being paid too early.
-
-      This avoids assigning an August bill to a payment made
-      several months before August.
-    ---------------------------------------------------------*/
     if (paidDate <
         earliestAllowedPaidDate)
     {
-      return null;
+      throw new ArgumentException(
+        "Paid date cannot be more than 14 days before the bill's budget month.");
     }
 
     /*---------------------------------------------------------
-      Prevent a bill from being paid after its budget month.
+      Find the budget month where the payment actually occurred.
 
       Example:
 
-      An August bill cannot be paid with a September date.
+      July bill
+      Paid August 4
 
-      The future-date validation will normally catch future
-      dates first, but this also protects older budget months.
+      Bill month:
+      July
+
+      Expense month:
+      August
     ---------------------------------------------------------*/
-    if (paidDate >
-        budgetMonthEnd)
+    var paymentBudgetMonth =
+      await GetBudgetMonthForDateAsync(
+        paidDate,
+        userId);
+
+    if (paymentBudgetMonth == null)
     {
-      return null;
+      throw new ArgumentException(
+        "A budget month must exist for the selected paid date.");
     }
 
     /*---------------------------------------------------------
-      Load the account used to pay the bill.
-
-      Allowed examples:
-
-      Checking
-      Savings
-      CreditCard
+      Load the payment account.
     ---------------------------------------------------------*/
     var paymentAccount =
       await GetAccountByIdAsync(
@@ -735,32 +706,62 @@ public class BillService : BudgetBaseService
 
     if (paymentAccount == null)
     {
-      return null;
+      throw new ArgumentException(
+        "Payment account was not found.");
     }
 
     /*---------------------------------------------------------
-      Load and validate the bill category.
+      Load the bill's original category.
+
+      This category remains attached to the original bill.
     ---------------------------------------------------------*/
-    var category =
+    var originalCategory =
       await GetBudgetCategoryForMonthAsync(
         bill.BudgetCategoryId,
         bill.BudgetMonthId,
         userId);
 
-    if (category == null ||
-        !IsValidBillCategory(
-          category,
-          bill.BudgetMonthId))
+    if (
+      originalCategory == null ||
+      !IsValidBillCategory(
+        originalCategory,
+        bill.BudgetMonthId)
+    )
     {
-      return null;
+      throw new InvalidOperationException(
+        "The bill does not have a valid Fixed Expense category.");
     }
 
     /*---------------------------------------------------------
-      Create the actual ExpenseRecord.
+      Find or create the matching category in the month where
+      the payment occurred.
 
-      Bill.ExpectedAmount remains the planned amount.
+      Same-month payment:
+      => Usually returns the original category.
 
-      ExpenseRecord.Amount stores what was actually paid.
+      Late payment:
+      => Returns or creates the matching category in the later
+         payment month.
+    ---------------------------------------------------------*/
+    var paymentCategory =
+      await GetOrCreatePaymentCategoryAsync(
+        originalCategory,
+        paymentBudgetMonth,
+        userId);
+
+    /*---------------------------------------------------------
+      Create the actual expense in the payment month.
+
+      Important:
+
+      BudgetMonthId:
+      => Payment month
+
+      CategoryId:
+      => Matching category inside the payment month
+
+      ExpenseDate:
+      => Actual paid date
     ---------------------------------------------------------*/
     var expense =
       new ExpenseRecord
@@ -769,13 +770,13 @@ public class BillService : BudgetBaseService
           userId,
 
         BudgetMonthId =
-          bill.BudgetMonthId,
+          paymentBudgetMonth.Id,
 
         AccountId =
           paymentAccount.Id,
 
         CategoryId =
-          category.Id,
+          paymentCategory.Id,
 
         Name =
           bill.Name,
@@ -787,8 +788,10 @@ public class BillService : BudgetBaseService
           paidDate,
 
         Notes =
-          request.Notes ??
-          bill.Notes,
+          string.IsNullOrWhiteSpace(
+            request.Notes)
+            ? bill.Notes
+            : request.Notes.Trim(),
 
         CreatedAtUtc =
           DateTime.UtcNow
@@ -798,7 +801,10 @@ public class BillService : BudgetBaseService
       expense);
 
     /*---------------------------------------------------------
-      Mark the bill paid and connect it to the ExpenseRecord.
+      Mark the original bill paid.
+
+      The bill stays attached to its original due month, but
+      ExpenseRecordId points to the payment-month expense.
     ---------------------------------------------------------*/
     var billUpdate =
       Builders<Bill>.Update
@@ -815,34 +821,31 @@ public class BillService : BudgetBaseService
             existingBill.PaidDate,
           paidDate);
 
-    /*---------------------------------------------------------
-      !IsPaid protects against two requests trying to pay
+    /*
+      !IsPaid protects against two requests attempting to pay
       the same bill at the same time.
-    ---------------------------------------------------------*/
+    */
     var updateResult =
       await Bills.UpdateOneAsync(
         existingBill =>
-          existingBill.Id ==
-            bill.Id &&
-          existingBill.UserId ==
-            userId &&
+          existingBill.Id == bill.Id &&
+          existingBill.UserId == userId &&
           !existingBill.IsPaid,
         billUpdate);
 
     if (updateResult.ModifiedCount == 0)
     {
       /*
-        Roll back the ExpenseRecord if the bill could not
-        successfully transition to Paid.
+        Roll back the expense if the bill could not transition
+        to Paid.
       */
       await ExpenseRecords.DeleteOneAsync(
         expenseRecord =>
-          expenseRecord.Id ==
-            expense.Id &&
-          expenseRecord.UserId ==
-            userId);
+          expenseRecord.Id == expense.Id &&
+          expenseRecord.UserId == userId);
 
-      return null;
+      throw new InvalidOperationException(
+        "The bill could not be marked paid because its status changed.");
     }
 
     /*---------------------------------------------------------
@@ -851,10 +854,8 @@ public class BillService : BudgetBaseService
     var updatedBill =
       await Bills
         .Find(existingBill =>
-          existingBill.Id ==
-            bill.Id &&
-          existingBill.UserId ==
-            userId)
+          existingBill.Id == bill.Id &&
+          existingBill.UserId == userId)
         .FirstOrDefaultAsync();
 
     if (updatedBill == null)
@@ -866,7 +867,6 @@ public class BillService : BudgetBaseService
       updatedBill,
       userId);
   }
-
   /*===========================================================
     MarkBillUnpaidAsync:
     => Reverses a bill payment.
@@ -1079,6 +1079,171 @@ public class BillService : BudgetBaseService
       .Select(budget =>
         budget.Id)
       .ToList();
+  }
+
+  /*===========================================================
+  GetBudgetMonthForDateAsync:
+  => Finds the budget month containing a specific calendar
+     date.
+
+  Example:
+
+  PaidDate:
+  August 4, 2026
+
+  Result:
+  August 2026 BudgetMonth
+===========================================================*/
+  private async Task<BudgetMonth?>
+    GetBudgetMonthForDateAsync(
+      DateTime date,
+      string userId)
+  {
+    return await BudgetMonths
+      .Find(budgetMonth =>
+        budgetMonth.UserId == userId &&
+        budgetMonth.Month == date.Month &&
+        budgetMonth.Year == date.Year)
+      .FirstOrDefaultAsync();
+  }
+
+  /*===========================================================
+    GetOrCreatePaymentCategoryAsync:
+    => Finds the matching Fixed Expense category in the month
+       where the payment occurred.
+
+    => Creates the category when it does not exist.
+
+    Example:
+
+    July bill category:
+    Utilities
+
+    Paid in August:
+    Find or create "Utilities" in August.
+  ===========================================================*/
+  private async Task<BudgetCategory>
+    GetOrCreatePaymentCategoryAsync(
+      BudgetCategory originalCategory,
+      BudgetMonth paymentBudgetMonth,
+      string userId)
+  {
+    var paymentMonthCategories =
+      await BudgetCategories
+        .Find(category =>
+          category.UserId == userId &&
+          category.BudgetMonthId ==
+            paymentBudgetMonth.Id)
+        .ToListAsync();
+
+    /*
+      Category names are compared without considering
+      capitalization.
+
+      Example:
+
+      Utilities
+      utilities
+      UTILITIES
+    */
+    var existingCategory =
+      paymentMonthCategories
+        .FirstOrDefault(category =>
+          string.Equals(
+            category.Name.Trim(),
+            originalCategory.Name.Trim(),
+            StringComparison.OrdinalIgnoreCase));
+
+    if (existingCategory != null)
+    {
+      /*
+        A category with the same name may already exist, but
+        it must still be a Fixed Expense category.
+      */
+      if (!IsValidBillCategory(
+        existingCategory,
+        paymentBudgetMonth.Id))
+      {
+        throw new InvalidOperationException(
+          $"The payment month already contains a category named " +
+          $"'{originalCategory.Name}', but it is not a Fixed Expense category.");
+      }
+
+      return existingCategory;
+    }
+
+    /*
+      The payment month does not have the required category.
+
+      PlannedAmount remains zero because this category is being
+      created to record the actual late payment. Any current
+      month's bill still contributes through BillPlannedAmount.
+    */
+    var paymentCategory =
+      new BudgetCategory
+      {
+        UserId =
+          userId,
+
+        BudgetMonthId =
+          paymentBudgetMonth.Id,
+
+        Type =
+          BudgetCategoryTypes.Expense,
+
+        ExpenseType =
+          ExpenseTypes.Fixed,
+
+        Name =
+          originalCategory.Name.Trim(),
+
+        PlannedAmount =
+          0,
+
+        CreatedAtUtc =
+          DateTime.UtcNow
+      };
+
+    try
+    {
+      await BudgetCategories.InsertOneAsync(
+        paymentCategory);
+
+      return paymentCategory;
+    }
+    catch (MongoWriteException exception)
+      when (
+        exception.WriteError?.Category ==
+        ServerErrorCategory.DuplicateKey)
+    {
+      /*
+        Another request may have created the category between
+        our original search and insert attempt.
+
+        Reload and reuse it when valid.
+      */
+      var categoryAfterDuplicate =
+        await BudgetCategories
+          .Find(category =>
+            category.UserId == userId &&
+            category.BudgetMonthId ==
+              paymentBudgetMonth.Id &&
+            category.Name ==
+              originalCategory.Name.Trim())
+          .FirstOrDefaultAsync();
+
+      if (
+        categoryAfterDuplicate == null ||
+        !IsValidBillCategory(
+          categoryAfterDuplicate,
+          paymentBudgetMonth.Id)
+      )
+      {
+        throw;
+      }
+
+      return categoryAfterDuplicate;
+    }
   }
 
   /*===========================================================

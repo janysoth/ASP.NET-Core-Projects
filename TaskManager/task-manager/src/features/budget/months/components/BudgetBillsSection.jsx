@@ -34,6 +34,7 @@ import {
   sortBills,
 } from '../../utils/billUtils';
 
+import { showError } from '../../../../utils/toastHelpers';
 import BillFormModal from './BillFormModal';
 
 /*===========================================================
@@ -295,7 +296,7 @@ const BudgetBillsSection = ({
     bill
   ) => {
     if (bill.isPaid) {
-      toast(
+      showError(
         'Paid bills cannot be edited. Mark the bill unpaid first.'
       );
 
