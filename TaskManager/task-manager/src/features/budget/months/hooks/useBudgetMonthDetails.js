@@ -4,10 +4,7 @@ import {
   useState,
 } from 'react';
 
-import {
-  getBudgetMonthById,
-} from '../../dashboard/api/budgetDashboardApi';
-
+import { getBudgetMonthById } from '../../api/budgetApi';
 import {
   getApiErrorMessage,
 } from '../../utils/budgetErrors';

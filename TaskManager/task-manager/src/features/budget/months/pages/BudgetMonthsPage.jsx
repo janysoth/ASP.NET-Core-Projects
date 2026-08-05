@@ -15,7 +15,7 @@ import {
 
 import {
   getBudgetMonths,
-} from '../../dashboard/api/budgetDashboardApi';
+} from '@/features/budget/api/budgetApi';
 
 /*===========================================================
   formatCurrency:

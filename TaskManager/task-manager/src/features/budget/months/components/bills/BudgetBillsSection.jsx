@@ -6,9 +6,15 @@ import React, {
 } from 'react';
 
 import {
+  CalendarIcon,
+  PlusIcon,
+  ReceiptIcon,
+} from '@/components/icons/Icons';
+
+import {
   showError,
   showSuccess,
-} from '../../../../../utils/toastHelpers';
+} from '@/utils/toastHelpers';
 
 import {
   createBill,
@@ -16,27 +22,22 @@ import {
   getBills,
   markBillUnpaid,
   updateBill,
-} from '../../../dashboard/api/budgetDashboardApi';
+} from '@/features/budget/api/budgetApi';
 
 import {
   formatCurrency,
   formatUtcDate,
-} from '../../../utils/budgetFormatters';
+} from '@/features/budget/utils/budgetFormatters';
 
 import {
   getApiErrorMessage,
-} from '../../../utils/budgetErrors';
+} from '@/features/budget/utils/budgetErrors';
 
 import {
   getBillStatusAppearance,
   sortBills,
-} from '../../../utils/billUtils';
+} from '@/features/budget/utils/billUtils';
 
-import {
-  CalendarIcon,
-  PlusIcon,
-  ReceiptIcon
-} from '../../../../../components/icons/Icons';
 import BillFormModal from './BillFormModal';
 
 

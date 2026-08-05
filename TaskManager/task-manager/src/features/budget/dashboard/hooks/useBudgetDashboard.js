@@ -11,7 +11,7 @@ import {
   getBudgetMonths,
   getDashboardSummary,
   getTransactions,
-} from '../api/budgetDashboardApi';
+} from '@/features/budget/api/budgetApi';
 
 /*===========================================================
   getErrorMessage:
