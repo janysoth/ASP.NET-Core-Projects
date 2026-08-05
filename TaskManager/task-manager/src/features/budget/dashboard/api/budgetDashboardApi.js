@@ -224,3 +224,29 @@ export const createBudgetCategory = async (
 
   return response.data;
 };
+
+/*===========================================================
+  markBillUnpaid:
+  => Reverses a paid bill.
+  => Deletes the linked expense record.
+  => Restores the bill to unpaid.
+
+  Backend:
+  POST /api/budget/bills/{billId}/mark-unpaid
+===========================================================*/
+export const markBillUnpaid = async (
+  billId
+) => {
+  if (!billId) {
+    throw new Error(
+      'Bill ID is required.'
+    );
+  }
+
+  const response =
+    await api.post(
+      `budget/bills/${billId}/mark-unpaid`
+    );
+
+  return response.data;
+};

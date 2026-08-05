@@ -5,8 +5,6 @@ import React, {
   useState,
 } from 'react';
 
-import toast from 'react-hot-toast';
-
 import {
   CalendarIcon,
   PlusIcon,
@@ -14,9 +12,15 @@ import {
 } from '../../../../components/icons/Icons';
 
 import {
+  showError,
+  showSuccess,
+} from '../../../../utils/toastHelpers';
+
+import {
   createBill,
   createBudgetCategory,
   getBills,
+  markBillUnpaid,
   updateBill,
 } from '../../dashboard/api/budgetDashboardApi';
 
@@ -34,14 +38,15 @@ import {
   sortBills,
 } from '../../utils/billUtils';
 
-import { showError } from '../../../../utils/toastHelpers';
 import BillFormModal from './BillFormModal';
 
 /*===========================================================
   BudgetBillsSection:
-  => Loads bills for one month.
+  => Loads and displays bills for one budget month.
   => Creates missing Fixed Expense categories.
-  => Creates new bills.
+  => Creates and updates unpaid bills.
+  => Opens paid bills in details mode.
+  => Reverses paid bills using Mark Unpaid.
 ===========================================================*/
 const BudgetBillsSection = ({
   budgetMonthId,
@@ -79,17 +84,29 @@ const BudgetBillsSection = ({
   ] = useState(false);
 
   const [
+    selectedBill,
+    setSelectedBill,
+  ] = useState(null);
+
+  const [
+    billModalMode,
+    setBillModalMode,
+  ] = useState('create');
+
+  const [
     submitting,
     setSubmitting,
   ] = useState(false);
 
   const [
-    selectedBill,
-    setSelectedBill,
-  ] = useState(null);
+    reversingPayment,
+    setReversingPayment,
+  ] = useState(false);
 
   /*===========================================================
-    Synchronize categories from the parent budget month.
+    Synchronize categories:
+    => Keeps the section's local category list synchronized
+       with the refreshed budget month.
   ===========================================================*/
   useEffect(() => {
     setAvailableCategories(
@@ -101,14 +118,17 @@ const BudgetBillsSection = ({
 
   /*===========================================================
     loadBills:
-    => Loads and sorts the selected month's bills.
+    => Loads bills for the selected month and year.
+    => Sorts unpaid bills before paid bills.
+    => Sorts each group by due date.
   ===========================================================*/
   const loadBills =
     useCallback(async () => {
       if (!month || !year) {
         setBills([]);
         setLoading(false);
-        return;
+
+        return [];
       }
 
       try {
@@ -121,11 +141,16 @@ const BudgetBillsSection = ({
             year
           );
 
-        setBills(
+        const sortedBills =
           sortBills(
             response
-          )
+          );
+
+        setBills(
+          sortedBills
         );
+
+        return sortedBills;
       } catch (requestError) {
         setError(
           getApiErrorMessage(
@@ -133,6 +158,8 @@ const BudgetBillsSection = ({
             'Unable to load bills.'
           )
         );
+
+        return [];
       } finally {
         setLoading(false);
       }
@@ -141,12 +168,20 @@ const BudgetBillsSection = ({
       year,
     ]);
 
+  /*===========================================================
+    Initial bill load:
+    => Reloads whenever the selected month or year changes.
+  ===========================================================*/
   useEffect(() => {
     loadBills();
   }, [
     loadBills,
   ]);
 
+  /*===========================================================
+    Bill summary:
+    => Calculates bill counts and monetary totals.
+  ===========================================================*/
   const summary =
     useMemo(() => {
       const paidBills =
@@ -213,27 +248,56 @@ const BudgetBillsSection = ({
   ===========================================================*/
   const handleOpenCreateBillForm = () => {
     setSelectedBill(null);
+    setBillModalMode('create');
+    setIsBillFormOpen(true);
+  };
+
+  /*===========================================================
+    handleOpenBillModal:
+    => Opens an unpaid bill in edit mode.
+    => Opens a paid bill in details mode.
+  ===========================================================*/
+  const handleOpenBillModal = (
+    bill
+  ) => {
+    setSelectedBill(
+      bill
+    );
+
+    setBillModalMode(
+      bill.isPaid
+        ? 'details'
+        : 'edit'
+    );
+
     setIsBillFormOpen(true);
   };
 
   /*===========================================================
     handleCloseBillForm:
-    => Closes the create/edit modal.
-    => Clears the selected bill.
+    => Closes the bill modal.
+    => Prevents closing while saving or reversing payment.
+    => Resets the selected bill and modal mode.
   ===========================================================*/
   const handleCloseBillForm = () => {
-    if (submitting) {
+    if (
+      submitting ||
+      reversingPayment
+    ) {
       return;
     }
 
     setIsBillFormOpen(false);
     setSelectedBill(null);
+    setBillModalMode('create');
   };
 
   /*===========================================================
     handleCreateCategory:
     => Creates a Fixed Expense category with PlannedAmount 0.
-    => Returns the created category to BillFormModal.
+    => Adds the returned category to the local dropdown.
+    => Returns the category to BillFormModal so it can be
+       selected automatically.
   ===========================================================*/
   const handleCreateCategory = async (
     categoryData
@@ -265,7 +329,7 @@ const BudgetBillsSection = ({
         }
       );
 
-      toast.success(
+      showSuccess(
         'Category created successfully.'
       );
 
@@ -278,8 +342,8 @@ const BudgetBillsSection = ({
         );
 
       /*
-        BillFormModal displays this message inside the nested
-        category modal.
+        BillFormModal catches this error and displays the
+        message inside the nested category modal.
       */
       throw new Error(
         message
@@ -288,33 +352,10 @@ const BudgetBillsSection = ({
   };
 
   /*===========================================================
-  handleOpenEditBillForm:
-  => Opens the modal with an existing unpaid bill.
-  => Paid bills cannot be edited.
-===========================================================*/
-  const handleOpenEditBillForm = (
-    bill
-  ) => {
-    if (bill.isPaid) {
-      showError(
-        'Paid bills cannot be edited. Mark the bill unpaid first.'
-      );
-
-      return;
-    }
-
-    setSelectedBill(
-      bill
-    );
-
-    setIsBillFormOpen(true);
-  };
-
-  /*===========================================================
     handleBillSubmit:
-    => Creates a new bill when selectedBill is null.
-    => Updates an existing bill when selectedBill is set.
-    => Reloads bills and refreshes the parent budget month.
+    => Creates a bill in create mode.
+    => Updates a bill in edit mode.
+    => Reloads bills and monthly budget totals.
   ===========================================================*/
   const handleBillSubmit = async (
     formData
@@ -322,7 +363,11 @@ const BudgetBillsSection = ({
     try {
       setSubmitting(true);
 
-      if (selectedBill) {
+      const isUpdating =
+        billModalMode === 'edit' &&
+        selectedBill?.id;
+
+      if (isUpdating) {
         await updateBill(
           selectedBill.id,
           formData
@@ -342,17 +387,18 @@ const BudgetBillsSection = ({
 
       setIsBillFormOpen(false);
       setSelectedBill(null);
+      setBillModalMode('create');
 
-      toast.success(
-        selectedBill
+      showSuccess(
+        isUpdating
           ? 'Bill updated successfully.'
           : 'Bill created successfully.'
       );
     } catch (requestError) {
-      toast.error(
+      showError(
         getApiErrorMessage(
           requestError,
-          selectedBill
+          billModalMode === 'edit'
             ? 'Unable to update bill.'
             : 'Unable to create bill.'
         )
@@ -362,8 +408,66 @@ const BudgetBillsSection = ({
     }
   };
 
+  /*===========================================================
+    handleMarkBillUnpaid:
+    => Reverses the selected bill's payment.
+    => Deletes the linked ExpenseRecord through the backend.
+    => Reloads bills and monthly budget totals.
+  ===========================================================*/
+  const handleMarkBillUnpaid = async () => {
+    if (!selectedBill?.id) {
+      showError(
+        'Bill ID is required.'
+      );
+
+      return;
+    }
+
+    if (!selectedBill.isPaid) {
+      showError(
+        'This bill is already unpaid.'
+      );
+
+      return;
+    }
+
+    try {
+      setReversingPayment(true);
+
+      await markBillUnpaid(
+        selectedBill.id
+      );
+
+      await loadBills();
+
+      if (onBudgetMonthChanged) {
+        await onBudgetMonthChanged();
+      }
+
+      setIsBillFormOpen(false);
+      setSelectedBill(null);
+      setBillModalMode('create');
+
+      showSuccess(
+        'Bill marked unpaid successfully.'
+      );
+    } catch (requestError) {
+      showError(
+        getApiErrorMessage(
+          requestError,
+          'Unable to mark bill unpaid.'
+        )
+      );
+    } finally {
+      setReversingPayment(false);
+    }
+  };
+
   return (
     <section className="mt-6 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
+      {/*=======================================================
+        Header
+      =======================================================*/}
       <div className="flex flex-col gap-4 border-b border-[var(--app-border)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-semibold text-[var(--app-text)]">
@@ -394,6 +498,9 @@ const BudgetBillsSection = ({
         </div>
       </div>
 
+      {/*=======================================================
+        Loading state
+      =======================================================*/}
       {loading && (
         <div className="flex min-h-[220px] items-center justify-center">
           <div className="text-center">
@@ -406,6 +513,9 @@ const BudgetBillsSection = ({
         </div>
       )}
 
+      {/*=======================================================
+        Error state
+      =======================================================*/}
       {!loading &&
         error && (
           <div className="p-5">
@@ -421,7 +531,7 @@ const BudgetBillsSection = ({
               <button
                 type="button"
                 onClick={loadBills}
-                className="mt-3 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                className="mt-3 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
               >
                 Try again
               </button>
@@ -429,6 +539,9 @@ const BudgetBillsSection = ({
           </div>
         )}
 
+      {/*=======================================================
+        Empty state
+      =======================================================*/}
       {!loading &&
         !error &&
         bills.length === 0 && (
@@ -447,6 +560,9 @@ const BudgetBillsSection = ({
           </div>
         )}
 
+      {/*=======================================================
+        Bill rows
+      =======================================================*/}
       {!loading &&
         !error &&
         bills.length > 0 && (
@@ -464,7 +580,7 @@ const BudgetBillsSection = ({
                       key={bill.id}
                       type="button"
                       onClick={() =>
-                        handleOpenEditBillForm(
+                        handleOpenBillModal(
                           bill
                         )
                       }
@@ -533,6 +649,9 @@ const BudgetBillsSection = ({
               )}
             </div>
 
+            {/*=================================================
+              Bill summary
+            =================================================*/}
             <div className="grid grid-cols-2 border-t border-[var(--app-border)] bg-[var(--app-surface-muted)]/50 sm:grid-cols-5">
               <div className="px-4 py-3 text-center">
                 <p className="text-xs text-[var(--app-text-muted)]">
@@ -591,25 +710,23 @@ const BudgetBillsSection = ({
           </>
         )}
 
+      {/*=======================================================
+        Create, edit, and details modal
+      =======================================================*/}
       <BillFormModal
+        mode={billModalMode}
         isOpen={isBillFormOpen}
-        onClose={
-          handleCloseBillForm
-        }
-        onSubmit={
-          handleBillSubmit
-        }
-        onCreateCategory={
-          handleCreateCategory
-        }
-        categories={
-          availableCategories
-        }
+        onClose={handleCloseBillForm}
+        onSubmit={handleBillSubmit}
+        onCreateCategory={handleCreateCategory}
+        onMarkUnpaid={handleMarkBillUnpaid}
+        categories={availableCategories}
         month={month}
         year={year}
         monthLabel={monthLabel}
         bill={selectedBill}
         submitting={submitting}
+        reversingPayment={reversingPayment}
       />
     </section>
   );

@@ -10,11 +10,22 @@ import {
   XIcon,
 } from '../../../../components/icons/Icons';
 
+import {
+  formatCurrency,
+  formatUtcDate,
+} from '../../utils/budgetFormatters';
+
 import CategoryFormModal from './CategoryFormModal';
 
 /*===========================================================
   getMonthDateRange:
-  => Returns the first and last valid date for a budget month.
+  => Returns the first date, last date, and suggested default
+     date for the selected budget month.
+
+  Default date:
+  => Uses today's day number.
+  => If that day does not exist in the selected month, uses
+     the final valid day of that month.
 ===========================================================*/
 const getMonthDateRange = (
   month,
@@ -41,14 +52,6 @@ const getMonthDateRange = (
       0
     ).getDate();
 
-  /*
-    Use today's day number, but clamp it to the final valid
-    day of the selected month.
-
-    Example:
-    Today is the 31st and selected month is February:
-    => February 28 or 29
-  */
   const todayDay =
     new Date().getDate();
 
@@ -82,7 +85,13 @@ const getMonthDateRange = (
 
 /*===========================================================
   getInitialFormValues:
-  => Creates starting values for create or edit mode.
+  => Creates the starting values for the bill form.
+
+  Create mode:
+  => Starts with empty values and the suggested due date.
+
+  Edit/details mode:
+  => Uses the selected bill's existing values.
 ===========================================================*/
 const getInitialFormValues = (
   bill,
@@ -114,21 +123,35 @@ const getInitialFormValues = (
 
 /*===========================================================
   BillFormModal:
-  => Displays the create/edit bill form.
-  => Allows a Fixed Expense category to be created without
-     leaving the bill workflow.
+  => Supports three modes:
+
+     create:
+     - Creates a new unpaid bill.
+
+     edit:
+     - Updates an existing unpaid bill.
+
+     details:
+     - Displays a paid bill as read-only.
+     - Allows the payment to be reversed.
+
+  => Also allows a missing Fixed Expense category to be
+     created without leaving the bill workflow.
 ===========================================================*/
 const BillFormModal = ({
+  mode = 'create',
   isOpen,
   onClose,
   onSubmit,
   onCreateCategory,
+  onMarkUnpaid,
   categories = [],
   month,
   year,
   monthLabel,
   bill = null,
   submitting = false,
+  reversingPayment = false,
 }) => {
   const {
     minDate,
@@ -146,6 +169,29 @@ const BillFormModal = ({
     ]
   );
 
+  /*===========================================================
+    Modal mode
+  ===========================================================*/
+  const isCreateMode =
+    mode === 'create';
+
+  const isEditMode =
+    mode === 'edit';
+
+  const isDetailsMode =
+    mode === 'details';
+
+  const actionInProgress =
+    submitting ||
+    reversingPayment;
+
+  /*===========================================================
+    Fixed Expense categories:
+    => Bills may only use categories where:
+
+       Type = Expense
+       ExpenseType = Fixed
+  ===========================================================*/
   const fixedExpenseCategories =
     useMemo(
       () =>
@@ -162,9 +208,14 @@ const BillFormModal = ({
               'fixed'
           )
           .sort(
-            (first, second) =>
-              first.name.localeCompare(
-                second.name
+            (
+              firstCategory,
+              secondCategory
+            ) =>
+              (
+                firstCategory.name ?? ''
+              ).localeCompare(
+                secondCategory.name ?? ''
               )
           ),
       [
@@ -202,11 +253,10 @@ const BillFormModal = ({
     setCategoryApiError,
   ] = useState('');
 
-  const isEditMode =
-    Boolean(bill);
-
   /*===========================================================
-    Reset the bill form whenever it opens.
+    Reset the modal:
+    => Reloads the selected bill's values whenever the modal
+       opens or the selected bill changes.
   ===========================================================*/
   useEffect(() => {
     if (!isOpen) {
@@ -227,12 +277,15 @@ const BillFormModal = ({
     isOpen,
     bill,
     defaultDate,
+    mode,
   ]);
 
   /*===========================================================
     Escape key:
-    => The category modal handles Escape while it is open.
-    => Otherwise Escape closes the bill modal.
+    => Closes the bill modal when Escape is pressed.
+    => Does not close while an action is running.
+    => Does not close the bill modal while the nested category
+       modal is open.
   ===========================================================*/
   useEffect(() => {
     if (!isOpen) {
@@ -244,7 +297,7 @@ const BillFormModal = ({
     ) => {
       if (
         event.key === 'Escape' &&
-        !submitting &&
+        !actionInProgress &&
         !isCategoryFormOpen
       ) {
         onClose?.();
@@ -264,13 +317,14 @@ const BillFormModal = ({
     };
   }, [
     isOpen,
-    onClose,
-    submitting,
+    actionInProgress,
     isCategoryFormOpen,
+    onClose,
   ]);
 
   /*===========================================================
-    Prevent scrolling behind the modal.
+    Body scrolling:
+    => Prevents the page behind the modal from scrolling.
   ===========================================================*/
   useEffect(() => {
     if (!isOpen) {
@@ -295,19 +349,29 @@ const BillFormModal = ({
     return null;
   }
 
-  const handleOverlayClick = (
+  /*===========================================================
+    handleOverlayMouseDown:
+    => Closes the modal when the user clicks the dark overlay.
+    => Clicking inside the dialog does not close it.
+  ===========================================================*/
+  const handleOverlayMouseDown = (
     event
   ) => {
     if (
       event.target ===
       event.currentTarget &&
-      !submitting &&
+      !actionInProgress &&
       !isCategoryFormOpen
     ) {
       onClose?.();
     }
   };
 
+  /*===========================================================
+    handleChange:
+    => Updates one form value.
+    => Clears the field's previous validation message.
+  ===========================================================*/
   const handleChange = (
     event
   ) => {
@@ -340,6 +404,10 @@ const BillFormModal = ({
     );
   };
 
+  /*===========================================================
+    validateForm:
+    => Validates editable bill values.
+  ===========================================================*/
   const validateForm = () => {
     const errors = {};
 
@@ -356,15 +424,15 @@ const BillFormModal = ({
         'Bill name is required.';
     }
 
-    const amount =
+    const expectedAmount =
       Number(
         formValues.expectedAmount
       );
 
     if (
       !formValues.expectedAmount ||
-      Number.isNaN(amount) ||
-      amount <= 0
+      Number.isNaN(expectedAmount) ||
+      expectedAmount <= 0
     ) {
       errors.expectedAmount =
         'Expected amount must be greater than 0.';
@@ -397,10 +465,22 @@ const BillFormModal = ({
     );
   };
 
+  /*===========================================================
+    handleSubmit:
+    => Creates or updates a bill.
+    => Details mode does not submit the form.
+  ===========================================================*/
   const handleSubmit = (
     event
   ) => {
     event.preventDefault();
+
+    if (
+      isDetailsMode ||
+      actionInProgress
+    ) {
+      return;
+    }
 
     if (!validateForm()) {
       return;
@@ -429,14 +509,48 @@ const BillFormModal = ({
   };
 
   /*===========================================================
+    handleOpenCategoryForm:
+    => Opens the nested Fixed Expense category modal.
+  ===========================================================*/
+  const handleOpenCategoryForm = () => {
+    if (
+      actionInProgress ||
+      isDetailsMode
+    ) {
+      return;
+    }
+
+    setCategoryApiError('');
+    setIsCategoryFormOpen(true);
+  };
+
+  /*===========================================================
+    handleCloseCategoryForm:
+    => Closes the category modal when no category request is
+       running.
+  ===========================================================*/
+  const handleCloseCategoryForm = () => {
+    if (categorySubmitting) {
+      return;
+    }
+
+    setIsCategoryFormOpen(false);
+    setCategoryApiError('');
+  };
+
+  /*===========================================================
     handleCreateCategory:
-    => Creates the new category through the parent.
-    => Automatically selects the returned category.
+    => Creates a Fixed Expense category through the parent.
+    => Automatically selects the newly created category.
   ===========================================================*/
   const handleCreateCategory = async (
     categoryData
   ) => {
     if (!onCreateCategory) {
+      setCategoryApiError(
+        'Category creation is unavailable.'
+      );
+
       return;
     }
 
@@ -451,13 +565,14 @@ const BillFormModal = ({
 
       if (!createdCategory?.id) {
         throw new Error(
-          'The category was created but no category ID was returned.'
+          'The category was created, but no category ID was returned.'
         );
       }
 
       setFormValues(
         (currentValues) => ({
           ...currentValues,
+
           budgetCategoryId:
             createdCategory.id,
         })
@@ -476,6 +591,7 @@ const BillFormModal = ({
       );
 
       setIsCategoryFormOpen(false);
+      setCategoryApiError('');
     } catch (requestError) {
       setCategoryApiError(
         requestError?.message ||
@@ -491,7 +607,7 @@ const BillFormModal = ({
       <div
         className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 px-4 py-6"
         onMouseDown={
-          handleOverlayClick
+          handleOverlayMouseDown
         }
       >
         <div
@@ -500,6 +616,9 @@ const BillFormModal = ({
           aria-labelledby="bill-form-title"
           className="max-h-[calc(100vh-3rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-2xl"
         >
+          {/*===================================================
+            Header
+          ===================================================*/}
           <div className="flex items-start justify-between gap-4 border-b border-[var(--app-border)] px-5 py-4">
             <div>
               <p className="text-sm font-semibold text-[var(--app-primary)]">
@@ -510,33 +629,49 @@ const BillFormModal = ({
                 id="bill-form-title"
                 className="mt-1 text-xl font-bold text-[var(--app-text)]"
               >
-                {isEditMode
-                  ? 'Edit bill'
-                  : 'Add bill'}
+                {isCreateMode &&
+                  'Add bill'}
+
+                {isEditMode &&
+                  'Edit bill'}
+
+                {isDetailsMode &&
+                  'Bill details'}
               </h2>
 
-              <p className="mt-1 text-sm text-[var(--app-text-muted)]">
-                {isEditMode
-                  ? 'Update this fixed expense obligation.'
-                  : 'Create a fixed expense obligation for this budget month.'}
+              <p className="mt-1 text-sm leading-6 text-[var(--app-text-muted)]">
+                {isCreateMode &&
+                  'Create a fixed expense obligation for this budget month.'}
+
+                {isEditMode &&
+                  'Update this fixed expense obligation.'}
+
+                {isDetailsMode &&
+                  'Review the bill and its recorded payment details.'}
               </p>
             </div>
 
             <button
               type="button"
               onClick={onClose}
-              disabled={submitting}
-              aria-label="Close bill form"
+              disabled={actionInProgress}
+              aria-label="Close bill modal"
               className="rounded-lg p-2 text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <XIcon className="h-5 w-5" />
             </button>
           </div>
 
+          {/*===================================================
+            Form
+          ===================================================*/}
           <form
             onSubmit={handleSubmit}
             className="space-y-5 px-5 py-5"
           >
+            {/*=================================================
+              Category
+            =================================================*/}
             <div>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <label
@@ -546,22 +681,23 @@ const BillFormModal = ({
                   Fixed expense category
                 </label>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCategoryApiError('');
-                    setIsCategoryFormOpen(true);
-                  }}
-                  disabled={
-                    submitting ||
-                    categorySubmitting
-                  }
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--app-primary)] hover:underline disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <PlusIcon className="h-4 w-4" />
+                {!isDetailsMode && (
+                  <button
+                    type="button"
+                    onClick={
+                      handleOpenCategoryForm
+                    }
+                    disabled={
+                      actionInProgress ||
+                      categorySubmitting
+                    }
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--app-primary)] hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <PlusIcon className="h-4 w-4" />
 
-                  Add new category
-                </button>
+                    Add new category
+                  </button>
+                )}
               </div>
 
               <select
@@ -571,8 +707,11 @@ const BillFormModal = ({
                   formValues.budgetCategoryId
                 }
                 onChange={handleChange}
-                disabled={submitting}
-                className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition focus:ring-2 focus:ring-[var(--app-primary)]/20 ${validationErrors.budgetCategoryId
+                disabled={
+                  actionInProgress ||
+                  isDetailsMode
+                }
+                className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.budgetCategoryId
                     ? 'border-red-500'
                     : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
                   }`}
@@ -593,11 +732,12 @@ const BillFormModal = ({
                 )}
               </select>
 
-              {fixedExpenseCategories.length ===
+              {!isDetailsMode &&
+                fixedExpenseCategories.length ===
                 0 && (
                   <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                    No Fixed Expense categories exist yet. Use
-                    “Add new category” to create one.
+                    No Fixed Expense categories exist yet.
+                    Use “Add new category” to create one.
                   </p>
                 )}
 
@@ -610,6 +750,9 @@ const BillFormModal = ({
               )}
             </div>
 
+            {/*=================================================
+              Bill name
+            =================================================*/}
             <div>
               <label
                 htmlFor="name"
@@ -624,9 +767,12 @@ const BillFormModal = ({
                 type="text"
                 value={formValues.name}
                 onChange={handleChange}
-                disabled={submitting}
+                disabled={
+                  actionInProgress ||
+                  isDetailsMode
+                }
                 placeholder="Example: Mortgage"
-                className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-text-muted)] focus:ring-2 focus:ring-[var(--app-primary)]/20 ${validationErrors.name
+                className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-text-muted)] focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.name
                     ? 'border-red-500'
                     : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
                   }`}
@@ -639,6 +785,9 @@ const BillFormModal = ({
               )}
             </div>
 
+            {/*=================================================
+              Expected amount and due date
+            =================================================*/}
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label
@@ -658,9 +807,12 @@ const BillFormModal = ({
                     formValues.expectedAmount
                   }
                   onChange={handleChange}
-                  disabled={submitting}
+                  disabled={
+                    actionInProgress ||
+                    isDetailsMode
+                  }
                   placeholder="0.00"
-                  className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-text-muted)] focus:ring-2 focus:ring-[var(--app-primary)]/20 ${validationErrors.expectedAmount
+                  className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-text-muted)] focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.expectedAmount
                       ? 'border-red-500'
                       : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
                     }`}
@@ -694,8 +846,11 @@ const BillFormModal = ({
                     max={maxDate}
                     value={formValues.dueDate}
                     onChange={handleChange}
-                    disabled={submitting}
-                    className={`w-full rounded-xl border bg-[var(--app-surface)] py-2.5 pl-10 pr-3 text-sm text-[var(--app-text)] outline-none transition focus:ring-2 focus:ring-[var(--app-primary)]/20 ${validationErrors.dueDate
+                    disabled={
+                      actionInProgress ||
+                      isDetailsMode
+                    }
+                    className={`w-full rounded-xl border bg-[var(--app-surface)] py-2.5 pl-10 pr-3 text-sm text-[var(--app-text)] outline-none transition focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.dueDate
                         ? 'border-red-500'
                         : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
                       }`}
@@ -712,6 +867,9 @@ const BillFormModal = ({
               </div>
             </div>
 
+            {/*=================================================
+              Notes
+            =================================================*/}
             <div>
               <label
                 htmlFor="notes"
@@ -719,9 +877,11 @@ const BillFormModal = ({
               >
                 Notes
 
-                <span className="ml-1 font-normal text-[var(--app-text-muted)]">
-                  (optional)
-                </span>
+                {!isDetailsMode && (
+                  <span className="ml-1 font-normal text-[var(--app-text-muted)]">
+                    (optional)
+                  </span>
+                )}
               </label>
 
               <textarea
@@ -730,46 +890,149 @@ const BillFormModal = ({
                 rows={3}
                 value={formValues.notes}
                 onChange={handleChange}
-                disabled={submitting}
+                disabled={
+                  actionInProgress ||
+                  isDetailsMode
+                }
                 placeholder="Add details about this bill..."
-                className="mt-2 w-full resize-none rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-text-muted)] focus:border-[var(--app-primary)] focus:ring-2 focus:ring-[var(--app-primary)]/20"
+                className="mt-2 w-full resize-none rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-text-muted)] focus:border-[var(--app-primary)] focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70"
               />
             </div>
 
+            {/*=================================================
+              Paid bill details
+            =================================================*/}
+            {isDetailsMode && (
+              <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-muted)]/60 p-4">
+                <h3 className="text-sm font-semibold text-[var(--app-text)]">
+                  Payment details
+                </h3>
+
+                <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-medium text-[var(--app-text-muted)]">
+                      Status
+                    </dt>
+
+                    <dd className="mt-1 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                      Paid
+                    </dd>
+                  </div>
+
+                  <div>
+                    <dt className="text-xs font-medium text-[var(--app-text-muted)]">
+                      Paid date
+                    </dt>
+
+                    <dd className="mt-1 text-sm font-semibold text-[var(--app-text)]">
+                      {formatUtcDate(
+                        bill?.paidDate,
+                        'Not available'
+                      )}
+                    </dd>
+                  </div>
+
+                  <div>
+                    <dt className="text-xs font-medium text-[var(--app-text-muted)]">
+                      Expected amount
+                    </dt>
+
+                    <dd className="mt-1 text-sm font-semibold text-[var(--app-text)]">
+                      {formatCurrency(
+                        bill?.expectedAmount
+                      )}
+                    </dd>
+                  </div>
+
+                  <div>
+                    <dt className="text-xs font-medium text-[var(--app-text-muted)]">
+                      Actual amount
+                    </dt>
+
+                    <dd className="mt-1 text-sm font-semibold text-[var(--app-text)]">
+                      {bill?.actualAmount != null
+                        ? formatCurrency(
+                          bill.actualAmount
+                        )
+                        : 'Not available'}
+                    </dd>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs font-medium text-[var(--app-text-muted)]">
+                      Payment account
+                    </dt>
+
+                    <dd className="mt-1 text-sm font-semibold text-[var(--app-text)]">
+                      {bill?.accountName ||
+                        'Unknown account'}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            )}
+
+            {/*=================================================
+              Actions
+            =================================================*/}
             <div className="flex flex-col-reverse gap-3 border-t border-[var(--app-border)] pt-5 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={onClose}
-                disabled={submitting}
+                disabled={actionInProgress}
                 className="rounded-xl border border-[var(--app-border)] px-4 py-2.5 text-sm font-semibold text-[var(--app-text)] transition-colors hover:bg-[var(--app-surface-muted)] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Cancel
+                {isDetailsMode
+                  ? 'Close'
+                  : 'Cancel'}
               </button>
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="rounded-xl bg-[var(--app-primary)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--app-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {submitting
-                  ? 'Saving...'
-                  : isEditMode
-                    ? 'Save changes'
-                    : 'Add bill'}
-              </button>
+              {isDetailsMode ? (
+                <button
+                  type="button"
+                  onClick={
+                    onMarkUnpaid
+                  }
+                  disabled={
+                    actionInProgress ||
+                    !bill?.isPaid
+                  }
+                  className="rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {reversingPayment
+                    ? 'Reversing payment...'
+                    : 'Mark unpaid'}
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={
+                    actionInProgress ||
+                    fixedExpenseCategories.length ===
+                    0
+                  }
+                  className="rounded-xl bg-[var(--app-primary)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--app-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {submitting
+                    ? 'Saving...'
+                    : isCreateMode
+                      ? 'Add bill'
+                      : 'Save changes'}
+                </button>
+              )}
             </div>
           </form>
         </div>
       </div>
 
+      {/*=======================================================
+        Nested category modal
+      =======================================================*/}
       <CategoryFormModal
         isOpen={isCategoryFormOpen}
-        onClose={() => {
-          if (!categorySubmitting) {
-            setIsCategoryFormOpen(false);
-            setCategoryApiError('');
-          }
-        }}
+        onClose={
+          handleCloseCategoryForm
+        }
         onSubmit={
           handleCreateCategory
         }
