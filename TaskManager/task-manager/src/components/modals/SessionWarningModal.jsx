@@ -60,11 +60,11 @@ const SessionWarningModal = () => {
 
       <div className="pointer-events-auto relative z-10 mx-4 w-full max-w-md rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-xl">
         <h3 className="mb-2 text-xl font-bold text-[var(--app-text)]">
-          Session Expiring Soon
+          Are you still there?
         </h3>
 
         <p className="mb-4 text-[var(--app-text-muted)]">
-          You will be logged out due to inactivity.
+          You will be logged out soon because no activity was detected.
         </p>
 
         <div className="mb-6 text-center text-3xl font-bold text-red-500">
@@ -81,7 +81,7 @@ const SessionWarningModal = () => {
             }}
             className="flex-1 rounded-lg bg-[var(--app-primary)] px-4 py-2 font-semibold text-white hover:bg-[var(--app-primary-hover)]"
           >
-            Stay Logged In
+            Continue Session
           </button>
           <button
             type="button"

@@ -1,93 +1,249 @@
-import React, { useCallback, useState } from 'react';
-import toast from 'react-hot-toast';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import React, {
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 
-import AuthForm from '../../components/forms/AuthForm';
+import {
+  Link,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
 
-import { useAuth } from '../../hooks/useAuth';
-import { useForm } from '../../hooks/useForm';
-import { login as loginApi } from '../../services/api';
-import { LOGIN_FIELDS } from '../../utils/auth/authFields';
-import { getLoginFormState } from '../../utils/formStates';
-import { getPreferences } from '../../utils/userPreferences';
+import AuthForm from '@/components/forms/AuthForm';
 
+import {
+  useAuth,
+} from '@/hooks/useAuth';
+
+import {
+  useForm,
+} from '@/hooks/useForm';
+
+import {
+  login as loginApi,
+} from '@/services/api';
+
+import {
+  LOGIN_FIELDS,
+} from '@/utils/auth/authFields';
+
+import {
+  getLoginFormState,
+} from '@/utils/formStates';
+
+import {
+  dismissToast,
+  showError,
+  showLoading,
+  showSuccess,
+} from '@/utils/toastHelpers';
+
+import {
+  getPreferences,
+} from '@/utils/userPreferences';
+
+/*===========================================================
+  LoginPage:
+  => Authenticates the user.
+  => Stores the access token and authenticated user.
+  => Displays a session-expired message when redirected
+     after refresh-token failure.
+===========================================================*/
 const LoginPage = () => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(false);
 
-  const [searchParams] = useSearchParams();
-  const sessionExpired = searchParams.get('reason') === 'session_expired';
+  const [
+    sessionExpired,
+    setSessionExpired,
+  ] = useState(false);
 
-  const navigate = useNavigate();
-  const { login } = useAuth();
+  const [
+    searchParams,
+  ] = useSearchParams();
 
-  const form = useForm(LOGIN_FIELDS, getLoginFormState);
+  const navigate =
+    useNavigate();
 
-  const handleLogin = useCallback(async (data) => {
-    setIsLoading(true);
+  const {
+    login,
+  } = useAuth();
 
-    const toastId = toast.loading('Logging in...', {
-      style: {
-        background: '#334155',
-        color: '#fff',
-      },
-    });
+  const form =
+    useForm(
+      LOGIN_FIELDS,
+      getLoginFormState
+    );
 
-    try {
-      const response = await loginApi(data);
-      const { accessToken, user } = response.data;
+  /*===========================================================
+    Session-expired message:
+    => Supports sessionStorage used by the Axios interceptor.
+    => Also supports the older URL query-string approach.
 
-      login({ token: accessToken, user });
+    Supported URL:
+    /login?reason=session_expired
+  ===========================================================*/
+  useEffect(() => {
+    const storedSessionExpired =
+      sessionStorage.getItem(
+        'sessionExpired'
+      ) === 'true';
 
-      toast.success('Welcome back! 🎉', {
-        id: toastId,
-        icon: '✅',
-        style: {
-          background: '#10b981',
-          color: '#fff',
-        },
-      });
+    const querySessionExpired =
+      searchParams.get(
+        'reason'
+      ) === 'session_expired';
 
-      const { defaultStartPage } = getPreferences();
-
-      navigate(defaultStartPage || '/', {
-        replace: true,
-      });
-    } catch (err) {
-      const message =
-        err.response?.data?.message || 'Invalid credentials.';
-
-      toast.error(message, {
-        id: toastId,
-        icon: '❌',
-        style: {
-          background: '#ef4444',
-          color: '#fff',
-        },
-      });
-
-      console.error('Login error:', err);
-    } finally {
-      setIsLoading(false);
+    if (
+      !storedSessionExpired &&
+      !querySessionExpired
+    ) {
+      return;
     }
-  }, [login, navigate]);
+
+    setSessionExpired(true);
+
+    showError(
+      'Your session has expired. Please sign in again.'
+    );
+
+    sessionStorage.removeItem(
+      'sessionExpired'
+    );
+  }, [
+    searchParams,
+  ]);
+
+  /*===========================================================
+    handleLogin:
+    => Sends credentials to the login endpoint.
+    => Saves the returned access token and user.
+    => Redirects to the user's preferred start page.
+  ===========================================================*/
+  const handleLogin =
+    useCallback(
+      async (
+        data
+      ) => {
+        setIsLoading(true);
+
+        const loadingToastId =
+          showLoading(
+            'Logging in...'
+          );
+
+        try {
+          const response =
+            await loginApi(
+              data
+            );
+
+          const {
+            accessToken,
+            user,
+          } = response.data;
+
+          login({
+            token:
+              accessToken,
+
+            user,
+          });
+
+          dismissToast(
+            loadingToastId
+          );
+
+          showSuccess(
+            'Welcome back!'
+          );
+
+          /*
+            Remove any previous session-expiration state after
+            a successful login.
+          */
+          setSessionExpired(false);
+
+          sessionStorage.removeItem(
+            'sessionExpired'
+          );
+
+          const {
+            defaultStartPage,
+          } = getPreferences();
+
+          navigate(
+            defaultStartPage ||
+            '/',
+            {
+              replace:
+                true,
+            }
+          );
+        } catch (
+        requestError
+        ) {
+          dismissToast(
+            loadingToastId
+          );
+
+          const message =
+            requestError
+              ?.response
+              ?.data
+              ?.message ||
+            requestError
+              ?.response
+              ?.data
+              ?.error ||
+            'Invalid credentials.';
+
+          showError(
+            message
+          );
+
+          console.error(
+            'Login error:',
+            requestError
+          );
+        } finally {
+          setIsLoading(
+            false
+          );
+        }
+      },
+      [
+        login,
+        navigate,
+      ]
+    );
 
   return (
     <AuthForm
       mode="login"
       title="Welcome Back"
-      fields={LOGIN_FIELDS}
+      fields={
+        LOGIN_FIELDS
+      }
       form={form}
-      onSubmit={handleLogin}
-      isLoading={isLoading}
+      onSubmit={
+        handleLogin
+      }
+      isLoading={
+        isLoading
+      }
       submitText="Login"
       loadingText="Logging in..."
       error={null}
       extraContent={
-        sessionExpired && (
-          <div className="mb-4 rounded-lg border border-yellow-300 bg-yellow-100 p-3 text-center text-sm text-yellow-800">
+        sessionExpired ? (
+          <div className="mb-4 rounded-lg border border-amber-300 bg-amber-100 p-3 text-center text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
             Your session expired. Please log in again.
           </div>
-        )
+        ) : null
       }
       footer={
         <>

@@ -20,31 +20,79 @@ public sealed class JwtTokenService
     _settings = options.Value;
   }
 
-  // Create JWT Access Token
-  public string CreateAccessToken(User user)
+  public string CreateAccessToken(
+    User user)
   {
-    var claims = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub, user.Id),
-            new(JwtRegisteredClaimNames.Email, user.Email),
-            new("fullName", user.FullName),
-            new(ClaimTypes.NameIdentifier, user.Id)
-        };
+    var claims =
+      new List<Claim>
+      {
+      new(
+        JwtRegisteredClaimNames.Sub,
+        user.Id),
 
-    var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Key));
-    var creds = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
+      new(
+        JwtRegisteredClaimNames.Email,
+        user.Email),
 
-    var token = new JwtSecurityToken(
-        issuer: _settings.Issuer,
-        audience: _settings.Audience,
-        claims: claims,
-        expires: DateTime.UtcNow.AddMinutes(_settings.AccessTokenMinutes),
-        signingCredentials: creds
-    );
+      new(
+        "fullName",
+        user.FullName),
 
-    return new JwtSecurityTokenHandler().WriteToken(token);
+      new(
+        ClaimTypes.NameIdentifier,
+        user.Id),
+
+      new(
+        JwtRegisteredClaimNames.Iat,
+        DateTimeOffset.UtcNow
+          .ToUnixTimeSeconds()
+          .ToString(),
+        ClaimValueTypes.Integer64)
+      };
+
+    var signingKey =
+      new SymmetricSecurityKey(
+        Encoding.UTF8.GetBytes(
+          _settings.Key));
+
+    var credentials =
+      new SigningCredentials(
+        signingKey,
+        SecurityAlgorithms.HmacSha256);
+
+    var expiresAtUtc =
+      DateTime.UtcNow.AddMinutes(
+        _settings.AccessTokenMinutes);
+
+    Console.WriteLine(
+      $"Access token lifetime: " +
+      $"{_settings.AccessTokenMinutes} minute(s)");
+
+    Console.WriteLine(
+      $"Access token expires at: " +
+      $"{expiresAtUtc:O}");
+
+    var token =
+      new JwtSecurityToken(
+        issuer:
+          _settings.Issuer,
+
+        audience:
+          _settings.Audience,
+
+        claims:
+          claims,
+
+        expires:
+          expiresAtUtc,
+
+        signingCredentials:
+          credentials
+      );
+
+    return new JwtSecurityTokenHandler()
+      .WriteToken(token);
   }
-
   // Validate a JWT access token
   public bool ValidateToken(string token)
   {
@@ -110,4 +158,5 @@ public sealed class JwtTokenService
     // Implement refresh token validation logic here
     return true; // Placeholder
   }
+
 }
