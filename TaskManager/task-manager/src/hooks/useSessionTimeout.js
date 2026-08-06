@@ -95,8 +95,21 @@ export const useSessionTimeout = ({ user, onLogout }) => {
     return clearTimers;
   }, [user, startWatcher, clearTimers]);
 
+  /*===========================================================
+    User activity:
+    => Resets the inactivity timer during normal app usage.
+    => Does not automatically extend the session while the
+       warning modal is open.
+  
+    IMPORTANT:
+    => Once the warning appears, the user must explicitly choose:
+       - Continue Session
+       - Logout Now
+  ===========================================================*/
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      return undefined;
+    }
 
     const events = [
       'mousedown',
@@ -106,18 +119,38 @@ export const useSessionTimeout = ({ user, onLogout }) => {
       'click',
     ];
 
-    const handleActivity = () => updateActivity();
+    const handleActivity = () => {
+      /*
+        Do not let backdrop clicks, Escape, or button mouse-down
+        events automatically dismiss the warning modal.
+      */
+      if (showWarning) {
+        return;
+      }
 
-    events.forEach((event) =>
-      window.addEventListener(event, handleActivity)
-    );
+      updateActivity();
+    };
+
+    events.forEach((event) => {
+      window.addEventListener(
+        event,
+        handleActivity
+      );
+    });
 
     return () => {
-      events.forEach((event) =>
-        window.removeEventListener(event, handleActivity)
-      );
+      events.forEach((event) => {
+        window.removeEventListener(
+          event,
+          handleActivity
+        );
+      });
     };
-  }, [user, updateActivity]);
+  }, [
+    user,
+    showWarning,
+    updateActivity,
+  ]);
 
   useEffect(() => {
     const lastActivity = authStorage.getLastActivity();
