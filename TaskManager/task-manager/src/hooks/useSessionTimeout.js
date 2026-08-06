@@ -1,168 +1,384 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   authStorage,
   calculateSessionRemaining,
-} from '../utils/auth/authHelpers';
+} from '@/utils/auth/authHelpers';
 
-import { MINUTE, SECOND } from '../utils/constants';
-import { getPreferences } from '../utils/userPreferences';
+import {
+  MINUTE,
+  SECOND,
+} from '@/utils/constants';
 
-const SESSION_TIMEOUT = 120 * MINUTE;
-const CHECK_INTERVAL = 1 * SECOND;
+import {
+  getPreferences,
+} from '@/utils/userPreferences';
 
-export const useSessionTimeout = ({ user, onLogout }) => {
-  const [showWarning, setShowWarning] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(null);
+/*===========================================================
+  Session timing:
+  => Logs the user out after 120 minutes of inactivity.
+  => Checks the remaining time once per second.
+  => Limits activity writes to at most once per second.
+===========================================================*/
+const SESSION_TIMEOUT =
+  2 * MINUTE;
 
-  const lastActivityRef = useRef(Date.now());
-  const intervalRef = useRef(null);
+const CHECK_INTERVAL =
+  1 * SECOND;
 
-  const clearTimers = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  }, []);
+const ACTIVITY_UPDATE_INTERVAL =
+  1 * SECOND;
 
-  const updateActivity = useCallback(() => {
-    const now = Date.now();
+/*===========================================================
+  useSessionTimeout:
+  => Tracks user inactivity.
+  => Shows a warning before automatic logout.
+  => Requires an explicit choice once the warning appears.
+===========================================================*/
+export const useSessionTimeout = ({
+  user,
+  onLogout,
+}) => {
+  const [
+    showWarning,
+    setShowWarning,
+  ] = useState(false);
 
-    lastActivityRef.current = now;
-    authStorage.setLastActivity(now);
+  const [
+    timeRemaining,
+    setTimeRemaining,
+  ] = useState(null);
 
-    setShowWarning(false);
-    setTimeRemaining(null);
-  }, []);
+  const lastActivityRef =
+    useRef(Date.now());
 
-  const getTimeRemaining = useCallback(() => {
-    const lastActivity =
-      authStorage.getLastActivity() || lastActivityRef.current;
+  const lastActivityUpdateRef =
+    useRef(0);
 
-    return calculateSessionRemaining(
-      lastActivity,
-      SESSION_TIMEOUT
-    );
-  }, []);
+  const intervalRef =
+    useRef(null);
 
-  const getWarningBeforeTimeout = useCallback(() => {
-    const preferences = getPreferences();
+  /*===========================================================
+    clearTimers:
+    => Stops the session watcher.
+  ===========================================================*/
+  const clearTimers =
+    useCallback(() => {
+      if (
+        intervalRef.current !==
+        null
+      ) {
+        window.clearInterval(
+          intervalRef.current
+        );
 
-    const minutes = Number(
-      preferences.sessionWarningMinutes || 1
-    );
+        intervalRef.current =
+          null;
+      }
+    }, []);
 
-    return minutes * MINUTE;
-  }, []);
+  /*===========================================================
+    updateActivity:
+    => Resets the inactivity clock.
+    => Closes the warning modal.
+    => Used directly by the Continue Session button.
+  ===========================================================*/
+  const updateActivity =
+    useCallback(() => {
+      const now =
+        Date.now();
 
-  const startWatcher = useCallback(() => {
-    clearTimers();
+      lastActivityRef.current =
+        now;
 
-    if (!user) return;
+      lastActivityUpdateRef.current =
+        now;
 
-    intervalRef.current = setInterval(() => {
-      const remaining = getTimeRemaining();
-      const warningBeforeTimeout = getWarningBeforeTimeout();
+      authStorage.setLastActivity(
+        now
+      );
 
-      if (remaining <= 0) {
-        onLogout();
+      setShowWarning(false);
+      setTimeRemaining(null);
+    }, []);
+
+  /*===========================================================
+    recordActivity:
+    => Records normal user activity.
+    => Throttles repeated events such as scrolling.
+  ===========================================================*/
+  const recordActivity =
+    useCallback(() => {
+      const now =
+        Date.now();
+
+      const timeSinceLastUpdate =
+        now -
+        lastActivityUpdateRef.current;
+
+      if (
+        timeSinceLastUpdate <
+        ACTIVITY_UPDATE_INTERVAL
+      ) {
         return;
       }
 
-      if (remaining <= warningBeforeTimeout) {
-        setShowWarning(true);
-        setTimeRemaining(remaining);
-      }
-    }, CHECK_INTERVAL);
-  }, [
-    user,
-    getTimeRemaining,
-    getWarningBeforeTimeout,
-    onLogout,
-    clearTimers,
-  ]);
+      lastActivityRef.current =
+        now;
 
+      lastActivityUpdateRef.current =
+        now;
+
+      authStorage.setLastActivity(
+        now
+      );
+    }, []);
+
+  /*===========================================================
+    getTimeRemaining:
+    => Calculates how much inactivity time remains.
+  ===========================================================*/
+  const getTimeRemaining =
+    useCallback(() => {
+      const storedLastActivity =
+        authStorage.getLastActivity();
+
+      const lastActivity =
+        storedLastActivity ??
+        lastActivityRef.current;
+
+      return calculateSessionRemaining(
+        lastActivity,
+        SESSION_TIMEOUT
+      );
+    }, []);
+
+  /*===========================================================
+    getWarningBeforeTimeout:
+    => Reads the user's warning preference.
+    => Falls back to one minute when the preference is invalid.
+    => Prevents the warning duration from exceeding the full
+       inactivity timeout.
+  ===========================================================*/
+  const getWarningBeforeTimeout =
+    useCallback(() => {
+      const preferences =
+        getPreferences();
+
+      const configuredMinutes =
+        Number(
+          preferences
+            .sessionWarningMinutes
+        );
+
+      const validMinutes =
+        Number.isFinite(
+          configuredMinutes
+        ) &&
+          configuredMinutes > 0
+          ? configuredMinutes
+          : 1;
+
+      const warningDuration =
+        validMinutes *
+        MINUTE;
+
+      return Math.min(
+        warningDuration,
+        SESSION_TIMEOUT
+      );
+    }, []);
+
+  /*===========================================================
+    startWatcher:
+    => Checks the inactivity clock once per second.
+    => Shows the warning near expiration.
+    => Logs out when no time remains.
+  ===========================================================*/
+  const startWatcher =
+    useCallback(() => {
+      clearTimers();
+
+      if (!user) {
+        return;
+      }
+
+      intervalRef.current =
+        window.setInterval(
+          () => {
+            const remaining =
+              getTimeRemaining();
+
+            const warningBeforeTimeout =
+              getWarningBeforeTimeout();
+
+            if (remaining <= 0) {
+              clearTimers();
+
+              setShowWarning(false);
+              setTimeRemaining(0);
+
+              onLogout();
+
+              return;
+            }
+
+            if (
+              remaining <=
+              warningBeforeTimeout
+            ) {
+              setShowWarning(true);
+
+              setTimeRemaining(
+                remaining
+              );
+
+              return;
+            }
+
+            /*
+              Keep stale warning state from remaining visible
+              if preferences or stored activity change.
+            */
+            setShowWarning(false);
+            setTimeRemaining(null);
+          },
+          CHECK_INTERVAL
+        );
+    }, [
+      user,
+      getTimeRemaining,
+      getWarningBeforeTimeout,
+      onLogout,
+      clearTimers,
+    ]);
+
+  /*===========================================================
+    Session initialization:
+    => Starts watching when a user is authenticated.
+    => Creates a last-activity value when one does not exist.
+    => Preserves an existing timestamp across page refreshes.
+  ===========================================================*/
   useEffect(() => {
     if (!user) {
       clearTimers();
+
       setShowWarning(false);
       setTimeRemaining(null);
-      return;
+
+      return undefined;
+    }
+
+    const storedLastActivity =
+      authStorage.getLastActivity();
+
+    if (storedLastActivity) {
+      lastActivityRef.current =
+        storedLastActivity;
+
+      lastActivityUpdateRef.current =
+        storedLastActivity;
+    } else {
+      const now =
+        Date.now();
+
+      lastActivityRef.current =
+        now;
+
+      lastActivityUpdateRef.current =
+        now;
+
+      authStorage.setLastActivity(
+        now
+      );
     }
 
     startWatcher();
 
     return clearTimers;
-  }, [user, startWatcher, clearTimers]);
+  }, [
+    user,
+    startWatcher,
+    clearTimers,
+  ]);
 
   /*===========================================================
     User activity:
-    => Resets the inactivity timer during normal app usage.
-    => Does not automatically extend the session while the
-       warning modal is open.
-  
-    IMPORTANT:
-    => Once the warning appears, the user must explicitly choose:
-       - Continue Session
-       - Logout Now
+    => Resets inactivity during normal app usage.
+    => Does not extend the session while the warning is open.
+
+    Once the warning appears, the user must explicitly choose:
+    => Continue Session
+    => Logout Now
   ===========================================================*/
   useEffect(() => {
     if (!user) {
       return undefined;
     }
 
-    const events = [
-      'mousedown',
-      'keydown',
-      'scroll',
-      'touchstart',
-      'click',
-    ];
-
     const handleActivity = () => {
-      /*
-        Do not let backdrop clicks, Escape, or button mouse-down
-        events automatically dismiss the warning modal.
-      */
       if (showWarning) {
         return;
       }
 
-      updateActivity();
+      recordActivity();
     };
 
-    events.forEach((event) => {
-      window.addEventListener(
-        event,
-        handleActivity
-      );
-    });
+    const activityEvents = [
+      'pointerdown',
+      'keydown',
+      'scroll',
+      'touchstart',
+    ];
+
+    activityEvents.forEach(
+      (eventName) => {
+        const options =
+          eventName === 'scroll' ||
+            eventName === 'touchstart'
+            ? {
+              passive: true,
+            }
+            : undefined;
+
+        window.addEventListener(
+          eventName,
+          handleActivity,
+          options
+        );
+      }
+    );
 
     return () => {
-      events.forEach((event) => {
-        window.removeEventListener(
-          event,
-          handleActivity
-        );
-      });
+      activityEvents.forEach(
+        (eventName) => {
+          window.removeEventListener(
+            eventName,
+            handleActivity
+          );
+        }
+      );
     };
   }, [
     user,
     showWarning,
-    updateActivity,
+    recordActivity,
   ]);
-
-  useEffect(() => {
-    const lastActivity = authStorage.getLastActivity();
-
-    if (lastActivity) {
-      lastActivityRef.current = lastActivity;
-    }
-  }, []);
 
   return {
     showWarning,
     timeRemaining,
-    extendSession: updateActivity,
+
+    /*
+      Continue Session must perform a full reset rather than
+      using the throttled normal-activity handler.
+    */
+    extendSession:
+      updateActivity,
   };
 };
