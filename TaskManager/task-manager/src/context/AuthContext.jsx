@@ -7,7 +7,7 @@ import React, {
 } from 'react';
 
 import { useSessionTimeout } from '../hooks/useSessionTimeout';
-import { authStorage } from '../utils/authHelpers';
+import { authStorage } from '../utils/auth/authHelpers';
 
 export const AuthContext = createContext(null);
 

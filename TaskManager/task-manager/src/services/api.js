@@ -2,7 +2,7 @@ import axios from 'axios';
 
 import {
   authStorage,
-} from '@/utils/authHelpers';
+} from '@/utils/auth/authHelpers';
 
 /*===========================================================
   API configuration

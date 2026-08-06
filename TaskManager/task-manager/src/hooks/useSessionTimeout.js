@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   authStorage,
   calculateSessionRemaining,
-} from '../utils/authHelpers';
+} from '../utils/auth/authHelpers';
 
 import { MINUTE, SECOND } from '../utils/constants';
 import { getPreferences } from '../utils/userPreferences';
