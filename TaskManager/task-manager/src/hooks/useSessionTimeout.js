@@ -26,7 +26,7 @@ import {
   => Limits activity writes to at most once per second.
 ===========================================================*/
 const SESSION_TIMEOUT =
-  2 * MINUTE;
+  120 * MINUTE;
 
 const CHECK_INTERVAL =
   1 * SECOND;
