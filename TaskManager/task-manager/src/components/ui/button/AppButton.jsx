@@ -1,6 +1,10 @@
 import React from 'react';
 
 import {
+  AppSpinner,
+} from '@/components/ui/spinner';
+
+import {
   buttonBaseClasses,
   buttonSizes,
   buttonVariants,
@@ -9,6 +13,12 @@ import {
 /*===========================================================
   AppButton:
   => Shared button component.
+  => Supports:
+     - variants
+     - sizes
+     - loading state
+     - loading spinner
+     - disabled state
 ===========================================================*/
 const AppButton = ({
   type = 'button',
@@ -34,13 +44,27 @@ const AppButton = ({
     <button
       type={type}
       onClick={onClick}
-      disabled={disabled || loading}
+      disabled={
+        disabled ||
+        loading
+      }
       className={`${buttonBaseClasses} ${selectedVariant} ${selectedSize} ${className}`}
       {...props}
     >
-      {loading
-        ? loadingText
-        : children}
+      {loading ? (
+        <span className="inline-flex items-center gap-2">
+          <AppSpinner
+            size="sm"
+            label={loadingText}
+          />
+
+          <span>
+            {loadingText}
+          </span>
+        </span>
+      ) : (
+        children
+      )}
     </button>
   );
 };
