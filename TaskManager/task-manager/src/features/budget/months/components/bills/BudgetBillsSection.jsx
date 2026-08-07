@@ -9,6 +9,7 @@ import {
   CalendarIcon,
   PlusIcon,
   ReceiptIcon,
+  WalletIcon,
 } from '@/components/icons/Icons';
 
 import {
@@ -20,6 +21,7 @@ import {
   createBill,
   createBudgetCategory,
   getBills,
+  markBillPaid,
   markBillUnpaid,
   updateBill,
 } from '@/features/budget/api/budgetApi';
@@ -38,8 +40,9 @@ import {
   sortBills,
 } from '@/features/budget/utils/billUtils';
 
+import { IconButton } from '@/components/ui';
 import BillFormModal from './BillFormModal';
-
+import BillPaymentModal from './BillPaymentModal';
 
 /*===========================================================
   BudgetBillsSection:
@@ -47,6 +50,7 @@ import BillFormModal from './BillFormModal';
   => Creates missing Fixed Expense categories.
   => Creates and updates unpaid bills.
   => Opens paid bills in details mode.
+  => Marks unpaid bills as paid.
   => Reverses paid bills using Mark Unpaid.
 ===========================================================*/
 const BudgetBillsSection = ({
@@ -79,6 +83,9 @@ const BudgetBillsSection = ({
     setError,
   ] = useState('');
 
+  /*===========================================================
+    Bill form modal state
+  ===========================================================*/
   const [
     isBillFormOpen,
     setIsBillFormOpen,
@@ -105,9 +112,27 @@ const BudgetBillsSection = ({
   ] = useState(false);
 
   /*===========================================================
+    Payment modal state
+  ===========================================================*/
+  const [
+    isPaymentModalOpen,
+    setIsPaymentModalOpen,
+  ] = useState(false);
+
+  const [
+    paymentBill,
+    setPaymentBill,
+  ] = useState(null);
+
+  const [
+    paymentSubmitting,
+    setPaymentSubmitting,
+  ] = useState(false);
+
+  /*===========================================================
     Synchronize categories:
-    => Keeps the section's local category list synchronized
-       with the refreshed budget month.
+    => Keeps the local category list synchronized with the
+       refreshed budget month.
   ===========================================================*/
   useEffect(() => {
     setAvailableCategories(
@@ -170,8 +195,7 @@ const BudgetBillsSection = ({
     ]);
 
   /*===========================================================
-    Initial bill load:
-    => Reloads whenever the selected month or year changes.
+    Initial bill load
   ===========================================================*/
   useEffect(() => {
     loadBills();
@@ -180,8 +204,7 @@ const BudgetBillsSection = ({
   ]);
 
   /*===========================================================
-    Bill summary:
-    => Calculates bill counts and monetary totals.
+    Bill summary
   ===========================================================*/
   const summary =
     useMemo(() => {
@@ -255,8 +278,8 @@ const BudgetBillsSection = ({
 
   /*===========================================================
     handleOpenBillModal:
-    => Opens an unpaid bill in edit mode.
-    => Opens a paid bill in details mode.
+    => Opens unpaid bills in edit mode.
+    => Opens paid bills in details mode.
   ===========================================================*/
   const handleOpenBillModal = (
     bill
@@ -278,7 +301,6 @@ const BudgetBillsSection = ({
     handleCloseBillForm:
     => Closes the bill modal.
     => Prevents closing while saving or reversing payment.
-    => Resets the selected bill and modal mode.
   ===========================================================*/
   const handleCloseBillForm = () => {
     if (
@@ -294,11 +316,48 @@ const BudgetBillsSection = ({
   };
 
   /*===========================================================
+    handleOpenPaymentModal:
+    => Opens the payment modal for an unpaid bill.
+  ===========================================================*/
+  const handleOpenPaymentModal = (
+    bill
+  ) => {
+    if (
+      !bill ||
+      bill.isPaid
+    ) {
+      return;
+    }
+
+    setPaymentBill(
+      bill
+    );
+
+    setIsPaymentModalOpen(
+      true
+    );
+  };
+
+  /*===========================================================
+    handleClosePaymentModal:
+    => Closes the payment modal.
+    => Prevents closing while payment is being submitted.
+  ===========================================================*/
+  const handleClosePaymentModal = () => {
+    if (
+      paymentSubmitting
+    ) {
+      return;
+    }
+
+    setIsPaymentModalOpen(false);
+    setPaymentBill(null);
+  };
+
+  /*===========================================================
     handleCreateCategory:
     => Creates a Fixed Expense category with PlannedAmount 0.
-    => Adds the returned category to the local dropdown.
-    => Returns the category to BillFormModal so it can be
-       selected automatically.
+    => Adds the new category to the local dropdown.
   ===========================================================*/
   const handleCreateCategory = async (
     categoryData
@@ -342,10 +401,6 @@ const BudgetBillsSection = ({
           'Unable to create category.'
         );
 
-      /*
-        BillFormModal catches this error and displays the
-        message inside the nested category modal.
-      */
       throw new Error(
         message
       );
@@ -356,7 +411,7 @@ const BudgetBillsSection = ({
     handleBillSubmit:
     => Creates a bill in create mode.
     => Updates a bill in edit mode.
-    => Reloads bills and monthly budget totals.
+    => Reloads bills and monthly totals.
   ===========================================================*/
   const handleBillSubmit = async (
     formData
@@ -410,10 +465,67 @@ const BudgetBillsSection = ({
   };
 
   /*===========================================================
+    handleMarkBillPaid:
+    => Marks an unpaid bill as paid.
+    => Creates the linked ExpenseRecord through the backend.
+    => Reloads bills and monthly totals.
+  ===========================================================*/
+  const handleMarkBillPaid = async (
+    paymentData
+  ) => {
+    if (!paymentBill?.id) {
+      showError(
+        'Bill ID is required.'
+      );
+
+      return;
+    }
+
+    if (paymentBill.isPaid) {
+      showError(
+        'This bill has already been paid.'
+      );
+
+      return;
+    }
+
+    try {
+      setPaymentSubmitting(true);
+
+      await markBillPaid(
+        paymentBill.id,
+        paymentData
+      );
+
+      await loadBills();
+
+      if (onBudgetMonthChanged) {
+        await onBudgetMonthChanged();
+      }
+
+      setIsPaymentModalOpen(false);
+      setPaymentBill(null);
+
+      showSuccess(
+        'Bill marked paid successfully.'
+      );
+    } catch (requestError) {
+      showError(
+        getApiErrorMessage(
+          requestError,
+          'Unable to mark bill paid.'
+        )
+      );
+    } finally {
+      setPaymentSubmitting(false);
+    }
+  };
+
+  /*===========================================================
     handleMarkBillUnpaid:
     => Reverses the selected bill's payment.
     => Deletes the linked ExpenseRecord through the backend.
-    => Reloads bills and monthly budget totals.
+    => Reloads bills and monthly totals.
   ===========================================================*/
   const handleMarkBillUnpaid = async () => {
     if (!selectedBill?.id) {
@@ -531,7 +643,9 @@ const BudgetBillsSection = ({
 
               <button
                 type="button"
-                onClick={loadBills}
+                onClick={
+                  loadBills
+                }
                 className="mt-3 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
               >
                 Try again
@@ -616,32 +730,51 @@ const BudgetBillsSection = ({
                         </p>
                       </div>
 
-                      <div className="shrink-0 text-right">
-                        <p className="text-sm font-bold text-[var(--app-text)]">
-                          {formatCurrency(
-                            bill.expectedAmount
+                      <div className="flex shrink-0 items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-[var(--app-text)]">
+                            {formatCurrency(
+                              bill.expectedAmount
+                            )}
+                          </p>
+
+                          {!bill.isPaid && (
+                            <p className="mt-1 text-xs text-[var(--app-text-muted)]">
+                              {formatCurrency(
+                                bill.remainingAmount ??
+                                bill.expectedAmount
+                              )}{' '}
+                              remaining
+                            </p>
                           )}
-                        </p>
+
+                          {bill.isPaid && (
+                            <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
+                              Paid{' '}
+                              {bill.paidDate
+                                ? formatUtcDate(
+                                  bill.paidDate
+                                )
+                                : ''}
+                            </p>
+                          )}
+                        </div>
 
                         {!bill.isPaid && (
-                          <p className="mt-1 text-xs text-[var(--app-text-muted)]">
-                            {formatCurrency(
-                              bill.remainingAmount ??
-                              bill.expectedAmount
-                            )}{' '}
-                            remaining
-                          </p>
-                        )}
+                          <IconButton
+                            variant="success"
+                            size="sm"
+                            label="Mark bill paid"
+                            onClick={(event) => {
+                              event.stopPropagation();
 
-                        {bill.isPaid && (
-                          <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
-                            Paid{' '}
-                            {bill.paidDate
-                              ? formatUtcDate(
-                                bill.paidDate
-                              )
-                              : ''}
-                          </p>
+                              handleOpenPaymentModal(
+                                bill
+                              );
+                            }}
+                          >
+                            <WalletIcon className="h-4 w-4" />
+                          </IconButton>
                         )}
                       </div>
                     </button>
@@ -712,22 +845,70 @@ const BudgetBillsSection = ({
         )}
 
       {/*=======================================================
-        Create, edit, and details modal
+        Create / edit / details modal
       =======================================================*/}
       <BillFormModal
-        mode={billModalMode}
-        isOpen={isBillFormOpen}
-        onClose={handleCloseBillForm}
-        onSubmit={handleBillSubmit}
-        onCreateCategory={handleCreateCategory}
-        onMarkUnpaid={handleMarkBillUnpaid}
-        categories={availableCategories}
-        month={month}
-        year={year}
-        monthLabel={monthLabel}
-        bill={selectedBill}
-        submitting={submitting}
-        reversingPayment={reversingPayment}
+        mode={
+          billModalMode
+        }
+        isOpen={
+          isBillFormOpen
+        }
+        onClose={
+          handleCloseBillForm
+        }
+        onSubmit={
+          handleBillSubmit
+        }
+        onCreateCategory={
+          handleCreateCategory
+        }
+        onMarkUnpaid={
+          handleMarkBillUnpaid
+        }
+        categories={
+          availableCategories
+        }
+        month={
+          month
+        }
+        year={
+          year
+        }
+        monthLabel={
+          monthLabel
+        }
+        bill={
+          selectedBill
+        }
+        submitting={
+          submitting
+        }
+        reversingPayment={
+          reversingPayment
+        }
+      />
+
+      {/*=======================================================
+        Payment modal
+      =======================================================*/}
+      <BillPaymentModal
+        isOpen={
+          isPaymentModalOpen
+        }
+        onClose={
+          handleClosePaymentModal
+        }
+        onSubmit={
+          handleMarkBillPaid
+        }
+        bill={
+          paymentBill
+        }
+        accounts={[]}
+        submitting={
+          paymentSubmitting
+        }
       />
     </section>
   );

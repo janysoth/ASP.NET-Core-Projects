@@ -200,26 +200,27 @@ export const updateBill = async (
 };
 
 /*===========================================================
-  createBudgetCategory:
-  => Creates a category inside a selected budget month.
+  markBillPaid:
+  => Marks an unpaid bill as paid.
+  => Creates the linked ExpenseRecord on the backend.
 
   Backend:
-  POST /api/budget/months/{budgetMonthId}/categories
+  POST /api/budget/bills/{billId}/mark-paid
 ===========================================================*/
-export const createBudgetCategory = async (
-  budgetMonthId,
-  categoryData
+export const markBillPaid = async (
+  billId,
+  paymentData
 ) => {
-  if (!budgetMonthId) {
+  if (!billId) {
     throw new Error(
-      'Budget month ID is required.'
+      'Bill ID is required.'
     );
   }
 
   const response =
     await api.post(
-      `budget/months/${budgetMonthId}/categories`,
-      categoryData
+      `budget/bills/${billId}/mark-paid`,
+      paymentData
     );
 
   return response.data;
@@ -246,6 +247,32 @@ export const markBillUnpaid = async (
   const response =
     await api.post(
       `budget/bills/${billId}/mark-unpaid`
+    );
+
+  return response.data;
+};
+
+/*===========================================================
+  createBudgetCategory:
+  => Creates a category inside a selected budget month.
+
+  Backend:
+  POST /api/budget/months/{budgetMonthId}/categories
+===========================================================*/
+export const createBudgetCategory = async (
+  budgetMonthId,
+  categoryData
+) => {
+  if (!budgetMonthId) {
+    throw new Error(
+      'Budget month ID is required.'
+    );
+  }
+
+  const response =
+    await api.post(
+      `budget/months/${budgetMonthId}/categories`,
+      categoryData
     );
 
   return response.data;
