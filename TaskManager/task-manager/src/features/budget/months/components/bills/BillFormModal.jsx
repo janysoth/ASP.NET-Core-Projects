@@ -2,11 +2,8 @@ import React from 'react';
 
 import {
   AppModal,
+  ModalHeader,
 } from '@/components/ui';
-
-import {
-  XIcon,
-} from '@/components/icons/Icons';
 
 import {
   useBillForm,
@@ -22,6 +19,7 @@ import CategoryFormModal from './CategoryFormModal';
   => Coordinates the bill modal.
   => Delegates:
      - Modal behavior to AppModal
+     - Header rendering to ModalHeader
      - Form state to useBillForm
      - Fields to BillFormFields
      - Payment display to BillPaymentDetails
@@ -42,6 +40,9 @@ const BillFormModal = ({
   submitting = false,
   reversingPayment = false,
 }) => {
+  /*===========================================================
+    Modal modes
+  ===========================================================*/
   const isCreateMode =
     mode === 'create';
 
@@ -55,6 +56,9 @@ const BillFormModal = ({
     submitting ||
     reversingPayment;
 
+  /*===========================================================
+    Shared bill form hook
+  ===========================================================*/
   const {
     formValues,
     validationErrors,
@@ -85,6 +89,26 @@ const BillFormModal = ({
   });
 
   /*===========================================================
+    Modal title
+  ===========================================================*/
+  const modalTitle =
+    isCreateMode
+      ? 'Add bill'
+      : isEditMode
+        ? 'Edit bill'
+        : 'Bill details';
+
+  /*===========================================================
+    Modal description
+  ===========================================================*/
+  const modalDescription =
+    isCreateMode
+      ? 'Create a fixed expense obligation for this budget month.'
+      : isEditMode
+        ? 'Update this fixed expense obligation.'
+        : 'Review the bill and its recorded payment details.';
+
+  /*===========================================================
     handleSubmit:
     => Creates or updates a bill.
     => Details mode cannot submit.
@@ -96,9 +120,12 @@ const BillFormModal = ({
 
     if (
       isDetailsMode ||
-      actionInProgress ||
-      !validate()
+      actionInProgress
     ) {
+      return;
+    }
+
+    if (!validate()) {
       return;
     }
 
@@ -109,6 +136,9 @@ const BillFormModal = ({
 
   return (
     <>
+      {/*=======================================================
+        Main bill modal
+      =======================================================*/}
       <AppModal
         isOpen={isOpen}
         onClose={onClose}
@@ -123,60 +153,35 @@ const BillFormModal = ({
           !isCategoryFormOpen
         }
         ariaLabelledBy="bill-form-title"
+        ariaDescribedBy="bill-form-description"
       >
-        {/*=====================================================
-          Header
-        =====================================================*/}
-        <div className="flex items-start justify-between gap-4 border-b border-[var(--app-border)] px-5 py-4">
-          <div>
-            <p className="text-sm font-semibold text-[var(--app-primary)]">
-              {monthLabel}
-            </p>
-
-            <h2
-              id="bill-form-title"
-              className="mt-1 text-xl font-bold text-[var(--app-text)]"
-            >
-              {isCreateMode &&
-                'Add bill'}
-
-              {isEditMode &&
-                'Edit bill'}
-
-              {isDetailsMode &&
-                'Bill details'}
-            </h2>
-
-            <p className="mt-1 text-sm leading-6 text-[var(--app-text-muted)]">
-              {isCreateMode &&
-                'Create a fixed expense obligation for this budget month.'}
-
-              {isEditMode &&
-                'Update this fixed expense obligation.'}
-
-              {isDetailsMode &&
-                'Review the bill and its recorded payment details.'}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={
-              actionInProgress
-            }
-            aria-label="Close bill modal"
-            className="rounded-lg p-2 text-[var(--app-text-muted)] transition-colors hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <XIcon className="h-5 w-5" />
-          </button>
-        </div>
+        <ModalHeader
+          eyebrow={
+            monthLabel
+          }
+          title={
+            modalTitle
+          }
+          description={
+            modalDescription
+          }
+          titleId="bill-form-title"
+          descriptionId="bill-form-description"
+          onClose={
+            onClose
+          }
+          closeDisabled={
+            actionInProgress
+          }
+        />
 
         {/*=====================================================
-          Form
+          Bill form
         =====================================================*/}
         <form
-          onSubmit={handleSubmit}
+          onSubmit={
+            handleSubmit
+          }
           className="space-y-5 px-5 py-5"
         >
           <BillFormFields
@@ -189,8 +194,12 @@ const BillFormModal = ({
             fixedExpenseCategories={
               fixedExpenseCategories
             }
-            minDate={minDate}
-            maxDate={maxDate}
+            minDate={
+              minDate
+            }
+            maxDate={
+              maxDate
+            }
             isDetailsMode={
               isDetailsMode
             }
@@ -208,15 +217,27 @@ const BillFormModal = ({
             }
           />
 
+          {/*===================================================
+            Paid bill details
+          ===================================================*/}
           {isDetailsMode && (
             <BillPaymentDetails
-              bill={bill}
+              bill={
+                bill
+              }
             />
           )}
 
+          {/*===================================================
+            Modal actions
+          ===================================================*/}
           <BillModalActions
-            mode={mode}
-            onClose={onClose}
+            mode={
+              mode
+            }
+            onClose={
+              onClose
+            }
             onMarkUnpaid={
               onMarkUnpaid
             }
@@ -237,6 +258,9 @@ const BillFormModal = ({
         </form>
       </AppModal>
 
+      {/*=======================================================
+        Nested category modal
+      =======================================================*/}
       <CategoryFormModal
         isOpen={
           isCategoryFormOpen

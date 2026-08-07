@@ -1,3 +1,5 @@
 export {
-  AppModal
+  AppModal,
+  ModalHeader
 } from './modal';
+
