@@ -9,7 +9,9 @@ import {
 } from 'react-router-dom';
 
 import {
+  AppButton,
   AppModal,
+  ModalActions,
 } from '@/components/ui';
 
 import {
@@ -42,7 +44,7 @@ const SessionWarningModal = () => {
 
   /*===========================================================
     Countdown display:
-    => Converts milliseconds into MM:SS.
+    => Converts remaining milliseconds into MM:SS.
   ===========================================================*/
   useEffect(() => {
     if (
@@ -110,29 +112,20 @@ const SessionWarningModal = () => {
   ]);
 
   /*===========================================================
-    Continue session:
-    => Resets the inactivity timer.
+    handleContinueSession:
+    => Explicitly resets the inactivity timer.
+    => Closes the warning modal.
   ===========================================================*/
-  const handleContinueSession = (
-    event
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-
+  const handleContinueSession = () => {
     extendSession();
   };
 
   /*===========================================================
-    Logout now:
-    => Clears the authenticated session.
-    => Returns the user to Login.
+    handleLogoutNow:
+    => Logs the user out immediately.
+    => Redirects back to Login.
   ===========================================================*/
-  const handleLogoutNow = (
-    event
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-
+  const handleLogoutNow = () => {
     logout();
 
     navigate(
@@ -146,10 +139,16 @@ const SessionWarningModal = () => {
 
   return (
     <AppModal
-      isOpen={showWarning}
+      isOpen={
+        showWarning
+      }
       onClose={() => { }}
-      closeOnEscape={false}
-      closeOnBackdrop={false}
+      closeOnEscape={
+        false
+      }
+      closeOnBackdrop={
+        false
+      }
       maxWidth="max-w-md"
       ariaLabelledBy="session-warning-title"
       ariaDescribedBy="session-warning-description"
@@ -169,31 +168,37 @@ const SessionWarningModal = () => {
           You will be logged out soon because no activity was detected.
         </p>
 
+        {/*=====================================================
+          Countdown
+        =====================================================*/}
         <div className="my-6 text-center text-3xl font-bold text-red-500">
           {displayTime}
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <button
-            type="button"
-            onClick={
-              handleContinueSession
-            }
-            className="flex-1 rounded-lg bg-[var(--app-primary)] px-4 py-2 font-semibold text-white transition-colors hover:bg-[var(--app-primary-hover)]"
-          >
-            Continue Session
-          </button>
-
-          <button
-            type="button"
+        {/*=====================================================
+          Actions
+        =====================================================*/}
+        <ModalActions>
+          <AppButton
+            variant="danger"
             onClick={
               handleLogoutNow
             }
-            className="flex-1 rounded-lg border border-red-500 px-4 py-2 font-semibold text-red-500 transition-colors hover:bg-red-500 hover:text-white"
+            className="sm:flex-1"
           >
             Logout Now
-          </button>
-        </div>
+          </AppButton>
+
+          <AppButton
+            variant="primary"
+            onClick={
+              handleContinueSession
+            }
+            className="sm:flex-1"
+          >
+            Continue Session
+          </AppButton>
+        </ModalActions>
       </div>
     </AppModal>
   );

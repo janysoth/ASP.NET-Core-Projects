@@ -1,10 +1,2 @@
-export {
-  AppModal,
-  ModalActions,
-  ModalHeader
-} from './modal';
-
-export {
-  default as AppButton
-} from './AppButton';
-
+export * from './button';
+export * from './modal';
