@@ -1,8 +1,13 @@
 import React from 'react';
 
+import {
+  AppButton,
+  ModalActions,
+} from '@/components/ui';
+
 /*===========================================================
   BillModalActions:
-  => Displays the correct footer actions for create, edit,
+  => Displays the correct bill actions for create, edit,
      and details modes.
 ===========================================================*/
 const BillModalActions = ({
@@ -25,49 +30,53 @@ const BillModalActions = ({
     reversingPayment;
 
   return (
-    <div className="flex flex-col-reverse gap-3 border-t border-[var(--app-border)] pt-5 sm:flex-row sm:justify-end">
-      <button
-        type="button"
+    <ModalActions>
+      <AppButton
+        variant="secondary"
         onClick={onClose}
-        disabled={actionInProgress}
-        className="rounded-xl border border-[var(--app-border)] px-4 py-2.5 text-sm font-semibold text-[var(--app-text)] transition-colors hover:bg-[var(--app-surface-muted)] disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={
+          actionInProgress
+        }
       >
         {isDetailsMode
           ? 'Close'
           : 'Cancel'}
-      </button>
+      </AppButton>
 
       {isDetailsMode ? (
-        <button
-          type="button"
-          onClick={onMarkUnpaid}
+        <AppButton
+          variant="warning"
+          onClick={
+            onMarkUnpaid
+          }
           disabled={
-            actionInProgress ||
             !billIsPaid
           }
-          className="rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+          loading={
+            reversingPayment
+          }
+          loadingText="Reversing payment..."
         >
-          {reversingPayment
-            ? 'Reversing payment...'
-            : 'Mark unpaid'}
-        </button>
+          Mark unpaid
+        </AppButton>
       ) : (
-        <button
+        <AppButton
           type="submit"
+          variant="primary"
           disabled={
-            actionInProgress ||
             !canSubmit
           }
-          className="rounded-xl bg-[var(--app-primary)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--app-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+          loading={
+            submitting
+          }
+          loadingText="Saving..."
         >
-          {submitting
-            ? 'Saving...'
-            : isCreateMode
-              ? 'Add bill'
-              : 'Save changes'}
-        </button>
+          {isCreateMode
+            ? 'Add bill'
+            : 'Save changes'}
+        </AppButton>
       )}
-    </div>
+    </ModalActions>
   );
 };
 

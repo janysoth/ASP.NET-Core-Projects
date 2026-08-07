@@ -4,7 +4,9 @@ import React, {
 } from 'react';
 
 import {
+  AppButton,
   AppModal,
+  ModalActions,
   ModalHeader,
 } from '@/components/ui';
 
@@ -176,8 +178,8 @@ const CategoryFormModal = ({
             autoFocus
             placeholder="Example: Utilities"
             className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-text-muted)] focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationError
-                ? 'border-red-500'
-                : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
+              ? 'border-red-500'
+              : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
               }`}
           />
 
@@ -225,32 +227,25 @@ const CategoryFormModal = ({
         {/*=====================================================
           Actions
         =====================================================*/}
-        <div className="flex flex-col-reverse gap-3 border-t border-[var(--app-border)] pt-5 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={
-              onClose
-            }
-            disabled={
-              submitting
-            }
-            className="rounded-xl border border-[var(--app-border)] px-4 py-2.5 text-sm font-semibold text-[var(--app-text)] transition-colors hover:bg-[var(--app-surface-muted)] disabled:cursor-not-allowed disabled:opacity-50"
+        <ModalActions>
+          <AppButton
+            variant="secondary"
+            onClick={onClose}
+            disabled={submitting}
           >
             Cancel
-          </button>
+          </AppButton>
 
-          <button
+          <AppButton
             type="submit"
-            disabled={
-              submitting
-            }
-            className="rounded-xl bg-[var(--app-primary)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--app-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+            variant="primary"
+            loading={submitting}
+            loadingText="Creating..."
           >
-            {submitting
-              ? 'Creating...'
-              : 'Create category'}
-          </button>
-        </div>
+            Create category
+          </AppButton>
+        </ModalActions>
+
       </form>
     </AppModal>
   );
