@@ -19,6 +19,8 @@ const BillPaymentModal = ({
   onSubmit,
   bill,
   accounts = [],
+  accountsLoading = false,
+  accountsError = '',
   submitting = false,
 }) => {
   return (
@@ -47,6 +49,12 @@ const BillPaymentModal = ({
         <BillPaymentForm
           bill={bill}
           accounts={accounts}
+          accountsLoading={
+            accountsLoading
+          }
+          accountsError={
+            accountsError
+          }
           onSubmit={onSubmit}
           onCancel={onClose}
           submitting={submitting}

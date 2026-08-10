@@ -20,6 +20,7 @@ import {
 import {
   createBill,
   createBudgetCategory,
+  getAccounts,
   getBills,
   markBillPaid,
   markBillUnpaid,
@@ -130,6 +131,25 @@ const BudgetBillsSection = ({
   ] = useState(false);
 
   /*===========================================================
+    Accounts modal state
+  ===========================================================*/
+
+  const [
+    accounts,
+    setAccounts,
+  ] = useState([]);
+
+  const [
+    accountsLoading,
+    setAccountsLoading,
+  ] = useState(false);
+
+  const [
+    accountsError,
+    setAccountsError,
+  ] = useState('');
+
+  /*===========================================================
     Synchronize categories:
     => Keeps the local category list synchronized with the
        refreshed budget month.
@@ -193,6 +213,45 @@ const BudgetBillsSection = ({
       month,
       year,
     ]);
+
+  /*===========================================================
+loadAccounts:
+=> Loads accounts available for bill payments.
+===========================================================*/
+  const loadAccounts =
+    useCallback(async () => {
+      try {
+        setAccountsLoading(true);
+        setAccountsError('');
+
+        const response =
+          await getAccounts();
+
+        setAccounts(
+          Array.isArray(response)
+            ? response
+            : []
+        );
+
+        return response;
+      } catch (requestError) {
+        const message =
+          getApiErrorMessage(
+            requestError,
+            'Unable to load payment accounts.'
+          );
+
+        setAccountsError(
+          message
+        );
+
+        setAccounts([]);
+
+        return [];
+      } finally {
+        setAccountsLoading(false);
+      }
+    }, []);
 
   /*===========================================================
     Initial bill load
@@ -319,7 +378,7 @@ const BudgetBillsSection = ({
     handleOpenPaymentModal:
     => Opens the payment modal for an unpaid bill.
   ===========================================================*/
-  const handleOpenPaymentModal = (
+  const handleOpenPaymentModal = async (
     bill
   ) => {
     if (
@@ -336,6 +395,10 @@ const BudgetBillsSection = ({
     setIsPaymentModalOpen(
       true
     );
+
+    if (accounts.length === 0) {
+      await loadAccounts();
+    }
   };
 
   /*===========================================================
@@ -907,7 +970,15 @@ const BudgetBillsSection = ({
         bill={
           paymentBill
         }
-        accounts={[]}
+        accounts={
+          accounts
+        }
+        accountsLoading={
+          accountsLoading
+        }
+        accountsError={
+          accountsError
+        }
         submitting={
           paymentSubmitting
         }

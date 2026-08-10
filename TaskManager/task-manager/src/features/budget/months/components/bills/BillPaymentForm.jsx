@@ -54,6 +54,8 @@ const BillPaymentForm = ({
   accounts = [],
   onSubmit,
   onCancel,
+  accountsLoading = false,
+  accountsError = '',
   submitting = false,
 }) => {
   const defaultPaidDate =
@@ -255,14 +257,19 @@ const BillPaymentForm = ({
               })
             );
           }}
-          disabled={submitting}
+          disabled={
+            submitting ||
+            accountsLoading
+          }
           className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.accountId
-              ? 'border-red-500'
-              : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
+            ? 'border-red-500'
+            : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
             }`}
         >
           <option value="">
-            Select an account
+            {accountsLoading
+              ? 'Loading accounts...'
+              : 'Select an account'}
           </option>
 
           {accounts.map(
@@ -276,6 +283,20 @@ const BillPaymentForm = ({
             )
           )}
         </select>
+
+        {accountsError && (
+          <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">
+            {accountsError}
+          </p>
+        )}
+
+        {!accountsLoading &&
+          !accountsError &&
+          accounts.length === 0 && (
+            <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+              No payment accounts are available.
+            </p>
+          )}
 
         {validationErrors.accountId && (
           <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">
@@ -318,8 +339,8 @@ const BillPaymentForm = ({
           }}
           disabled={submitting}
           className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.actualAmount
-              ? 'border-red-500'
-              : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
+            ? 'border-red-500'
+            : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
             }`}
         />
 
@@ -367,8 +388,8 @@ const BillPaymentForm = ({
           }}
           disabled={submitting}
           className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.paidDate
-              ? 'border-red-500'
-              : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
+            ? 'border-red-500'
+            : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
             }`}
         />
 
@@ -424,6 +445,11 @@ const BillPaymentForm = ({
         <AppButton
           type="submit"
           variant="primary"
+          disabled={
+            accountsLoading ||
+            Boolean(accountsError) ||
+            accounts.length === 0
+          }
           loading={submitting}
           loadingText="Marking paid..."
         >
