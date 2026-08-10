@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -23,6 +24,12 @@ const THEMES = [
 
 const AUTO_HIDE_DELAY = 3000;
 
+/*===========================================================
+  FloatingThemeBar:
+  => Lets the user switch between light and dark themes.
+  => Automatically fades after a short period of inactivity.
+  => Reappears on mouse, touch, keyboard, hover, or focus.
+===========================================================*/
 const FloatingThemeBar = () => {
   const [
     theme,
@@ -57,59 +64,73 @@ const FloatingThemeBar = () => {
   ]);
 
   /*===========================================================
-    resetHideTimer:
-    => Shows the theme bar.
-    => Starts a new auto-hide countdown.
+    clearHideTimer:
+    => Clears the current auto-hide timer.
   ===========================================================*/
-  const resetHideTimer = () => {
-    setIsVisible(true);
-
+  const clearHideTimer = useCallback(() => {
     if (hideTimerRef.current) {
       window.clearTimeout(
         hideTimerRef.current
       );
-    }
 
-    hideTimerRef.current =
-      window.setTimeout(
-        () => {
-          setIsVisible(false);
-        },
-        AUTO_HIDE_DELAY
-      );
-  };
+      hideTimerRef.current = null;
+    }
+  }, []);
 
   /*===========================================================
-    Global activity:
-    => Reveals the theme bar when the user moves the mouse,
-       touches the screen, or uses the keyboard.
+    startHideTimer:
+    => Starts a fresh countdown before fading the bar.
+  ===========================================================*/
+  const startHideTimer = useCallback(() => {
+    clearHideTimer();
+
+    hideTimerRef.current =
+      window.setTimeout(() => {
+        setIsVisible(false);
+      }, AUTO_HIDE_DELAY);
+  }, [clearHideTimer]);
+
+  /*===========================================================
+    showThemeBar:
+    => Makes the bar visible and restarts the hide timer.
+  ===========================================================*/
+  const showThemeBar = useCallback(() => {
+    setIsVisible(true);
+    startHideTimer();
+  }, [startHideTimer]);
+
+  /*===========================================================
+    Global user activity:
+    => Reveals the theme bar when the user interacts with
+       the application.
   ===========================================================*/
   useEffect(() => {
+    const handleActivity = () => {
+      showThemeBar();
+    };
+
     const activityEvents = [
       'mousemove',
       'touchstart',
       'keydown',
     ];
 
-    const handleActivity = () => {
-      resetHideTimer();
-    };
-
     activityEvents.forEach(
       (eventName) => {
         window.addEventListener(
           eventName,
           handleActivity,
-          {
-            passive:
-              eventName !==
-              'keydown',
-          }
+          eventName ===
+            'touchstart'
+            ? {
+              passive: true,
+            }
+            : undefined
         );
       }
     );
 
-    resetHideTimer();
+    startHideTimer();
 
     return () => {
       activityEvents.forEach(
@@ -121,43 +142,61 @@ const FloatingThemeBar = () => {
         }
       );
 
-      if (hideTimerRef.current) {
-        window.clearTimeout(
-          hideTimerRef.current
-        );
-      }
+      clearHideTimer();
     };
-  }, []);
+  }, [
+    showThemeBar,
+    startHideTimer,
+    clearHideTimer,
+  ]);
+
+  /*===========================================================
+    handleMouseEnter:
+    => Keeps the theme bar visible while hovering.
+  ===========================================================*/
+  const handleMouseEnter = () => {
+    clearHideTimer();
+    setIsVisible(true);
+  };
+
+  /*===========================================================
+    handleMouseLeave:
+    => Restarts the hide timer after hover ends.
+  ===========================================================*/
+  const handleMouseLeave = () => {
+    startHideTimer();
+  };
+
+  /*===========================================================
+    handleFocus:
+    => Keeps the bar visible for keyboard users.
+  ===========================================================*/
+  const handleFocus = () => {
+    clearHideTimer();
+    setIsVisible(true);
+  };
+
+  /*===========================================================
+    handleBlur:
+    => Restarts the hide timer when keyboard focus leaves.
+  ===========================================================*/
+  const handleBlur = () => {
+    startHideTimer();
+  };
 
   return (
     <div
-      onMouseEnter={() => {
-        setIsVisible(true);
-
-        if (
-          hideTimerRef.current
-        ) {
-          window.clearTimeout(
-            hideTimerRef.current
-          );
-        }
-      }}
-      onMouseLeave={
-        resetHideTimer
+      onMouseEnter={
+        handleMouseEnter
       }
-      onFocusCapture={() => {
-        setIsVisible(true);
-
-        if (
-          hideTimerRef.current
-        ) {
-          window.clearTimeout(
-            hideTimerRef.current
-          );
-        }
-      }}
+      onMouseLeave={
+        handleMouseLeave
+      }
+      onFocusCapture={
+        handleFocus
+      }
       onBlurCapture={
-        resetHideTimer
+        handleBlur
       }
       className={`
         fixed bottom-3 right-3 z-50
@@ -170,15 +209,13 @@ const FloatingThemeBar = () => {
 
         ${isVisible
           ? 'bg-[var(--app-surface)]/95 opacity-100 shadow-md'
-          : 'pointer-events-none bg-[var(--app-surface)]/10 opacity-10 shadow-none'
+          : 'bg-[var(--app-surface)]/10 opacity-10 shadow-none'
         }
 
-        hover:pointer-events-auto
         hover:bg-[var(--app-surface)]/95
         hover:opacity-100
         hover:shadow-lg
 
-        focus-within:pointer-events-auto
         focus-within:bg-[var(--app-surface)]/95
         focus-within:opacity-100
         focus-within:shadow-lg
@@ -188,16 +225,20 @@ const FloatingThemeBar = () => {
         {THEMES.map(
           (item) => (
             <button
-              key={item.value}
+              key={
+                item.value
+              }
               type="button"
-              title={item.value}
+              title={
+                item.value
+              }
               aria-label={`Use ${item.value} theme`}
               onClick={() => {
                 setTheme(
                   item.value
                 );
 
-                resetHideTimer();
+                showThemeBar();
               }}
               className={`
                 flex h-8 w-8
@@ -218,7 +259,9 @@ const FloatingThemeBar = () => {
                 }
               `}
             >
-              {item.label}
+              {
+                item.label
+              }
             </button>
           )
         )}
