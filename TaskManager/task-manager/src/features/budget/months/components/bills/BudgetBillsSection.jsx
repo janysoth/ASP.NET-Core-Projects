@@ -40,7 +40,7 @@ import {
   sortBills,
 } from '@/features/budget/utils/billUtils';
 
-import { IconButton } from '@/components/ui';
+import { ActionButton } from '@/components/ui';
 import BillFormModal from './BillFormModal';
 import BillPaymentModal from './BillPaymentModal';
 
@@ -761,10 +761,14 @@ const BudgetBillsSection = ({
                         </div>
 
                         {!bill.isPaid && (
-                          <IconButton
+                          <ActionButton
                             variant="success"
                             size="sm"
-                            label="Mark bill paid"
+                            label="Mark Paid"
+                            expandable
+                            icon={
+                              <WalletIcon className="h-4 w-4" />
+                            }
                             onClick={(event) => {
                               event.stopPropagation();
 
@@ -772,9 +776,7 @@ const BudgetBillsSection = ({
                                 bill
                               );
                             }}
-                          >
-                            <WalletIcon className="h-4 w-4" />
-                          </IconButton>
+                          />
                         )}
                       </div>
                     </button>

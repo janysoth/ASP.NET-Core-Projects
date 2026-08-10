@@ -1,15 +1,15 @@
 /*===========================================================
-  iconButtonBaseClasses:
-  => Shared styles for every IconButton.
+  actionButtonBaseClasses:
+  => Shared behavior for ActionButton.
 ===========================================================*/
-export const iconButtonBaseClasses =
-  'inline-flex items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50';
+export const actionButtonBaseClasses =
+  'group inline-flex items-center justify-center overflow-hidden rounded-lg font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50';
 
 /*===========================================================
-  iconButtonVariants:
-  => Standard icon-button colors.
+  actionButtonVariants:
+  => Standard action colors.
 ===========================================================*/
-export const iconButtonVariants = {
+export const actionButtonVariants = {
   primary:
     'bg-[var(--app-primary)] text-white hover:bg-[var(--app-primary-hover)]',
 
@@ -30,16 +30,16 @@ export const iconButtonVariants = {
 };
 
 /*===========================================================
-  iconButtonSizes:
-  => Standard icon-only button sizing.
+  actionButtonSizes:
+  => Controls icon-button height and padding.
 ===========================================================*/
-export const iconButtonSizes = {
+export const actionButtonSizes = {
   sm:
-    'h-8 w-8',
+    'h-8 min-w-8 px-2 text-xs',
 
   md:
-    'h-9 w-9',
+    'h-9 min-w-9 px-2.5 text-sm',
 
   lg:
-    'h-10 w-10',
+    'h-10 min-w-10 px-3 text-sm',
 };
