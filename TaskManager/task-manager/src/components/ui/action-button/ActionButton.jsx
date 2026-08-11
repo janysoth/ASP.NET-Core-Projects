@@ -12,14 +12,19 @@ import {
 
 /*===========================================================
   ActionButton:
-  => Shared action button used for row/tool actions.
+  => Shared action button used throughout the application.
 
   Supports:
-  => Icon only.
-  => Icon + visible label.
-  => Icon that expands into a label on hover.
+  => Icon-only appearance.
+  => Expandable label on hover.
+  => Always-visible labels.
   => Loading state.
-  => Multiple color variants.
+  => Keyboard accessibility.
+
+  Expandable behavior:
+  => Icon is always visible.
+  => Hovering or keyboard-focusing THIS button expands
+     the label beside the icon.
 ===========================================================*/
 const ActionButton = ({
   type = 'button',
@@ -52,10 +57,6 @@ const ActionButton = ({
     actionButtonSizes[size] ??
     actionButtonSizes.md;
 
-  const shouldDisplayLabel =
-    showLabel ||
-    expandable;
-
   const accessibleLabel =
     loading
       ? loadingText
@@ -77,7 +78,13 @@ const ActionButton = ({
           ? undefined
           : accessibleLabel
       }
-      className={`${actionButtonBaseClasses} ${selectedVariant} ${selectedSize} ${className}`}
+      className={`
+        group
+        ${actionButtonBaseClasses}
+        ${selectedVariant}
+        ${selectedSize}
+        ${className}
+      `}
       {...props}
     >
       {loading ? (
@@ -89,7 +96,7 @@ const ActionButton = ({
             }
           />
 
-          {shouldDisplayLabel && (
+          {showLabel && (
             <span className="whitespace-nowrap">
               {loadingText}
             </span>
@@ -98,37 +105,48 @@ const ActionButton = ({
       ) : (
         <span className="inline-flex items-center">
           {/*=================================================
-            Icon
+            Icon:
+            => Always visible.
+            => Remains anchored while the label expands.
           =================================================*/}
           {icon && (
-            <span className="flex shrink-0 items-center justify-center">
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center">
               {icon}
             </span>
           )}
 
           {/*=================================================
-            Expandable label
+            Expandable label:
+            => Width starts at zero.
+            => Expands when THIS button is hovered.
+            => Also expands for keyboard focus.
           =================================================*/}
-          {expandable && label && (
-            <span
-              className="
-                max-w-0
-                overflow-hidden
-                whitespace-nowrap
-                opacity-0
-                transition-all
-                duration-200
-                group-hover:ml-2
-                group-hover:max-w-40
-                group-hover:opacity-100
-                group-focus-visible:ml-2
-                group-focus-visible:max-w-40
-                group-focus-visible:opacity-100
-              "
-            >
-              {label}
-            </span>
-          )}
+          {expandable &&
+            label && (
+              <span
+                className="
+                  inline-block
+                  max-w-0
+                  overflow-hidden
+                  whitespace-nowrap
+                  opacity-0
+
+                  transition-all
+                  duration-150
+                  ease-out
+
+                  group-hover:ml-2
+                  group-hover:max-w-[120px]
+                  group-hover:opacity-100
+
+                  group-focus-visible:ml-2
+                  group-focus-visible:max-w-[120px]
+                  group-focus-visible:opacity-100
+                "
+              >
+                {label}
+              </span>
+            )}
 
           {/*=================================================
             Always-visible label
