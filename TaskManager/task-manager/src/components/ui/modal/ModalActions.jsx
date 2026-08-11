@@ -3,8 +3,7 @@ import React from 'react';
 /*===========================================================
   ModalActions:
   => Shared modal footer layout.
-  => Handles spacing, border, and responsive alignment.
-  => Does not control individual button behavior.
+  => Handles spacing and responsive alignment.
 ===========================================================*/
 const ModalActions = ({
   children,
@@ -19,7 +18,7 @@ const ModalActions = ({
 
   return (
     <div
-      className={`flex flex-col-reverse gap-3 border-t border-[var(--app-border)] pt-5 sm:flex-row ${alignmentClass}`}
+      className={`flex flex-col-reverse gap-3 pt-5 sm:flex-row ${alignmentClass}`}
     >
       {children}
     </div>

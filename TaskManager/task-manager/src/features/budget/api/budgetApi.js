@@ -277,3 +277,25 @@ export const createBudgetCategory = async (
 
   return response.data;
 };
+
+/*===========================================================
+  deleteBill:
+  => Deletes an unpaid bill.
+  => Backend rejects paid bills.
+===========================================================*/
+export const deleteBill = async (
+  billId
+) => {
+  if (!billId) {
+    throw new Error(
+      'Bill ID is required.'
+    );
+  }
+
+  const response =
+    await api.delete(
+      `budget/bills/${billId}`
+    );
+
+  return response.data;
+};

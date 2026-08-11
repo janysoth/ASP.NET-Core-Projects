@@ -9,6 +9,7 @@ import {
   CalendarIcon,
   PlusIcon,
   ReceiptIcon,
+  TrashIcon,
   WalletIcon,
 } from '@/components/icons/Icons';
 
@@ -20,6 +21,7 @@ import {
 import {
   createBill,
   createBudgetCategory,
+  deleteBill,
   getAccounts,
   getBills,
   markBillPaid,
@@ -41,7 +43,7 @@ import {
   sortBills,
 } from '@/features/budget/utils/billUtils';
 
-import { ActionButton } from '@/components/ui';
+import { ActionButton, AppConfirmDialog } from '@/components/ui';
 import BillFormModal from './BillFormModal';
 import BillPaymentModal from './BillPaymentModal';
 
@@ -148,6 +150,16 @@ const BudgetBillsSection = ({
     accountsError,
     setAccountsError,
   ] = useState('');
+
+  const [
+    deleteBillTarget,
+    setDeleteBillTarget,
+  ] = useState(null);
+
+  const [
+    deletingBill,
+    setDeletingBill,
+  ] = useState(false);
 
   /*===========================================================
     Synchronize categories:
@@ -639,6 +651,90 @@ loadAccounts:
     }
   };
 
+  /*===========================================================
+  handleOpenDeleteBill:
+  => Opens the delete confirmation for an unpaid bill.
+===========================================================*/
+  const handleOpenDeleteBill = (
+    bill
+  ) => {
+    if (!bill) {
+      return;
+    }
+
+    if (bill.isPaid) {
+      showError(
+        'Paid bills cannot be deleted. Mark the bill unpaid first.'
+      );
+
+      return;
+    }
+
+    setDeleteBillTarget(
+      bill
+    );
+  };
+
+  /*===========================================================
+    handleCloseDeleteBill:
+    => Closes the confirmation dialog.
+  ===========================================================*/
+  const handleCloseDeleteBill = () => {
+    if (deletingBill) {
+      return;
+    }
+
+    setDeleteBillTarget(
+      null
+    );
+  };
+
+  /*===========================================================
+  handleDeleteBill:
+  => Deletes the selected unpaid bill.
+  => Reloads bills and monthly totals.
+===========================================================*/
+  const handleDeleteBill = async () => {
+    if (!deleteBillTarget?.id) {
+      showError(
+        'Bill ID is required.'
+      );
+
+      return;
+    }
+
+    try {
+      setDeletingBill(true);
+
+      await deleteBill(
+        deleteBillTarget.id
+      );
+
+      await loadBills();
+
+      if (onBudgetMonthChanged) {
+        await onBudgetMonthChanged();
+      }
+
+      setDeleteBillTarget(
+        null
+      );
+
+      showSuccess(
+        'Bill deleted successfully.'
+      );
+    } catch (requestError) {
+      showError(
+        getApiErrorMessage(
+          requestError,
+          'Unable to delete bill.'
+        )
+      );
+    } finally {
+      setDeletingBill(false);
+    }
+  };
+
   return (
     <section className="mt-6 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
       {/*=======================================================
@@ -841,6 +937,25 @@ loadAccounts:
                             }}
                           />
                         )}
+
+                        {!bill.isPaid && (
+                          <ActionButton
+                            variant="danger"
+                            size="sm"
+                            label="Delete"
+                            expandable
+                            icon={
+                              <TrashIcon className="h-4 w-4" />
+                            }
+                            onClick={(event) => {
+                              event.stopPropagation();
+
+                              handleOpenDeleteBill(
+                                bill
+                              );
+                            }}
+                          />
+                        )}
                       </div>
                     </button>
                   );
@@ -983,7 +1098,44 @@ loadAccounts:
           paymentSubmitting
         }
       />
+
+      <AppConfirmDialog
+        isOpen={
+          Boolean(
+            deleteBillTarget
+          )
+        }
+        onClose={
+          handleCloseDeleteBill
+        }
+        onConfirm={
+          handleDeleteBill
+        }
+        eyebrow={
+          deleteBillTarget
+            ? monthLabel
+            : undefined
+        }
+        title={
+          deleteBillTarget
+            ? `Delete "${deleteBillTarget.name} Bill"?`
+            : ''
+        }
+        description={
+          deleteBillTarget
+            ? `Are you sure? This action cannot be undone.`
+            : ''
+        }
+        confirmText="Delete bill"
+        cancelText="Cancel"
+        variant="danger"
+        loading={
+          deletingBill
+        }
+        loadingText="Deleting..."
+      />
     </section>
+
   );
 };
 
