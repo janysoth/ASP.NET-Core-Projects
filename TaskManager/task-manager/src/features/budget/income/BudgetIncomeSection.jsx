@@ -1,11 +1,13 @@
 import React from 'react';
 
-import { ArrowDownIcon } from '@/components/icons/Icons';
+import {
+  ArrowDownIcon,
+} from '@/components/icons/Icons';
 
 import {
-  formatCurrency,
-  formatUtcDate
-} from '../utils/budgetFormatters';
+  IncomeEmptyState,
+  IncomeRow,
+} from './components';
 
 /*===========================================================
   BudgetIncomeSection:
@@ -36,59 +38,16 @@ const BudgetIncomeSection = ({
         </div>
       </div>
 
-      {/*=======================================================
-        Empty state
-      =======================================================*/}
       {incomeRecords.length === 0 ? (
-        <div className="px-5 py-10 text-center">
-          <p className="text-sm font-semibold text-[var(--app-text)]">
-            No income records
-          </p>
-
-          <p className="mt-1 text-sm text-[var(--app-text-muted)]">
-            There is no income recorded for this month.
-          </p>
-        </div>
+        <IncomeEmptyState />
       ) : (
-        /*=====================================================
-          Income rows
-        =====================================================*/
         <div className="divide-y divide-[var(--app-border)]">
           {incomeRecords.map(
             (income) => (
-              <div
+              <IncomeRow
                 key={income.id}
-                className="flex items-center gap-4 px-5 py-4"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-                  <ArrowDownIcon className="h-5 w-5" />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[var(--app-text)]">
-                    {income.source}
-                  </p>
-
-                  <p className="truncate text-xs text-[var(--app-text-muted)]">
-                    {income.accountName ||
-                      'Unknown account'}
-                  </p>
-                </div>
-
-                <div className="shrink-0 text-right">
-                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(
-                      income.amount
-                    )}
-                  </p>
-
-                  <p className="text-xs text-[var(--app-text-muted)]">
-                    {formatUtcDate(
-                      income.incomeDate
-                    )}
-                  </p>
-                </div>
-              </div>
+                income={income}
+              />
             )
           )}
         </div>
