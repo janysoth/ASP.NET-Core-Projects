@@ -1,10 +1,12 @@
 import React, {
-  useCallback,
   useEffect,
   useState,
 } from 'react';
 
 import {
+  useBillDelete,
+  useBillPayment,
+  useBillsData,
   useBillSummary,
   usePaymentAccounts,
 } from './hooks';
@@ -30,10 +32,6 @@ import {
 import {
   createBill,
   createBudgetCategory,
-  deleteBill,
-  getBills,
-  markBillPaid,
-  markBillUnpaid,
   updateBill,
 } from '@/features/budget/api/budgetApi';
 
@@ -48,7 +46,6 @@ import {
 
 import {
   getBillStatusAppearance,
-  sortBills,
 } from '@/features/budget/utils/billUtils';
 
 import BillFormModal from './BillFormModal';
@@ -75,13 +72,34 @@ const BudgetBillsSection = ({
   monthLabel,
   onBudgetMonthChanged,
 }) => {
+
   /*===========================================================
     Bill data
   ===========================================================*/
-  const [
+  const {
     bills,
-    setBills,
-  ] = useState([]);
+    loading,
+    error,
+    loadBills,
+  } = useBillsData({
+    month,
+    year,
+  });
+
+  /*===========================================================
+    Delete Bill States
+  ===========================================================*/
+  const {
+    deleteBillTarget,
+    deletingBill,
+
+    handleOpenDeleteBill,
+    handleCloseDeleteBill,
+    handleDeleteBill,
+  } = useBillDelete({
+    loadBills,
+    onBudgetMonthChanged,
+  });
 
   const [
     availableCategories,
@@ -89,16 +107,6 @@ const BudgetBillsSection = ({
   ] = useState(
     categories
   );
-
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
-
-  const [
-    error,
-    setError,
-  ] = useState('');
 
   /*===========================================================
     Bill form modal
@@ -123,42 +131,6 @@ const BudgetBillsSection = ({
     setSubmitting,
   ] = useState(false);
 
-  const [
-    reversingPayment,
-    setReversingPayment,
-  ] = useState(false);
-
-  /*===========================================================
-    Payment modal
-  ===========================================================*/
-  const [
-    isPaymentModalOpen,
-    setIsPaymentModalOpen,
-  ] = useState(false);
-
-  const [
-    paymentBill,
-    setPaymentBill,
-  ] = useState(null);
-
-  const [
-    paymentSubmitting,
-    setPaymentSubmitting,
-  ] = useState(false);
-
-  /*===========================================================
-    Delete bill
-  ===========================================================*/
-  const [
-    deleteBillTarget,
-    setDeleteBillTarget,
-  ] = useState(null);
-
-  const [
-    deletingBill,
-    setDeletingBill,
-  ] = useState(false);
-
   /*===========================================================
     Synchronize categories
   ===========================================================*/
@@ -171,71 +143,7 @@ const BudgetBillsSection = ({
   ]);
 
   /*===========================================================
-    loadBills:
-    => Loads and sorts bills for the selected budget month.
-  ===========================================================*/
-  const loadBills =
-    useCallback(async () => {
-      if (
-        !month ||
-        !year
-      ) {
-        setBills([]);
-        setLoading(false);
-
-        return [];
-      }
-
-      try {
-        setLoading(true);
-        setError('');
-
-        const response =
-          await getBills(
-            month,
-            year
-          );
-
-        const sortedBills =
-          sortBills(
-            response
-          );
-
-        setBills(
-          sortedBills
-        );
-
-        return sortedBills;
-      } catch (
-      requestError
-      ) {
-        setError(
-          getApiErrorMessage(
-            requestError,
-            'Unable to load bills.'
-          )
-        );
-
-        return [];
-      } finally {
-        setLoading(false);
-      }
-    }, [
-      month,
-      year,
-    ]);
-
-  /*===========================================================
-    Initial load
-  ===========================================================*/
-  useEffect(() => {
-    loadBills();
-  }, [
-    loadBills,
-  ]);
-
-  /*===========================================================
-    loadAccounts:
+    Payment Accounts
     => Loads accounts that may be used for bill payments.
   ===========================================================*/
   const {
@@ -244,6 +152,61 @@ const BudgetBillsSection = ({
     accountsError,
     loadAccounts,
   } = usePaymentAccounts();
+
+  /*===========================================================
+  Bill Payment
+  ===========================================================*/
+  const {
+    isPaymentModalOpen,
+    paymentBill,
+    paymentSubmitting,
+    reversingPayment,
+
+    handleOpenPaymentModal,
+    handleClosePaymentModal,
+    handleMarkBillPaid,
+
+    handleMarkBillUnpaid:
+    reverseBillPayment,
+  } = useBillPayment({
+    accounts,
+    loadAccounts,
+    loadBills,
+    onBudgetMonthChanged,
+  });
+
+  /*===========================================================
+  handleMarkBillUnpaid:
+  => Asks the payment hook to reverse the selected bill.
+  => Closes Bill Details only after a successful reversal.
+
+  IMPORTANT:
+  => useBillPayment handles business/API logic.
+  => BudgetBillsSection handles UI/modal behavior.
+===========================================================*/
+  const handleMarkBillUnpaid =
+    async () => {
+      const success =
+        await reverseBillPayment(
+          selectedBill
+        );
+
+      if (!success) {
+        return;
+      }
+
+      setIsBillFormOpen(
+        false
+      );
+
+      setSelectedBill(
+        null
+      );
+
+      setBillModalMode(
+        'create'
+      );
+    };
 
   /*===========================================================
     Bill summary
@@ -271,13 +234,17 @@ const BudgetBillsSection = ({
   };
 
   /*===========================================================
-    Open Bill:
-    => Unpaid = edit.
-    => Paid   = details.
+    handleOpenBillModal:
+    => Unpaid bill opens Edit mode.
+    => Paid bill opens Details mode.
   ===========================================================*/
   const handleOpenBillModal = (
     bill
   ) => {
+    if (!bill) {
+      return;
+    }
+
     setSelectedBill(
       bill
     );
@@ -298,8 +265,7 @@ const BudgetBillsSection = ({
   ===========================================================*/
   const handleCloseBillForm = () => {
     if (
-      submitting ||
-      reversingPayment
+      submitting
     ) {
       return;
     }
@@ -314,55 +280,6 @@ const BudgetBillsSection = ({
 
     setBillModalMode(
       'create'
-    );
-  };
-
-  /*===========================================================
-    Open payment modal
-  ===========================================================*/
-  const handleOpenPaymentModal =
-    async (
-      bill
-    ) => {
-      if (
-        !bill ||
-        bill.isPaid
-      ) {
-        return;
-      }
-
-      setPaymentBill(
-        bill
-      );
-
-      setIsPaymentModalOpen(
-        true
-      );
-
-      if (
-        accounts.length ===
-        0
-      ) {
-        await loadAccounts();
-      }
-    };
-
-  /*===========================================================
-    Close payment modal
-  ===========================================================*/
-  const handleClosePaymentModal = () => {
-    if (
-      paymentSubmitting
-    ) {
-      return;
-    }
-
-    setIsPaymentModalOpen(
-      false
-    );
-
-    setPaymentBill(
-      null
     );
   };
 
@@ -494,246 +411,6 @@ const BudgetBillsSection = ({
         );
       } finally {
         setSubmitting(
-          false
-        );
-      }
-    };
-
-  /*===========================================================
-    Mark Bill Paid
-  ===========================================================*/
-  const handleMarkBillPaid =
-    async (
-      paymentData
-    ) => {
-      if (
-        !paymentBill?.id
-      ) {
-        showError(
-          'Bill ID is required.'
-        );
-
-        return;
-      }
-
-      if (
-        paymentBill.isPaid
-      ) {
-        showError(
-          'This bill has already been paid.'
-        );
-
-        return;
-      }
-
-      try {
-        setPaymentSubmitting(
-          true
-        );
-
-        await markBillPaid(
-          paymentBill.id,
-          paymentData
-        );
-
-        await loadBills();
-
-        if (
-          onBudgetMonthChanged
-        ) {
-          await onBudgetMonthChanged();
-        }
-
-        setIsPaymentModalOpen(
-          false
-        );
-
-        setPaymentBill(
-          null
-        );
-
-        showSuccess(
-          'Bill marked paid successfully.'
-        );
-      } catch (
-      requestError
-      ) {
-        showError(
-          getApiErrorMessage(
-            requestError,
-            'Unable to mark bill paid.'
-          )
-        );
-      } finally {
-        setPaymentSubmitting(
-          false
-        );
-      }
-    };
-
-  /*===========================================================
-    Mark Bill Unpaid
-  ===========================================================*/
-  const handleMarkBillUnpaid =
-    async () => {
-      if (
-        !selectedBill?.id
-      ) {
-        showError(
-          'Bill ID is required.'
-        );
-
-        return;
-      }
-
-      if (
-        !selectedBill.isPaid
-      ) {
-        showError(
-          'This bill is already unpaid.'
-        );
-
-        return;
-      }
-
-      try {
-        setReversingPayment(
-          true
-        );
-
-        await markBillUnpaid(
-          selectedBill.id
-        );
-
-        await loadBills();
-
-        if (
-          onBudgetMonthChanged
-        ) {
-          await onBudgetMonthChanged();
-        }
-
-        setIsBillFormOpen(
-          false
-        );
-
-        setSelectedBill(
-          null
-        );
-
-        setBillModalMode(
-          'create'
-        );
-
-        showSuccess(
-          'Bill marked unpaid successfully.'
-        );
-      } catch (
-      requestError
-      ) {
-        showError(
-          getApiErrorMessage(
-            requestError,
-            'Unable to mark bill unpaid.'
-          )
-        );
-      } finally {
-        setReversingPayment(
-          false
-        );
-      }
-    };
-
-  /*===========================================================
-    Open delete confirmation
-  ===========================================================*/
-  const handleOpenDeleteBill = (
-    bill
-  ) => {
-    if (!bill) {
-      return;
-    }
-
-    if (
-      bill.isPaid
-    ) {
-      showError(
-        'Paid bills cannot be deleted. Mark the bill unpaid first.'
-      );
-
-      return;
-    }
-
-    setDeleteBillTarget(
-      bill
-    );
-  };
-
-  /*===========================================================
-    Close delete confirmation
-  ===========================================================*/
-  const handleCloseDeleteBill = () => {
-    if (
-      deletingBill
-    ) {
-      return;
-    }
-
-    setDeleteBillTarget(
-      null
-    );
-  };
-
-  /*===========================================================
-    Delete bill
-  ===========================================================*/
-  const handleDeleteBill =
-    async () => {
-      if (
-        !deleteBillTarget?.id
-      ) {
-        showError(
-          'Bill ID is required.'
-        );
-
-        return;
-      }
-
-      try {
-        setDeletingBill(
-          true
-        );
-
-        await deleteBill(
-          deleteBillTarget.id
-        );
-
-        await loadBills();
-
-        if (
-          onBudgetMonthChanged
-        ) {
-          await onBudgetMonthChanged();
-        }
-
-        setDeleteBillTarget(
-          null
-        );
-
-        showSuccess(
-          'Bill deleted successfully.'
-        );
-      } catch (
-      requestError
-      ) {
-        showError(
-          getApiErrorMessage(
-            requestError,
-            'Unable to delete bill.'
-          )
-        );
-      } finally {
-        setDeletingBill(
           false
         );
       }
