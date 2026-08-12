@@ -1,10 +1,8 @@
-import React, {
-  useEffect,
-  useState,
-} from 'react';
+import React from 'react';
 
 import {
   useBillDelete,
+  useBillFormActions,
   useBillPayment,
   useBillsData,
   useBillSummary,
@@ -24,25 +22,11 @@ import {
   WalletIcon,
 } from '@/components/icons/Icons';
 
-import {
-  showError,
-  showSuccess,
-} from '@/utils/toastHelpers';
-
-import {
-  createBill,
-  createBudgetCategory,
-  updateBill,
-} from '@/features/budget/api/budgetApi';
 
 import {
   formatCurrency,
   formatUtcDate,
 } from '@/features/budget/utils/budgetFormatters';
-
-import {
-  getApiErrorMessage,
-} from '@/features/budget/utils/budgetErrors';
 
 import {
   getBillStatusAppearance,
@@ -87,6 +71,31 @@ const BudgetBillsSection = ({
   });
 
   /*===========================================================
+    Bill Form Actions
+  ===========================================================*/
+  const {
+    availableCategories,
+
+    isBillFormOpen,
+    selectedBill,
+    billModalMode,
+    submitting,
+
+    handleOpenCreateBillForm,
+    handleOpenBillModal,
+    handleCloseBillForm,
+    closeBillFormAfterAction,
+
+    handleCreateCategory,
+    handleBillSubmit,
+  } = useBillFormActions({
+    budgetMonthId,
+    categories,
+    loadBills,
+    onBudgetMonthChanged,
+  });
+
+  /*===========================================================
     Delete Bill States
   ===========================================================*/
   const {
@@ -100,47 +109,6 @@ const BudgetBillsSection = ({
     loadBills,
     onBudgetMonthChanged,
   });
-
-  const [
-    availableCategories,
-    setAvailableCategories,
-  ] = useState(
-    categories
-  );
-
-  /*===========================================================
-    Bill form modal
-  ===========================================================*/
-  const [
-    isBillFormOpen,
-    setIsBillFormOpen,
-  ] = useState(false);
-
-  const [
-    selectedBill,
-    setSelectedBill,
-  ] = useState(null);
-
-  const [
-    billModalMode,
-    setBillModalMode,
-  ] = useState('create');
-
-  const [
-    submitting,
-    setSubmitting,
-  ] = useState(false);
-
-  /*===========================================================
-    Synchronize categories
-  ===========================================================*/
-  useEffect(() => {
-    setAvailableCategories(
-      categories
-    );
-  }, [
-    categories,
-  ]);
 
   /*===========================================================
     Payment Accounts
@@ -195,17 +163,7 @@ const BudgetBillsSection = ({
         return;
       }
 
-      setIsBillFormOpen(
-        false
-      );
-
-      setSelectedBill(
-        null
-      );
-
-      setBillModalMode(
-        'create'
-      );
+      closeBillFormAfterAction();
     };
 
   /*===========================================================
@@ -215,206 +173,6 @@ const BudgetBillsSection = ({
     useBillSummary(
       bills
     );
-
-  /*===========================================================
-    Open Create Bill
-  ===========================================================*/
-  const handleOpenCreateBillForm = () => {
-    setSelectedBill(
-      null
-    );
-
-    setBillModalMode(
-      'create'
-    );
-
-    setIsBillFormOpen(
-      true
-    );
-  };
-
-  /*===========================================================
-    handleOpenBillModal:
-    => Unpaid bill opens Edit mode.
-    => Paid bill opens Details mode.
-  ===========================================================*/
-  const handleOpenBillModal = (
-    bill
-  ) => {
-    if (!bill) {
-      return;
-    }
-
-    setSelectedBill(
-      bill
-    );
-
-    setBillModalMode(
-      bill.isPaid
-        ? 'details'
-        : 'edit'
-    );
-
-    setIsBillFormOpen(
-      true
-    );
-  };
-
-  /*===========================================================
-    Close Bill Form
-  ===========================================================*/
-  const handleCloseBillForm = () => {
-    if (
-      submitting
-    ) {
-      return;
-    }
-
-    setIsBillFormOpen(
-      false
-    );
-
-    setSelectedBill(
-      null
-    );
-
-    setBillModalMode(
-      'create'
-    );
-  };
-
-  /*===========================================================
-    Create category
-  ===========================================================*/
-  const handleCreateCategory =
-    async (
-      categoryData
-    ) => {
-      try {
-        const createdCategory =
-          await createBudgetCategory(
-            budgetMonthId,
-            categoryData
-          );
-
-        setAvailableCategories(
-          (
-            currentCategories
-          ) => {
-            const alreadyExists =
-              currentCategories.some(
-                (
-                  category
-                ) =>
-                  category.id ===
-                  createdCategory.id
-              );
-
-            if (
-              alreadyExists
-            ) {
-              return currentCategories;
-            }
-
-            return [
-              ...currentCategories,
-              createdCategory,
-            ];
-          }
-        );
-
-        showSuccess(
-          'Category created successfully.'
-        );
-
-        return createdCategory;
-      } catch (
-      requestError
-      ) {
-        const message =
-          getApiErrorMessage(
-            requestError,
-            'Unable to create category.'
-          );
-
-        throw new Error(
-          message
-        );
-      }
-    };
-
-  /*===========================================================
-    Create / update bill
-  ===========================================================*/
-  const handleBillSubmit =
-    async (
-      formData
-    ) => {
-      try {
-        setSubmitting(
-          true
-        );
-
-        const isUpdating =
-          billModalMode ===
-          'edit' &&
-          selectedBill?.id;
-
-        if (isUpdating) {
-          await updateBill(
-            selectedBill.id,
-            formData
-          );
-        } else {
-          await createBill(
-            budgetMonthId,
-            formData
-          );
-        }
-
-        await loadBills();
-
-        if (
-          onBudgetMonthChanged
-        ) {
-          await onBudgetMonthChanged();
-        }
-
-        setIsBillFormOpen(
-          false
-        );
-
-        setSelectedBill(
-          null
-        );
-
-        setBillModalMode(
-          'create'
-        );
-
-        showSuccess(
-          isUpdating
-            ? 'Bill updated successfully.'
-            : 'Bill created successfully.'
-        );
-      } catch (
-      requestError
-      ) {
-        showError(
-          getApiErrorMessage(
-            requestError,
-            billModalMode ===
-              'edit'
-              ? 'Unable to update bill.'
-              : 'Unable to create bill.'
-          )
-        );
-      } finally {
-        setSubmitting(
-          false
-        );
-      }
-    };
 
   return (
     <section className="mt-6 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
