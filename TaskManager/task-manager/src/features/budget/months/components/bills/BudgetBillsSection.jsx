@@ -1,9 +1,13 @@
 import React, {
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
+
+import {
+  useBillSummary,
+  usePaymentAccounts,
+} from './hooks';
 
 import {
   ActionButton,
@@ -27,7 +31,6 @@ import {
   createBill,
   createBudgetCategory,
   deleteBill,
-  getAccounts,
   getBills,
   markBillPaid,
   markBillUnpaid,
@@ -144,24 +147,6 @@ const BudgetBillsSection = ({
   ] = useState(false);
 
   /*===========================================================
-    Payment accounts
-  ===========================================================*/
-  const [
-    accounts,
-    setAccounts,
-  ] = useState([]);
-
-  const [
-    accountsLoading,
-    setAccountsLoading,
-  ] = useState(false);
-
-  const [
-    accountsError,
-    setAccountsError,
-  ] = useState('');
-
-  /*===========================================================
     Delete bill
   ===========================================================*/
   const [
@@ -253,116 +238,20 @@ const BudgetBillsSection = ({
     loadAccounts:
     => Loads accounts that may be used for bill payments.
   ===========================================================*/
-  const loadAccounts =
-    useCallback(async () => {
-      try {
-        setAccountsLoading(
-          true
-        );
-
-        setAccountsError('');
-
-        const response =
-          await getAccounts();
-
-        const normalizedAccounts =
-          Array.isArray(
-            response
-          )
-            ? response
-            : [];
-
-        setAccounts(
-          normalizedAccounts
-        );
-
-        return normalizedAccounts;
-      } catch (
-      requestError
-      ) {
-        const message =
-          getApiErrorMessage(
-            requestError,
-            'Unable to load payment accounts.'
-          );
-
-        setAccountsError(
-          message
-        );
-
-        setAccounts([]);
-
-        return [];
-      } finally {
-        setAccountsLoading(
-          false
-        );
-      }
-    }, []);
+  const {
+    accounts,
+    accountsLoading,
+    accountsError,
+    loadAccounts,
+  } = usePaymentAccounts();
 
   /*===========================================================
     Bill summary
   ===========================================================*/
   const summary =
-    useMemo(() => {
-      const paidBills =
-        bills.filter(
-          (bill) =>
-            bill.isPaid
-        );
-
-      const unpaidBills =
-        bills.filter(
-          (bill) =>
-            !bill.isPaid
-        );
-
-      const expectedTotal =
-        bills.reduce(
-          (
-            total,
-            bill
-          ) =>
-            total +
-            Number(
-              bill.expectedAmount ??
-              0
-            ),
-          0
-        );
-
-      const remainingTotal =
-        unpaidBills.reduce(
-          (
-            total,
-            bill
-          ) =>
-            total +
-            Number(
-              bill.remainingAmount ??
-              bill.expectedAmount ??
-              0
-            ),
-          0
-        );
-
-      return {
-        totalBills:
-          bills.length,
-
-        paidBills:
-          paidBills.length,
-
-        unpaidBills:
-          unpaidBills.length,
-
-        expectedTotal,
-
-        remainingTotal,
-      };
-    }, [
-      bills,
-    ]);
+    useBillSummary(
+      bills
+    );
 
   /*===========================================================
     Open Create Bill
