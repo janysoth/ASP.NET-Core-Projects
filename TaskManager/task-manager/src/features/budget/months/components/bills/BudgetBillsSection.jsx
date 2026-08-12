@@ -13,14 +13,13 @@ import {
   AppConfirmDialog,
 } from '@/components/ui';
 
-import {
-  PlusIcon,
-  ReceiptIcon,
-} from '@/components/icons/Icons';
-
+import BillEmptyState from './BillEmptyState';
+import BillErrorState from './BillErrorState';
 import BillFormModal from './BillFormModal';
+import BillLoadingState from './BillLoadingState';
 import BillPaymentModal from './BillPaymentModal';
 import BillRow from './BillRow';
+import BillSectionHeader from './BillSectionHeader';
 import BillSummary from './BillSummary';
 
 /*===========================================================
@@ -165,52 +164,18 @@ const BudgetBillsSection = ({
   return (
     <section className="mt-6 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
       {/*=======================================================
-        Header
+        Bill Section Header
       =======================================================*/}
-      <div className="flex flex-col gap-4 border-b border-[var(--app-border)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="font-semibold text-[var(--app-text)]">
-            Bills
-          </h2>
-
-          <p className="mt-1 text-sm text-[var(--app-text-muted)]">
-            Fixed expense obligations for{' '}
-            {monthLabel}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={
-              handleOpenCreateBillForm
-            }
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--app-primary)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--app-primary-hover)]"
-          >
-            <PlusIcon className="h-4 w-4" />
-
-            Add bill
-          </button>
-
-          <div className="hidden rounded-xl bg-amber-100 p-2.5 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 sm:block">
-            <ReceiptIcon className="h-5 w-5" />
-          </div>
-        </div>
-      </div>
+      <BillSectionHeader
+        monthLabel={monthLabel}
+        onAddBill={handleOpenCreateBillForm}
+      />
 
       {/*=======================================================
         Loading
       =======================================================*/}
       {loading && (
-        <div className="flex min-h-[220px] items-center justify-center">
-          <div className="text-center">
-            <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-[var(--app-border)] border-t-[var(--app-primary)]" />
-
-            <p className="mt-3 text-sm text-[var(--app-text-muted)]">
-              Loading bills...
-            </p>
-          </div>
-        </div>
+        <BillLoadingState />
       )}
 
       {/*=======================================================
@@ -218,27 +183,10 @@ const BudgetBillsSection = ({
       =======================================================*/}
       {!loading &&
         error && (
-          <div className="p-5">
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/30 dark:bg-red-500/10">
-              <p className="text-sm font-semibold text-red-700 dark:text-red-300">
-                Unable to load bills
-              </p>
-
-              <p className="mt-1 text-sm text-red-600 dark:text-red-300">
-                {error}
-              </p>
-
-              <button
-                type="button"
-                onClick={
-                  loadBills
-                }
-                className="mt-3 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
-              >
-                Try again
-              </button>
-            </div>
-          </div>
+          <BillErrorState
+            error={error}
+            onRetry={loadBills}
+          />
         )}
 
       {/*=======================================================
@@ -246,21 +194,8 @@ const BudgetBillsSection = ({
       =======================================================*/}
       {!loading &&
         !error &&
-        bills.length ===
-        0 && (
-          <div className="px-5 py-10 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--app-surface-muted)]">
-              <ReceiptIcon className="h-6 w-6 text-[var(--app-text-muted)]" />
-            </div>
-
-            <p className="mt-4 text-sm font-semibold text-[var(--app-text)]">
-              No bills found
-            </p>
-
-            <p className="mt-1 text-sm text-[var(--app-text-muted)]">
-              There are no bills in this budget month.
-            </p>
-          </div>
+        bills.length === 0 && (
+          <BillEmptyState />
         )}
 
       {/*=======================================================
