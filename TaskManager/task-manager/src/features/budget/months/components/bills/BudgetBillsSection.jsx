@@ -10,30 +10,18 @@ import {
 } from './hooks';
 
 import {
-  ActionButton,
   AppConfirmDialog,
 } from '@/components/ui';
 
 import {
-  CalendarIcon,
   PlusIcon,
   ReceiptIcon,
-  TrashIcon,
-  WalletIcon,
 } from '@/components/icons/Icons';
-
-
-import {
-  formatCurrency,
-  formatUtcDate,
-} from '@/features/budget/utils/budgetFormatters';
-
-import {
-  getBillStatusAppearance,
-} from '@/features/budget/utils/billUtils';
 
 import BillFormModal from './BillFormModal';
 import BillPaymentModal from './BillPaymentModal';
+import BillRow from './BillRow';
+import BillSummary from './BillSummary';
 
 /*===========================================================
   BudgetBillsSection:
@@ -285,318 +273,30 @@ const BudgetBillsSection = ({
           <>
             <div className="divide-y divide-[var(--app-border)]">
               {bills.map(
-                (
-                  bill
-                ) => {
-                  const statusAppearance =
-                    getBillStatusAppearance(
-                      bill
-                    );
-
-                  return (
-                    <div
-                      key={bill.id}
-                      className="
-                        group/row 
-                        transition-all 
-                        duration-200
-                        flex
-                        w-full
-                        items-stretch
-                        hover:bg-[var(--app-surface-muted)]
-                        focus-within:bg-[var(--app-surface-muted)]
-                      "
-                    >
-                      {/*=========================================================
-                        Main bill information:
-                        => Takes as much horizontal space as possible.
-                        => Remains readable on medium screens.
-                      =========================================================*/}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleOpenBillModal(
-                            bill
-                          )
-                        }
-                        className="
-                          flex
-                          min-w-0
-                          flex-1
-                          items-center
-                          gap-4
-
-                          px-5
-                          py-4
-
-                          text-left
-
-                          focus-visible:outline-none"
-                      >
-                        {/*=======================================================
-                          Bill icon
-                        =======================================================*/}
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-                          <CalendarIcon className="h-5 w-5" />
-                        </div>
-
-                        {/*=======================================================
-                          Bill information
-                        =======================================================*/}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p
-                              className="
-                                min-w-0
-                                text-sm
-                                font-semibold
-                                text-[var(--app-text)]
-
-                                max-sm:truncate
-                              "
-                            >
-                              {bill.name}
-                            </p>
-
-                            <span
-                              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${statusAppearance.className}`}
-                            >
-                              {statusAppearance.label}
-                            </span>
-                          </div>
-
-                          <p
-                            className="
-                              mt-1
-                              text-xs
-                              leading-5
-                              text-[var(--app-text-muted)]
-
-                              max-sm:truncate
-                            "
-                          >
-                            {bill.budgetCategoryName ||
-                              'Unknown category'}
-
-                            {' · '}
-
-                            Due{' '}
-
-                            {formatUtcDate(
-                              bill.dueDate,
-                              'No due date'
-                            )}
-                          </p>
-                        </div>
-                      </button>
-
-                      {/*=========================================================
-                        Right side:
-                        => Amount is visible normally.
-                        => On unpaid-row hover, amount fades out.
-                        => Actions fade in and use the same right-side space.
-                      =========================================================*/}
-                      <div
-                        className="
-                          ml-auto
-                          flex
-                          min-w-[185px]
-                          shrink-0
-                          flex-col
-                          items-end
-                          justify-center
-
-                          py-4
-                          pr-5
-                          pl-3
-                        "
-                      >
-                        {/*=======================================================
-                          Amount / payment information
-
-                          Unpaid:
-                          => Visible normally.
-                          => Fades out when row is hovered or keyboard-focused.
-
-                          Paid:
-                          => Always visible.
-                        =======================================================*/}
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-[var(--app-text)]">
-                            {formatCurrency(
-                              bill.expectedAmount
-                            )}
-                          </p>
-
-                          {!bill.isPaid && (
-                            <p className="mt-1 whitespace-nowrap text-xs text-[var(--app-text-muted)]">
-                              {formatCurrency(
-                                bill.remainingAmount ??
-                                bill.expectedAmount
-                              )}{' '}
-                              remaining
-                            </p>
-                          )}
-
-                          {bill.isPaid && (
-                            <p className="mt-1 whitespace-nowrap text-xs text-emerald-600 dark:text-emerald-400">
-                              Paid{' '}
-                              {bill.paidDate
-                                ? formatUtcDate(
-                                  bill.paidDate
-                                )
-                                : ''}
-                            </p>
-                          )}
-                        </div>
-
-                        {/*=======================================================
-                          Unpaid bill actions
-
-                          Mobile:
-                          => Icons stay visible because touch devices do not
-                            have reliable hover.
-
-                          md+:
-                          => Hidden normally.
-                          => Entire action group appears when the bill row
-                            is hovered or keyboard-focused.
-
-                          Hover individual ActionButton:
-                          => Its label expands:
-                            Mark Paid
-                            Delete
-                        =======================================================*/}
-                        {!bill.isPaid && (
-                          <div
-                            className="
-                              mt-2
-
-                              flex
-                              items-center
-                              gap-2
-
-                              max-h-0
-                              overflow-hidden
-
-                              opacity-0
-
-                              transition-all
-                              duration-200
-                              ease-out
-
-                              md:group-hover/row:max-h-12
-                              md:group-hover/row:opacity-100
-
-                              md:group-focus-within/row:max-h-12
-                              md:group-focus-within/row:opacity-100
-                            "
-                          >
-                            <ActionButton
-                              variant="success"
-                              size="sm"
-                              expandable
-                              label="Mark Paid"
-                              icon={
-                                <WalletIcon className="h-4 w-4" />
-                              }
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleOpenPaymentModal(
-                                  bill
-                                );
-                              }}
-                            />
-
-                            <ActionButton
-                              variant="danger"
-                              size="sm"
-                              expandable
-                              label="Delete"
-                              icon={
-                                <TrashIcon className="h-4 w-4" />
-                              }
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleOpenDeleteBill(
-                                  bill
-                                );
-                              }}
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                    </div>
-                  );
-                }
+                (bill) => (
+                  <BillRow
+                    key={bill.id}
+                    bill={bill}
+                    onOpen={
+                      handleOpenBillModal
+                    }
+                    onMarkPaid={
+                      handleOpenPaymentModal
+                    }
+                    onDelete={
+                      handleOpenDeleteBill
+                    }
+                  />
+                )
               )}
             </div>
 
             {/*=================================================
               Summary
             =================================================*/}
-            <div className="grid grid-cols-2 border-t border-[var(--app-border)] bg-[var(--app-surface-muted)]/50 sm:grid-cols-5">
-              <div className="px-4 py-3 text-center">
-                <p className="text-xs text-[var(--app-text-muted)]">
-                  Total
-                </p>
-
-                <p className="mt-1 text-sm font-bold text-[var(--app-text)]">
-                  {
-                    summary.totalBills
-                  }
-                </p>
-              </div>
-
-              <div className="border-l border-[var(--app-border)] px-4 py-3 text-center">
-                <p className="text-xs text-[var(--app-text-muted)]">
-                  Paid
-                </p>
-
-                <p className="mt-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                  {
-                    summary.paidBills
-                  }
-                </p>
-              </div>
-
-              <div className="border-t border-[var(--app-border)] px-4 py-3 text-center sm:border-l sm:border-t-0">
-                <p className="text-xs text-[var(--app-text-muted)]">
-                  Unpaid
-                </p>
-
-                <p className="mt-1 text-sm font-bold text-[var(--app-text)]">
-                  {
-                    summary.unpaidBills
-                  }
-                </p>
-              </div>
-
-              <div className="border-l border-t border-[var(--app-border)] px-4 py-3 text-center sm:border-t-0">
-                <p className="text-xs text-[var(--app-text-muted)]">
-                  Expected
-                </p>
-
-                <p className="mt-1 text-sm font-bold text-[var(--app-text)]">
-                  {formatCurrency(
-                    summary.expectedTotal
-                  )}
-                </p>
-              </div>
-
-              <div className="col-span-2 border-t border-[var(--app-border)] px-4 py-3 text-center sm:col-span-1 sm:border-l sm:border-t-0">
-                <p className="text-xs text-[var(--app-text-muted)]">
-                  Remaining
-                </p>
-
-                <p className="mt-1 text-sm font-bold text-[var(--app-text)]">
-                  {formatCurrency(
-                    summary.remainingTotal
-                  )}
-                </p>
-              </div>
-            </div>
+            <BillSummary
+              summary={summary}
+            />
           </>
         )}
 
