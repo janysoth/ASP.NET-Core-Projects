@@ -1,13 +1,11 @@
 import React from 'react';
 
-import {
-  ArrowUpIcon,
-} from '../../../../components/icons/Icons';
+import { ArrowUpIcon } from '@/components/icons/Icons';
 
 import {
   formatCurrency,
   formatUtcDate,
-} from '../../utils/budgetFormatters';
+} from '../utils/budgetFormatters';
 
 /*===========================================================
   BudgetExpenseSection:

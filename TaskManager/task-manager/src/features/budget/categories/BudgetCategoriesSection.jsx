@@ -1,12 +1,8 @@
 import React from 'react';
 
-import {
-  BudgetIcon,
-} from '../../../../components/icons/Icons';
+import { BudgetIcon } from '@/components/icons/Icons';
+import { formatCurrency } from '../utils/budgetFormatters';
 
-import {
-  formatCurrency,
-} from '../../utils/budgetFormatters';
 
 /*===========================================================
   BudgetCategoriesSection:
@@ -95,8 +91,8 @@ const BudgetCategoriesSection = ({
 
                       <p
                         className={`mt-1 text-sm font-bold ${category.isOverBudget
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-[var(--app-text)]'
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-[var(--app-text)]'
                           }`}
                       >
                         {formatCurrency(
@@ -112,8 +108,8 @@ const BudgetCategoriesSection = ({
 
                       <p
                         className={`mt-1 text-sm font-semibold ${category.isOverBudget
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-emerald-600 dark:text-emerald-400'
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-emerald-600 dark:text-emerald-400'
                           }`}
                       >
                         {category.isOverBudget

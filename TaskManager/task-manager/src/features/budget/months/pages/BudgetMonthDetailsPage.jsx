@@ -10,9 +10,7 @@ import {
 import BudgetMonthHeader from '../components/BudgetMonthHeader';
 import BudgetMonthSummary from '../components/BudgetMonthSummary';
 
-import {
-  formatBudgetMonth,
-} from '../../utils/budgetFormatters';
+
 
 import {
   sortBudgetCategories,
@@ -23,9 +21,11 @@ import {
 import {
   BudgetBillsSection,
 } from '@/features/budget/bills';
-import BudgetCategoriesSection from '../components/BudgetCategoriesSection';
-import BudgetExpenseSection from '../components/BudgetExpenseSection';
-import BudgetIncomeSection from '../components/BudgetIncomeSection';
+import BudgetCategoriesSection from '@/features/budget/categories/BudgetCategoriesSection';
+import BudgetExpenseSection from '../../expenses/BudgetExpenseSection';
+
+import BudgetIncomeSection from '../../income/BudgetIncomeSection';
+import { formatBudgetMonth } from '../../utils/budgetFormatters';
 import { useBudgetMonthDetails } from '../hooks/useBudgetMonthDetails';
 
 /*===========================================================
