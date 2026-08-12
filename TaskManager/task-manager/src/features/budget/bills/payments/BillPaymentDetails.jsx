@@ -3,7 +3,7 @@ import React from 'react';
 import {
   formatCurrency,
   formatUtcDate,
-} from '../../../utils/budgetFormatters';
+} from '../../utils/budgetFormatters';
 
 /*===========================================================
   BillPaymentDetails:

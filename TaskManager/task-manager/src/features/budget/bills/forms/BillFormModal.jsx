@@ -9,9 +9,9 @@ import {
   useBillForm,
 } from '@/features/budget/months/hooks/useBillForm';
 
+import BillModalActions from '../payments/BillModalActions';
+import BillPaymentDetails from '../payments/BillPaymentDetails';
 import BillFormFields from './BillFormFields';
-import BillModalActions from './BillModalActions';
-import BillPaymentDetails from './BillPaymentDetails';
 import CategoryFormModal from './CategoryFormModal';
 
 /*===========================================================

@@ -4,25 +4,25 @@ export {
 
 export {
   default as BillEmptyState
-} from './BillEmptyState';
+} from '../../../bills/components/BillEmptyState';
 
 export {
   default as BillErrorState
-} from './BillErrorState';
+} from '../../../bills/components/BillErrorState';
 
 export {
   default as BillLoadingState
-} from './BillLoadingState';
+} from '../../../bills/components/BillLoadingState';
 
 export {
   default as BillRow
-} from './BillRow';
+} from '../../../bills/components/BillRow';
 
 export {
   default as BillSectionHeader
-} from './BillSectionHeader';
+} from '../../../bills/components/BillSectionHeader';
 
 export {
   default as BillSummary
-} from './BillSummary';
+} from '../../../bills/components/BillSummary';
 

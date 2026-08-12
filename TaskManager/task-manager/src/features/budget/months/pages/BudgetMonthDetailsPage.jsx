@@ -20,7 +20,9 @@ import {
   sortIncomeRecords,
 } from '../utils/budgetMonthUtils';
 
-import BudgetBillsSection from '../components/bills/BudgetBillsSection';
+import {
+  BudgetBillsSection,
+} from '@/features/budget/bills';
 import BudgetCategoriesSection from '../components/BudgetCategoriesSection';
 import BudgetExpenseSection from '../components/BudgetExpenseSection';
 import BudgetIncomeSection from '../components/BudgetIncomeSection';

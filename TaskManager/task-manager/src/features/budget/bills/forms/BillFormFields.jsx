@@ -2,8 +2,8 @@ import React from 'react';
 
 import {
   CalendarIcon,
-  PlusIcon,
-} from '../../../../../components/icons/Icons';
+  PlusIcon
+} from '@/components/icons/Icons';
 
 /*===========================================================
   BillFormFields:
@@ -67,8 +67,8 @@ const BillFormFields = ({
             isDetailsMode
           }
           className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.budgetCategoryId
-              ? 'border-red-500'
-              : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
+            ? 'border-red-500'
+            : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
             }`}
         >
           <option value="">
@@ -128,8 +128,8 @@ const BillFormFields = ({
           }
           placeholder="Example: Mortgage"
           className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-text-muted)] focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.name
-              ? 'border-red-500'
-              : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
+            ? 'border-red-500'
+            : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
             }`}
         />
 
@@ -168,8 +168,8 @@ const BillFormFields = ({
             }
             placeholder="0.00"
             className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-text-muted)] focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.expectedAmount
-                ? 'border-red-500'
-                : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
+              ? 'border-red-500'
+              : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
               }`}
           />
 
@@ -206,8 +206,8 @@ const BillFormFields = ({
                 isDetailsMode
               }
               className={`w-full rounded-xl border bg-[var(--app-surface)] py-2.5 pl-10 pr-3 text-sm text-[var(--app-text)] outline-none transition focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.dueDate
-                  ? 'border-red-500'
-                  : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
+                ? 'border-red-500'
+                : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
                 }`}
             />
           </div>
