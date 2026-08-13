@@ -13,16 +13,22 @@ import {
   AppConfirmDialog,
 } from '@/components/ui';
 
-import BillEmptyState from './components/BillEmptyState';
-import BillErrorState from './components/BillErrorState';
-import BillLoadingState from './components/BillLoadingState';
-import BillRow from './components/BillRow';
-import BillSectionHeader from './components/BillSectionHeader';
-import BillSummary from './components/BillSummary';
+import {
+  BillEmptyState,
+  BillErrorState,
+  BillLoadingState,
+  BillRow,
+  BillSectionHeader,
+  BillSummary,
+} from './components';
 
-import BillFormModal from './forms/BillFormModal';
+import {
+  BillFormModal,
+} from './forms';
 
-import BillPaymentModal from './payments/BillPaymentModal';
+import {
+  BillPaymentModal,
+} from './payments';
 
 /*===========================================================
   BudgetBillsSection:

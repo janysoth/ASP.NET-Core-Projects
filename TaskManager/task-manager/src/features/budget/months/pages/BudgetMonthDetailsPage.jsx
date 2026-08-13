@@ -21,7 +21,9 @@ import {
 import {
   BudgetBillsSection,
 } from '@/features/budget/bills';
-import BudgetCategoriesSection from '@/features/budget/categories/BudgetCategoriesSection';
+import {
+  BudgetCategoriesSection,
+} from '@/features/budget/categories';
 import {
   BudgetExpenseSection,
 } from '@/features/budget/expenses';
