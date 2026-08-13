@@ -40,8 +40,9 @@ const CategoryRow = ({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-6 text-right">
-          <div>
+        <div className="flex shrink-0 items-start gap-8">
+          {/* Remaining */}
+          <div className="w-28 text-right">
             <p className="text-xs text-[var(--app-text-muted)]">
               Remaining
             </p>
@@ -58,7 +59,8 @@ const CategoryRow = ({
             </p>
           </div>
 
-          <div>
+          {/* Status */}
+          <div className="w-20 text-right">
             <p className="text-xs text-[var(--app-text-muted)]">
               Status
             </p>
