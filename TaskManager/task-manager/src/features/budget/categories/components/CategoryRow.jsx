@@ -4,78 +4,169 @@ import {
   formatCurrency,
 } from '@/features/budget/utils/budgetFormatters';
 
+import {
+  FINANCIAL_TABLE_GAP,
+  MONEY_COLUMN_WIDTH,
+  STATUS_COLUMN_WIDTH,
+} from '@/features/budget/utils/layout';
+
 /*===========================================================
   CategoryRow:
-  => Displays one budget category.
+  => Displays one budget category using the shared
+     financial-table column layout.
+
+  Desktop:
+  => Category | Remaining | Status
+
+  Mobile:
+  => Financial values stack below the category information
+     and include their own labels.
 ===========================================================*/
 const CategoryRow = ({
   category,
 }) => {
+  const plannedAmount =
+    Number(
+      category.totalPlannedAmount ??
+      category.plannedAmount ??
+      0
+    );
+
+  const spentAmount =
+    Number(
+      category.spentAmount ??
+      0
+    );
+
+  const remainingAmount =
+    Number(
+      category.remainingAmount ??
+      plannedAmount -
+      spentAmount
+    );
+
+  const isOverBudget =
+    Boolean(
+      category.isOverBudget
+    ) ||
+    remainingAmount < 0;
+
   return (
-    <div className="px-5 py-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="font-semibold text-[var(--app-text)]">
-              {category.name}
-            </p>
+    <div
+      className={`
+        flex
+        flex-col
+        gap-4
+        px-5
+        py-4
 
-            <span className="rounded-full bg-[var(--app-surface-muted)] px-2.5 py-1 text-xs font-medium text-[var(--app-text-muted)]">
-              {category.type}
+        md:flex-row
+        md:items-center
+        ${FINANCIAL_TABLE_GAP}
+      `}
+    >
+      {/*=====================================================
+        Category Column
+      =====================================================*/}
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="min-w-0 truncate text-sm font-semibold text-[var(--app-text)]">
+            {category.name}
+          </p>
 
-              {category.expenseType
-                ? ` · ${category.expenseType}`
-                : ''}
-            </span>
-          </div>
+          <span className="shrink-0 whitespace-nowrap rounded-full bg-[var(--app-surface-muted)] px-2.5 py-1 text-xs font-medium text-[var(--app-text-muted)]">
+            {category.type}
 
-          <p className="mt-1 text-xs text-[var(--app-text-muted)]">
+            {category.expenseType
+              ? ` · ${category.expenseType}`
+              : ''}
+          </span>
+        </div>
+
+        <p className="mt-1 text-xs text-[var(--app-text-muted)]">
+          {formatCurrency(
+            spentAmount
+          )}{' '}
+          spent of{' '}
+          {formatCurrency(
+            plannedAmount
+          )}
+        </p>
+      </div>
+
+      {/*=====================================================
+        Financial Columns
+      =====================================================*/}
+      <div
+        className={`
+          flex
+          shrink-0
+          items-start
+          ${FINANCIAL_TABLE_GAP}
+        `}
+      >
+        {/*===================================================
+          Remaining Column
+        ===================================================*/}
+        <div
+          className={`
+            ${MONEY_COLUMN_WIDTH}
+            text-right
+          `}
+        >
+          <p className="text-xs text-[var(--app-text-muted)] md:hidden">
+            Remaining
+          </p>
+
+          <p
+            className={`
+              text-sm
+              font-bold
+
+              ${isOverBudget
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-[var(--app-text)]'
+              }
+
+              max-md:mt-1
+            `}
+          >
             {formatCurrency(
-              category.spentAmount
-            )}{' '}
-            spent of{' '}
-            {formatCurrency(
-              category.totalPlannedAmount
+              remainingAmount
             )}
           </p>
         </div>
 
-        <div className="flex shrink-0 items-start gap-8">
-          {/* Remaining */}
-          <div className="w-28 text-right">
-            <p className="text-xs text-[var(--app-text-muted)]">
-              Remaining
-            </p>
+        {/*===================================================
+          Status Column
+        ===================================================*/}
+        <div
+          className={`
+            ${STATUS_COLUMN_WIDTH}
+            text-right
+          `}
+        >
+          <p className="text-xs text-[var(--app-text-muted)] md:hidden">
+            Status
+          </p>
 
-            <p
-              className={`mt-1 text-sm font-bold ${category.isOverBudget
-                  ? 'text-red-600 dark:text-red-400'
-                  : 'text-[var(--app-text)]'
-                }`}
-            >
-              {formatCurrency(
-                category.remainingAmount
-              )}
-            </p>
-          </div>
+          <p
+            className={`
+              text-sm
+              font-semibold
 
-          {/* Status */}
-          <div className="w-20 text-right">
-            <p className="text-xs text-[var(--app-text-muted)]">
-              Status
-            </p>
+              ${isOverBudget
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-emerald-600 dark:text-emerald-400'
+              }
 
-            <p
-              className={`mt-1 text-sm font-semibold ${category.isOverBudget
-                  ? 'text-red-600 dark:text-red-400'
-                  : 'text-emerald-600 dark:text-emerald-400'
-                }`}
-            >
-              {category.isOverBudget
-                ? 'Over budget'
-                : 'On track'}
-            </p>
-          </div>
+              max-md:mt-1
+            `}
+          >
+            {isOverBudget
+              ? 'Over budget'
+              : 'On track'}
+          </p>
         </div>
       </div>
     </div>

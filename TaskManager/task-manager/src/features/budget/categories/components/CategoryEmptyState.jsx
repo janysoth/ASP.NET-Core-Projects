@@ -2,10 +2,11 @@ import React from 'react';
 
 /*===========================================================
   CategoryEmptyState:
-  => Displayed when the budget month has no categories.
+  => Displays the appropriate empty state based on the
+     currently selected category filter.
 ===========================================================*/
 const CategoryEmptyState = ({
-  budgetedOnly,
+  budgetedOnly = false,
 }) => {
   return (
     <div className="px-5 py-10 text-center">
