@@ -23,9 +23,11 @@ import {
 } from '@/features/budget/bills';
 import BudgetCategoriesSection from '@/features/budget/categories/BudgetCategoriesSection';
 import {
+  BudgetExpenseSection,
+} from '@/features/budget/expenses';
+import {
   BudgetIncomeSection,
 } from '@/features/budget/income';
-import BudgetExpenseSection from '../../expenses/BudgetExpenseSection';
 
 import { formatBudgetMonth } from '../../utils/budgetFormatters';
 import { useBudgetMonthDetails } from '../hooks/useBudgetMonthDetails';
