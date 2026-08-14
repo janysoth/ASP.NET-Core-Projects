@@ -12,8 +12,12 @@ import {
   SettingsIcon,
   TransactionIcon,
   WalletIcon,
-} from '../../../components/icons/Icons';
+} from '@/components/icons/Icons';
 
+/*===========================================================
+  Budget Navigation Items:
+  => Shared by desktop sidebar and mobile/tablet navigation.
+===========================================================*/
 const navigationItems = [
   {
     label: 'Overview',
@@ -53,30 +57,80 @@ const navigationItems = [
   },
 ];
 
-const getDesktopLinkClass = ({ isActive }) => {
+/*===========================================================
+  getDesktopLinkClass:
+  => Styling for large-screen sidebar navigation.
+===========================================================*/
+const getDesktopLinkClass = ({
+  isActive,
+}) => {
   return [
     'group flex items-center gap-3 rounded-xl px-3 py-3',
     'text-sm font-medium transition-colors duration-200',
+
     isActive
       ? 'bg-white/15 text-white'
       : 'text-blue-100/75 hover:bg-white/10 hover:text-white',
   ].join(' ');
 };
 
-const getMobileLinkClass = ({ isActive }) => {
+/*===========================================================
+  getMobileLinkClass:
+  => Styling for mobile/tablet horizontal navigation.
+===========================================================*/
+const getMobileLinkClass = ({
+  isActive,
+}) => {
   return [
-    'flex shrink-0 items-center gap-2 rounded-lg px-3 py-2',
+    'flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5',
     'text-sm font-medium transition-colors duration-200',
+
     isActive
-      ? 'bg-[var(--app-primary)] text-white'
-      : 'bg-[var(--app-surface)] text-[var(--app-text-muted)]',
+      ? 'bg-[var(--app-primary)] text-white shadow-sm'
+      : 'bg-[var(--app-surface)] text-[var(--app-text-muted)] hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-text)]',
   ].join(' ');
 };
 
+/*===========================================================
+  BudgetSidebar:
+  => Budget feature navigation.
+
+  Responsive behavior:
+  => Below lg:
+     Horizontal, scrollable navigation.
+
+  => lg+:
+     Fixed-width left sidebar.
+===========================================================*/
 const BudgetSidebar = () => {
   return (
     <>
-      <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-64 shrink-0 flex-col bg-[var(--budget-sidebar-bg)] px-4 py-6 md:flex">
+      {/*=======================================================
+        Desktop Sidebar
+        => Large screens only.
+      =======================================================*/}
+      <aside
+        className="
+          sticky
+          top-16
+
+          hidden
+          h-[calc(100vh-4rem)]
+          w-64
+          shrink-0
+          flex-col
+
+          bg-[var(--budget-sidebar-bg)]
+
+          px-4
+          py-6
+
+          lg:flex
+        "
+      >
+        {/*=====================================================
+          Sidebar Heading
+        =====================================================*/}
         <div className="mb-8 px-3">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200/70">
             Finance Center
@@ -91,27 +145,38 @@ const BudgetSidebar = () => {
           </p>
         </div>
 
+        {/*=====================================================
+          Desktop Navigation
+        =====================================================*/}
         <nav className="space-y-1">
-          {navigationItems.map((item) => {
-            const Icon = item.icon;
+          {navigationItems.map(
+            (item) => {
+              const Icon =
+                item.icon;
 
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={getDesktopLinkClass}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={
+                    getDesktopLinkClass
+                  }
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
 
-                <span>
-                  {item.label}
-                </span>
-              </NavLink>
-            );
-          })}
+                  <span>
+                    {item.label}
+                  </span>
+                </NavLink>
+              );
+            }
+          )}
         </nav>
 
+        {/*=====================================================
+          Budget Health
+        =====================================================*/}
         <div className="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4">
           <p className="text-sm font-semibold text-white">
             Budget health
@@ -127,26 +192,69 @@ const BudgetSidebar = () => {
         </div>
       </aside>
 
-      <div className="sticky top-16 z-30 border-b border-[var(--app-border)] bg-[var(--app-bg)] px-4 py-3 md:hidden">
-        <nav className="flex gap-2 overflow-x-auto pb-1">
-          {navigationItems.map((item) => {
-            const Icon = item.icon;
+      {/*=======================================================
+        Mobile / Tablet Navigation
+        => Uses full width.
+        => Horizontal scrolling prevents items from pushing
+           the Budget content off-screen.
+      =======================================================*/}
+      <div
+        className="
+          sticky
+          top-16
+          z-30
 
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={getMobileLinkClass}
-              >
-                <Icon className="h-4 w-4" />
+          w-full
+          min-w-0
 
-                <span>
-                  {item.label}
-                </span>
-              </NavLink>
-            );
-          })}
+          border-b
+          border-[var(--app-border)]
+
+          bg-[var(--app-bg)]/95
+          backdrop-blur
+
+          px-3
+          py-3
+
+          lg:hidden
+        "
+      >
+        <nav
+          className="
+            flex
+            w-full
+            min-w-0
+            gap-2
+
+            overflow-x-auto
+            overscroll-x-contain
+
+            pb-1
+          "
+        >
+          {navigationItems.map(
+            (item) => {
+              const Icon =
+                item.icon;
+
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={
+                    getMobileLinkClass
+                  }
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+
+                  <span className="whitespace-nowrap">
+                    {item.label}
+                  </span>
+                </NavLink>
+              );
+            }
+          )}
         </nav>
       </div>
     </>
