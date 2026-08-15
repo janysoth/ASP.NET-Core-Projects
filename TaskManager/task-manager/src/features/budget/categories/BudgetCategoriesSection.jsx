@@ -12,6 +12,7 @@ import {
 } from '@/components/icons/Icons';
 
 import {
+  FinancialRows,
   FinancialSection,
 } from '@/features/budget/components';
 
@@ -42,11 +43,14 @@ const CATEGORY_FILTER_OPTIONS = [
   BudgetCategoriesSection:
   => Displays planned vs actual activity by category.
 
+  Uses:
+  => FinancialSection for shared card/header layout.
+  => FinancialRows for shared row rendering.
+  => FinancialTableRow through CategoryRow.
+
   Supports:
   => Budgeted-only view.
   => All-category view.
-  => Shared FinancialSection layout.
-  => Shared FinancialTableRow through CategoryRow.
 
   Layout:
   => Category | Remaining | Status
@@ -67,7 +71,7 @@ const BudgetCategoriesSection = ({
   /*===========================================================
     Visible Categories:
     => All returns every category.
-    => Budgeted returns categories with money assigned.
+    => Budgeted returns only categories with money assigned.
   ===========================================================*/
   const visibleCategories =
     useMemo(() => {
@@ -151,8 +155,7 @@ const BudgetCategoriesSection = ({
       title="Budget Categories"
       subtitle="Planned and actual activity by category"
       columns={
-        visibleCategories.length >
-          0
+        visibleCategories.length > 0
           ? tableColumns
           : []
       }
@@ -160,38 +163,34 @@ const BudgetCategoriesSection = ({
         sectionActions
       }
     >
-      {/*=======================================================
-        Empty State / Category Rows
-      =======================================================*/}
-      {visibleCategories.length ===
-        0 ? (
-        <CategoryEmptyState
-          budgetedOnly={
-            filter ===
-            'budgeted'
-          }
-        />
-      ) : (
-        <div className="divide-y divide-[var(--app-border)]">
-          {visibleCategories.map(
-            (
+      <FinancialRows
+        items={
+          visibleCategories
+        }
+        emptyState={
+          <CategoryEmptyState
+            budgetedOnly={
+              filter ===
+              'budgeted'
+            }
+          />
+        }
+        renderRow={(
+          category
+        ) => (
+          <CategoryRow
+            key={
+              category.id
+            }
+            category={
               category
-            ) => (
-              <CategoryRow
-                key={
-                  category.id
-                }
-                category={
-                  category
-                }
-                columns={
-                  tableColumns
-                }
-              />
-            )
-          )}
-        </div>
-      )}
+            }
+            columns={
+              tableColumns
+            }
+          />
+        )}
+      />
     </FinancialSection>
   );
 };
