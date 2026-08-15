@@ -7,6 +7,7 @@ import {
   useParams,
 } from 'react-router-dom';
 
+import BudgetExpenseBreakdown from '../components/BudgetExpenseBreakdown';
 import BudgetMonthHeader from '../components/BudgetMonthHeader';
 import BudgetMonthSummary from '../components/BudgetMonthSummary';
 
@@ -173,6 +174,10 @@ const BudgetMonthDetailsPage = () => {
       <BudgetMonthSummary
         budgetMonth={budgetMonth}
         monthLabel={monthLabel}
+      />
+
+      <BudgetExpenseBreakdown
+        budgetMonth={budgetMonth}
       />
 
       {/*=======================================================
