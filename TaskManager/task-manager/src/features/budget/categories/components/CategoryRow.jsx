@@ -1,29 +1,31 @@
 import React from 'react';
 
 import {
-  formatCurrency,
-} from '@/features/budget/utils/budgetFormatters';
+  FinancialTableRow,
+} from '@/features/budget/components';
 
 import {
-  FINANCIAL_TABLE_GAP,
-  MONEY_COLUMN_WIDTH,
-  STATUS_COLUMN_WIDTH,
-} from '@/features/budget/utils/layout';
+  formatCurrency,
+} from '@/features/budget/utils/budgetFormatters';
 
 /*===========================================================
   CategoryRow:
   => Displays one budget category using the shared
-     financial-table column layout.
+     FinancialTableRow layout.
 
-  Desktop:
+  Desktop / tablet:
   => Category | Remaining | Status
 
   Mobile:
-  => Financial values stack below the category information
-     and include their own labels.
+  => Financial values stack below the category information.
+
+  IMPORTANT:
+  => Receives the same column-definition array used by
+     FinancialTableHeader so header and rows stay aligned.
 ===========================================================*/
 const CategoryRow = ({
   category,
+  columns = [],
 }) => {
   const plannedAmount =
     Number(
@@ -52,23 +54,13 @@ const CategoryRow = ({
     remainingAmount < 0;
 
   return (
-    <div
-      className={`
-        flex
-        flex-col
-        gap-4
-        px-5
-        py-4
-
-        md:flex-row
-        md:items-center
-        ${FINANCIAL_TABLE_GAP}
-      `}
+    <FinancialTableRow
+      columns={columns}
     >
       {/*=====================================================
         Category Column
       =====================================================*/}
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
           <p className="min-w-0 truncate text-sm font-semibold text-[var(--app-text)]">
             {category.name}
@@ -95,81 +87,45 @@ const CategoryRow = ({
       </div>
 
       {/*=====================================================
-        Financial Columns
+        Remaining Column
       =====================================================*/}
-      <div
-        className={`
-          flex
-          shrink-0
-          items-start
-          ${FINANCIAL_TABLE_GAP}
-        `}
-      >
-        {/*===================================================
-          Remaining Column
-        ===================================================*/}
-        <div
-          className={`
-            ${MONEY_COLUMN_WIDTH}
-            text-right
-          `}
+      <div className="text-left md:text-right">
+        <p className="text-xs text-[var(--app-text-muted)] md:hidden">
+          Remaining
+        </p>
+
+        <p
+          className={`mt-1 text-sm font-bold md:mt-0 ${isOverBudget
+            ? 'text-red-600 dark:text-red-400'
+            : 'text-[var(--app-text)]'
+            }`}
         >
-          <p className="text-xs text-[var(--app-text-muted)] md:hidden">
-            Remaining
-          </p>
-
-          <p
-            className={`
-              text-sm
-              font-bold
-
-              ${isOverBudget
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-[var(--app-text)]'
-              }
-
-              max-md:mt-1
-            `}
-          >
-            {formatCurrency(
-              remainingAmount
-            )}
-          </p>
-        </div>
-
-        {/*===================================================
-          Status Column
-        ===================================================*/}
-        <div
-          className={`
-            ${STATUS_COLUMN_WIDTH}
-            text-right
-          `}
-        >
-          <p className="text-xs text-[var(--app-text-muted)] md:hidden">
-            Status
-          </p>
-
-          <p
-            className={`
-              text-sm
-              font-semibold
-
-              ${isOverBudget
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-emerald-600 dark:text-emerald-400'
-              }
-
-              max-md:mt-1
-            `}
-          >
-            {isOverBudget
-              ? 'Over budget'
-              : 'On track'}
-          </p>
-        </div>
+          {formatCurrency(
+            remainingAmount
+          )}
+        </p>
       </div>
-    </div>
+
+      {/*=====================================================
+        Status Column
+      =====================================================*/}
+      <div className="text-left md:text-right">
+        <p className="text-xs text-[var(--app-text-muted)] md:hidden">
+          Status
+        </p>
+
+        <p
+          className={`mt-1 text-sm font-semibold md:mt-0 ${isOverBudget
+            ? 'text-red-600 dark:text-red-400'
+            : 'text-emerald-600 dark:text-emerald-400'
+            }`}
+        >
+          {isOverBudget
+            ? 'Over budget'
+            : 'On track'}
+        </p>
+      </div>
+    </FinancialTableRow>
   );
 };
 

@@ -1,8 +1,18 @@
-import React from 'react';
+import React, {
+  useMemo,
+} from 'react';
 
 import {
   ArrowDownIcon,
 } from '@/components/icons/Icons';
+
+import {
+  FinancialTableHeader,
+} from '@/features/budget/components';
+
+import {
+  createFinancialColumns,
+} from '@/features/budget/utils/layout';
 
 import {
   IncomeEmptyState,
@@ -12,15 +22,39 @@ import {
 /*===========================================================
   BudgetIncomeSection:
   => Displays income records for one budget month.
+
+  Layout:
+  => Description column uses remaining space.
+  => Amount and Date use fixed widths on the right.
 ===========================================================*/
 const BudgetIncomeSection = ({
   incomeRecords = [],
   monthLabel,
 }) => {
+  const tableColumns =
+    useMemo(
+      () =>
+        createFinancialColumns([
+          {
+            key: 'income',
+            label: 'Income',
+          },
+          {
+            key: 'amount',
+            label: 'Amount',
+          },
+          {
+            key: 'date',
+            label: 'Date',
+          },
+        ]),
+      []
+    );
+
   return (
-    <section className="mt-6 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
+    <section className="mt-6 overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
       {/*=======================================================
-        Header
+        Section Header
       =======================================================*/}
       <div className="flex items-center justify-between border-b border-[var(--app-border)] px-5 py-4">
         <div>
@@ -38,6 +72,20 @@ const BudgetIncomeSection = ({
         </div>
       </div>
 
+      {/*=======================================================
+        Financial Table Header
+      =======================================================*/}
+      {incomeRecords.length > 0 && (
+        <FinancialTableHeader
+          columns={
+            tableColumns
+          }
+        />
+      )}
+
+      {/*=======================================================
+        Empty State / Income Rows
+      =======================================================*/}
       {incomeRecords.length === 0 ? (
         <IncomeEmptyState />
       ) : (
@@ -47,6 +95,7 @@ const BudgetIncomeSection = ({
               <IncomeRow
                 key={income.id}
                 income={income}
+                columns={tableColumns}
               />
             )
           )}

@@ -1,3 +1,4 @@
 export {
-  FinancialTableHeader
+  FinancialTableHeader,
+  FinancialTableRow
 } from './financial-table';

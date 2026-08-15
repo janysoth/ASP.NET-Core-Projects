@@ -16,9 +16,7 @@ import {
 } from '@/features/budget/components';
 
 import {
-  FINANCIAL_TABLE_GAP,
-  MONEY_COLUMN_WIDTH,
-  STATUS_COLUMN_WIDTH,
+  createFinancialColumns,
 } from '@/features/budget/utils/layout';
 
 import {
@@ -48,10 +46,18 @@ const CATEGORY_FILTER_OPTIONS = [
   => Budgeted-only view.
   => All-category view.
   => Shared financial-table layout.
+
+  Layout:
+  => Category takes all remaining space.
+  => Remaining uses a fixed money column width.
+  => Status uses a fixed status column width.
 ===========================================================*/
 const BudgetCategoriesSection = ({
   categories = [],
 }) => {
+  /*===========================================================
+    Filter
+  ===========================================================*/
   const [
     filter,
     setFilter,
@@ -62,8 +68,7 @@ const BudgetCategoriesSection = ({
   /*===========================================================
     Visible Categories:
     => All returns every category.
-    => Budgeted only returns categories that have money
-       assigned for the month.
+    => Budgeted returns categories with money assigned.
   ===========================================================*/
   const visibleCategories =
     useMemo(() => {
@@ -97,28 +102,27 @@ const BudgetCategoriesSection = ({
     ]);
 
   /*===========================================================
-    Financial Table Columns
+    Financial Table Columns:
+    => Description/category takes remaining space.
+    => Other columns are fixed-width from the right.
   ===========================================================*/
   const tableColumns =
     useMemo(
-      () => [
-        {
-          key: 'category',
-          label: 'Category',
-          className:
-            'min-w-0 flex-1',
-        },
-        {
-          key: 'remaining',
-          label: 'Remaining',
-          className: `${MONEY_COLUMN_WIDTH} text-right`,
-        },
-        {
-          key: 'status',
-          label: 'Status',
-          className: `${STATUS_COLUMN_WIDTH} text-right`,
-        },
-      ],
+      () =>
+        createFinancialColumns([
+          {
+            key: 'category',
+            label: 'Category',
+          },
+          {
+            key: 'remaining',
+            label: 'Remaining',
+          },
+          {
+            key: 'status',
+            label: 'Status',
+          },
+        ]),
       []
     );
 
@@ -158,7 +162,7 @@ const BudgetCategoriesSection = ({
       </div>
 
       {/*=======================================================
-        Table Header
+        Financial Table Header
       =======================================================*/}
       {visibleCategories.length >
         0 && (
@@ -166,14 +170,11 @@ const BudgetCategoriesSection = ({
             columns={
               tableColumns
             }
-            className={
-              FINANCIAL_TABLE_GAP
-            }
           />
         )}
 
       {/*=======================================================
-        Empty State
+        Empty State / Category Rows
       =======================================================*/}
       {visibleCategories.length ===
         0 ? (
@@ -184,9 +185,6 @@ const BudgetCategoriesSection = ({
           }
         />
       ) : (
-        /*=====================================================
-          Category Rows
-        =====================================================*/
         <div className="divide-y divide-[var(--app-border)]">
           {visibleCategories.map(
             (
@@ -198,6 +196,9 @@ const BudgetCategoriesSection = ({
                 }
                 category={
                   category
+                }
+                columns={
+                  tableColumns
                 }
               />
             )
