@@ -7,7 +7,8 @@ import {
 } from '@/components/icons/Icons';
 
 import {
-  FinancialTableHeader,
+  FinancialRows,
+  FinancialSection,
 } from '@/features/budget/components';
 
 import {
@@ -23,14 +24,21 @@ import {
   BudgetIncomeSection:
   => Displays income records for one budget month.
 
+  Uses:
+  => FinancialSection for shared card/header layout.
+  => FinancialRows for shared row rendering.
+  => FinancialTableRow through IncomeRow.
+
   Layout:
-  => Description column uses remaining space.
-  => Amount and Date use fixed widths on the right.
+  => Income | Amount | Date
 ===========================================================*/
 const BudgetIncomeSection = ({
   incomeRecords = [],
   monthLabel,
 }) => {
+  /*===========================================================
+    Financial Table Columns
+  ===========================================================*/
   const tableColumns =
     useMemo(
       () =>
@@ -51,57 +59,50 @@ const BudgetIncomeSection = ({
       []
     );
 
+  /*===========================================================
+    Section Icon
+  ===========================================================*/
+  const sectionIcon = (
+    <div className="rounded-xl bg-emerald-100 p-2.5 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+      <ArrowDownIcon className="h-5 w-5" />
+    </div>
+  );
+
   return (
-    <section className="mt-6 overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
-      {/*=======================================================
-        Section Header
-      =======================================================*/}
-      <div className="flex items-center justify-between border-b border-[var(--app-border)] px-5 py-4">
-        <div>
-          <h2 className="font-semibold text-[var(--app-text)]">
-            Income
-          </h2>
-
-          <p className="mt-1 text-sm text-[var(--app-text-muted)]">
-            Income assigned to {monthLabel}
-          </p>
-        </div>
-
-        <div className="rounded-xl bg-emerald-100 p-2.5 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-          <ArrowDownIcon className="h-5 w-5" />
-        </div>
-      </div>
-
-      {/*=======================================================
-        Financial Table Header
-      =======================================================*/}
-      {incomeRecords.length > 0 && (
-        <FinancialTableHeader
-          columns={
-            tableColumns
-          }
-        />
-      )}
-
-      {/*=======================================================
-        Empty State / Income Rows
-      =======================================================*/}
-      {incomeRecords.length === 0 ? (
-        <IncomeEmptyState />
-      ) : (
-        <div className="divide-y divide-[var(--app-border)]">
-          {incomeRecords.map(
-            (income) => (
-              <IncomeRow
-                key={income.id}
-                income={income}
-                columns={tableColumns}
-              />
-            )
-          )}
-        </div>
-      )}
-    </section>
+    <FinancialSection
+      title="Income"
+      subtitle={`Income assigned to ${monthLabel}`}
+      icon={sectionIcon}
+      columns={
+        incomeRecords.length > 0
+          ? tableColumns
+          : []
+      }
+    >
+      <FinancialRows
+        items={
+          incomeRecords
+        }
+        emptyState={
+          <IncomeEmptyState />
+        }
+        renderRow={(
+          income
+        ) => (
+          <IncomeRow
+            key={
+              income.id
+            }
+            income={
+              income
+            }
+            columns={
+              tableColumns
+            }
+          />
+        )}
+      />
+    </FinancialSection>
   );
 };
 

@@ -1,4 +1,6 @@
 export {
+  FinancialRows,
+  FinancialSection,
   FinancialTableHeader,
   FinancialTableRow
-} from './financial-table';
+} from './financial';

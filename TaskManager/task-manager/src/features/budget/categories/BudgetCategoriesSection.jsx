@@ -12,7 +12,7 @@ import {
 } from '@/components/icons/Icons';
 
 import {
-  FinancialTableHeader,
+  FinancialSection,
 } from '@/features/budget/components';
 
 import {
@@ -45,12 +45,11 @@ const CATEGORY_FILTER_OPTIONS = [
   Supports:
   => Budgeted-only view.
   => All-category view.
-  => Shared financial-table layout.
+  => Shared FinancialSection layout.
+  => Shared FinancialTableRow through CategoryRow.
 
   Layout:
-  => Category takes all remaining space.
-  => Remaining uses a fixed money column width.
-  => Status uses a fixed status column width.
+  => Category | Remaining | Status
 ===========================================================*/
 const BudgetCategoriesSection = ({
   categories = [],
@@ -102,9 +101,7 @@ const BudgetCategoriesSection = ({
     ]);
 
   /*===========================================================
-    Financial Table Columns:
-    => Description/category takes remaining space.
-    => Other columns are fixed-width from the right.
+    Financial Table Columns
   ===========================================================*/
   const tableColumns =
     useMemo(
@@ -126,53 +123,43 @@ const BudgetCategoriesSection = ({
       []
     );
 
-  return (
-    <section className="mt-6 overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
-      {/*=======================================================
-        Section Header
-      =======================================================*/}
-      <div className="flex flex-col gap-4 border-b border-[var(--app-border)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="font-semibold text-[var(--app-text)]">
-            Budget Categories
-          </h2>
+  /*===========================================================
+    Section Actions
+  ===========================================================*/
+  const sectionActions = (
+    <>
+      <AppSegmentedControl
+        options={
+          CATEGORY_FILTER_OPTIONS
+        }
+        value={
+          filter
+        }
+        onChange={
+          setFilter
+        }
+      />
 
-          <p className="mt-1 text-sm text-[var(--app-text-muted)]">
-            Planned and actual activity by category
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <AppSegmentedControl
-            options={
-              CATEGORY_FILTER_OPTIONS
-            }
-            value={
-              filter
-            }
-            onChange={
-              setFilter
-            }
-          />
-
-          <div className="hidden rounded-xl bg-indigo-100 p-2.5 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300 sm:block">
-            <BudgetIcon className="h-5 w-5" />
-          </div>
-        </div>
+      <div className="hidden rounded-xl bg-indigo-100 p-2.5 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300 sm:block">
+        <BudgetIcon className="h-5 w-5" />
       </div>
+    </>
+  );
 
-      {/*=======================================================
-        Financial Table Header
-      =======================================================*/}
-      {visibleCategories.length >
-        0 && (
-          <FinancialTableHeader
-            columns={
-              tableColumns
-            }
-          />
-        )}
-
+  return (
+    <FinancialSection
+      title="Budget Categories"
+      subtitle="Planned and actual activity by category"
+      columns={
+        visibleCategories.length >
+          0
+          ? tableColumns
+          : []
+      }
+      actions={
+        sectionActions
+      }
+    >
       {/*=======================================================
         Empty State / Category Rows
       =======================================================*/}
@@ -205,7 +192,7 @@ const BudgetCategoriesSection = ({
           )}
         </div>
       )}
-    </section>
+    </FinancialSection>
   );
 };
 
