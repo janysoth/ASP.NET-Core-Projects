@@ -1,17 +1,14 @@
-import React from 'react';
-
-import {
-  useBillDelete,
-  useBillFormActions,
-  useBillPayment,
-  useBillsData,
-  useBillSummary,
-  usePaymentAccounts,
-} from './hooks';
+import React, {
+  useMemo,
+} from 'react';
 
 import {
   AppConfirmDialog,
 } from '@/components/ui';
+
+import {
+  createFinancialColumns,
+} from '@/features/budget/utils/layout';
 
 import {
   BillEmptyState,
@@ -23,6 +20,10 @@ import {
 } from './components';
 
 import {
+  FinancialTableHeader,
+} from '@/features/budget/components';
+
+import {
   BillFormModal,
 } from './forms';
 
@@ -30,9 +31,23 @@ import {
   BillPaymentModal,
 } from './payments';
 
+import {
+  useBillDelete,
+  useBillFormActions,
+  useBillPayment,
+  useBillsData,
+  useBillSummary,
+  usePaymentAccounts,
+} from './hooks';
+
 /*===========================================================
   BudgetBillsSection:
   => Displays and manages bills for one budget month.
+
+  Uses:
+  => Focused hooks for bill business logic.
+  => Reusable Bills UI components.
+  => Shared financial column definitions.
 
   Supports:
   => Create bill.
@@ -42,6 +57,13 @@ import {
   => Reverse a payment.
   => Delete unpaid bill.
   => Create Fixed Expense categories inline.
+
+  Financial Layout:
+  => Bill | Amount | Remaining | Actions
+
+  IMPORTANT:
+  => BillRow receives the shared column definitions.
+  => BillRow will be migrated to FinancialTableRow next.
 ===========================================================*/
 const BudgetBillsSection = ({
   budgetMonthId,
@@ -51,9 +73,8 @@ const BudgetBillsSection = ({
   monthLabel,
   onBudgetMonthChanged,
 }) => {
-
   /*===========================================================
-    Bill data
+    Bill Data
   ===========================================================*/
   const {
     bills,
@@ -66,7 +87,25 @@ const BudgetBillsSection = ({
   });
 
   /*===========================================================
-    Bill Form Actions
+    Bill Summary
+  ===========================================================*/
+  const summary =
+    useBillSummary(
+      bills
+    );
+
+  /*===========================================================
+    Payment Accounts
+  ===========================================================*/
+  const {
+    accounts,
+    accountsLoading,
+    accountsError,
+    loadAccounts,
+  } = usePaymentAccounts();
+
+  /*===========================================================
+    Bill Form
   ===========================================================*/
   const {
     availableCategories,
@@ -91,33 +130,7 @@ const BudgetBillsSection = ({
   });
 
   /*===========================================================
-    Delete Bill States
-  ===========================================================*/
-  const {
-    deleteBillTarget,
-    deletingBill,
-
-    handleOpenDeleteBill,
-    handleCloseDeleteBill,
-    handleDeleteBill,
-  } = useBillDelete({
-    loadBills,
-    onBudgetMonthChanged,
-  });
-
-  /*===========================================================
-    Payment Accounts
-    => Loads accounts that may be used for bill payments.
-  ===========================================================*/
-  const {
-    accounts,
-    accountsLoading,
-    accountsError,
-    loadAccounts,
-  } = usePaymentAccounts();
-
-  /*===========================================================
-  Bill Payment
+    Bill Payment
   ===========================================================*/
   const {
     isPaymentModalOpen,
@@ -139,14 +152,56 @@ const BudgetBillsSection = ({
   });
 
   /*===========================================================
-  handleMarkBillUnpaid:
-  => Asks the payment hook to reverse the selected bill.
-  => Closes Bill Details only after a successful reversal.
+    Bill Delete
+  ===========================================================*/
+  const {
+    deleteBillTarget,
+    deletingBill,
 
-  IMPORTANT:
-  => useBillPayment handles business/API logic.
-  => BudgetBillsSection handles UI/modal behavior.
-===========================================================*/
+    handleOpenDeleteBill,
+    handleCloseDeleteBill,
+    handleDeleteBill,
+  } = useBillDelete({
+    loadBills,
+    onBudgetMonthChanged,
+  });
+
+  /*===========================================================
+    Financial Table Columns:
+    => Bill description takes all remaining space.
+    => Amount, Remaining, and Actions use the same
+       fixed financial column width.
+
+    Layout:
+    => 1fr | 160px | 160px 
+  ===========================================================*/
+  const tableColumns =
+    useMemo(
+      () =>
+        createFinancialColumns([
+          {
+            key: 'bill',
+            label: 'Description',
+          },
+          {
+            key: 'amount',
+            label: 'Amount',
+          },
+          {
+            key: 'remaining',
+            label: 'Remaining',
+          },
+        ]),
+      []
+    );
+
+  /*===========================================================
+    handleMarkBillUnpaid:
+    => Payment hook handles API/business logic.
+    => This section controls its own Bill Details modal.
+
+    => Bill Details closes only after a successful reversal.
+  ===========================================================*/
   const handleMarkBillUnpaid =
     async () => {
       const success =
@@ -161,44 +216,57 @@ const BudgetBillsSection = ({
       closeBillFormAfterAction();
     };
 
-  /*===========================================================
-    Bill summary
-  ===========================================================*/
-  const summary =
-    useBillSummary(
-      bills
-    );
-
   return (
-    <section className="mt-6 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
+    <section className="mt-6 overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
       {/*=======================================================
-        Bill Section Header
+        Section Header
       =======================================================*/}
       <BillSectionHeader
-        monthLabel={monthLabel}
-        onAddBill={handleOpenCreateBillForm}
+        monthLabel={
+          monthLabel
+        }
+        onAddBill={
+          handleOpenCreateBillForm
+        }
       />
 
       {/*=======================================================
-        Loading
+        Financial Table Header
+      =======================================================*/}
+      {!loading &&
+        !error &&
+        bills.length > 0 && (
+          <FinancialTableHeader
+            columns={
+              tableColumns
+            }
+          />
+        )}
+
+      {/*=======================================================
+        Loading State
       =======================================================*/}
       {loading && (
         <BillLoadingState />
       )}
 
       {/*=======================================================
-        Error
+        Error State
       =======================================================*/}
       {!loading &&
         error && (
           <BillErrorState
-            error={error}
-            onRetry={loadBills}
+            error={
+              error
+            }
+            onRetry={
+              loadBills
+            }
           />
         )}
 
       {/*=======================================================
-        Empty state
+        Empty State
       =======================================================*/}
       {!loading &&
         !error &&
@@ -207,19 +275,27 @@ const BudgetBillsSection = ({
         )}
 
       {/*=======================================================
-        Bills
+        Bill Rows
       =======================================================*/}
       {!loading &&
         !error &&
-        bills.length >
-        0 && (
+        bills.length > 0 && (
           <>
             <div className="divide-y divide-[var(--app-border)]">
               {bills.map(
-                (bill) => (
+                (
+                  bill
+                ) => (
                   <BillRow
-                    key={bill.id}
-                    bill={bill}
+                    key={
+                      bill.id
+                    }
+                    bill={
+                      bill
+                    }
+                    columns={
+                      tableColumns
+                    }
                     onOpen={
                       handleOpenBillModal
                     }
@@ -235,16 +311,18 @@ const BudgetBillsSection = ({
             </div>
 
             {/*=================================================
-              Summary
+              Bill Summary
             =================================================*/}
             <BillSummary
-              summary={summary}
+              summary={
+                summary
+              }
             />
           </>
         )}
 
       {/*=======================================================
-        Bill form
+        Bill Form Modal
       =======================================================*/}
       <BillFormModal
         mode={
@@ -289,7 +367,7 @@ const BudgetBillsSection = ({
       />
 
       {/*=======================================================
-        Payment modal
+        Payment Modal
       =======================================================*/}
       <BillPaymentModal
         isOpen={
@@ -319,7 +397,7 @@ const BudgetBillsSection = ({
       />
 
       {/*=======================================================
-        Delete confirmation
+        Delete Confirmation
       =======================================================*/}
       <AppConfirmDialog
         isOpen={
