@@ -3,8 +3,19 @@ import React, {
 } from 'react';
 
 import {
+  AppButton,
   AppConfirmDialog,
 } from '@/components/ui';
+
+import {
+  PlusIcon,
+  ReceiptIcon,
+} from '@/components/icons/Icons';
+
+import {
+  FinancialRows,
+  FinancialSection,
+} from '@/features/budget/components';
 
 import {
   createFinancialColumns,
@@ -15,13 +26,8 @@ import {
   BillErrorState,
   BillLoadingState,
   BillRow,
-  BillSectionHeader,
   BillSummary,
 } from './components';
-
-import {
-  FinancialTableHeader,
-} from '@/features/budget/components';
 
 import {
   BillFormModal,
@@ -45,9 +51,10 @@ import {
   => Displays and manages bills for one budget month.
 
   Uses:
-  => Focused hooks for bill business logic.
-  => Reusable Bills UI components.
-  => Shared financial column definitions.
+  => FinancialSection for shared section/card layout.
+  => FinancialRows for shared row-list rendering.
+  => FinancialTableRow through BillRow.
+  => Focused hooks for Bills business logic.
 
   Supports:
   => Create bill.
@@ -58,12 +65,13 @@ import {
   => Delete unpaid bill.
   => Create Fixed Expense categories inline.
 
-  Financial Layout:
-  => Bill | Amount | Remaining | Actions
+  Layout:
+  => Description | Amount | Remaining
 
   IMPORTANT:
-  => BillRow receives the shared column definitions.
-  => BillRow will be migrated to FinancialTableRow next.
+  => Bill actions are NOT a separate table column.
+  => Actions appear underneath Remaining when an unpaid
+     bill row is hovered or keyboard-focused.
 ===========================================================*/
 const BudgetBillsSection = ({
   budgetMonthId,
@@ -168,19 +176,19 @@ const BudgetBillsSection = ({
 
   /*===========================================================
     Financial Table Columns:
-    => Bill description takes all remaining space.
-    => Amount, Remaining, and Actions use the same
-       fixed financial column width.
+    => Description uses all remaining space.
+    => Amount uses shared fixed financial width.
+    => Remaining uses shared fixed financial width.
 
     Layout:
-    => 1fr | 160px | 160px 
+    => 1fr | 160px | 160px
   ===========================================================*/
   const tableColumns =
     useMemo(
       () =>
         createFinancialColumns([
           {
-            key: 'bill',
+            key: 'description',
             label: 'Description',
           },
           {
@@ -198,9 +206,9 @@ const BudgetBillsSection = ({
   /*===========================================================
     handleMarkBillUnpaid:
     => Payment hook handles API/business logic.
-    => This section controls its own Bill Details modal.
+    => Bills section handles Bill Details modal behavior.
 
-    => Bill Details closes only after a successful reversal.
+    => Details modal closes only after a successful reversal.
   ===========================================================*/
   const handleMarkBillUnpaid =
     async () => {
@@ -216,33 +224,47 @@ const BudgetBillsSection = ({
       closeBillFormAfterAction();
     };
 
-  return (
-    <section className="mt-6 overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
-      {/*=======================================================
-        Section Header
-      =======================================================*/}
-      <BillSectionHeader
-        monthLabel={
-          monthLabel
-        }
-        onAddBill={
+  /*===========================================================
+    Section Actions:
+    => Add Bill button.
+    => Bills icon.
+  ===========================================================*/
+  const sectionActions = (
+    <>
+      <AppButton
+        variant="primary"
+        onClick={
           handleOpenCreateBillForm
         }
-      />
+      >
+        <PlusIcon className="h-4 w-4" />
 
-      {/*=======================================================
-        Financial Table Header
-      =======================================================*/}
-      {!loading &&
-        !error &&
-        bills.length > 0 && (
-          <FinancialTableHeader
-            columns={
-              tableColumns
-            }
-          />
-        )}
+        <span>
+          Add bill
+        </span>
+      </AppButton>
 
+      <div className="hidden rounded-xl bg-amber-100 p-2.5 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 sm:block">
+        <ReceiptIcon className="h-5 w-5" />
+      </div>
+    </>
+  );
+
+  return (
+    <FinancialSection
+      title="Bills"
+      subtitle={`Fixed expense obligations for ${monthLabel}`}
+      actions={
+        sectionActions
+      }
+      columns={
+        !loading &&
+          !error &&
+          bills.length > 0
+          ? tableColumns
+          : []
+      }
+    >
       {/*=======================================================
         Loading State
       =======================================================*/}
@@ -266,59 +288,55 @@ const BudgetBillsSection = ({
         )}
 
       {/*=======================================================
-        Empty State
+        Empty State / Bill Rows
       =======================================================*/}
       {!loading &&
-        !error &&
-        bills.length === 0 && (
-          <BillEmptyState />
+        !error && (
+          <FinancialRows
+            items={
+              bills
+            }
+            emptyState={
+              <BillEmptyState />
+            }
+            renderRow={(
+              bill
+            ) => (
+              <BillRow
+                key={
+                  bill.id
+                }
+                bill={
+                  bill
+                }
+                columns={
+                  tableColumns
+                }
+                onOpen={
+                  handleOpenBillModal
+                }
+                onMarkPaid={
+                  handleOpenPaymentModal
+                }
+                onDelete={
+                  handleOpenDeleteBill
+                }
+              />
+            )}
+          />
         )}
 
       {/*=======================================================
-        Bill Rows
+        Bill Summary
       =======================================================*/}
       {!loading &&
         !error &&
         bills.length > 0 && (
-          <>
-            <div className="divide-y divide-[var(--app-border)]">
-              {bills.map(
-                (
-                  bill
-                ) => (
-                  <BillRow
-                    key={
-                      bill.id
-                    }
-                    bill={
-                      bill
-                    }
-                    columns={
-                      tableColumns
-                    }
-                    onOpen={
-                      handleOpenBillModal
-                    }
-                    onMarkPaid={
-                      handleOpenPaymentModal
-                    }
-                    onDelete={
-                      handleOpenDeleteBill
-                    }
-                  />
-                )
-              )}
-            </div>
-
-            {/*=================================================
-              Bill Summary
-            =================================================*/}
-            <BillSummary
-              summary={
-                summary
-              }
-            />
-          </>
+          <BillSummary
+            summary={
+              summary
+            }
+          />
         )}
 
       {/*=======================================================
@@ -430,7 +448,7 @@ const BudgetBillsSection = ({
         }
         loadingText="Deleting..."
       />
-    </section>
+    </FinancialSection>
   );
 };
 
