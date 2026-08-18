@@ -299,3 +299,29 @@ export const deleteBill = async (
 
   return response.data;
 };
+
+/*===========================================================
+  createIncome:
+  => Creates an income record inside a selected budget month.
+
+  Backend:
+  POST /api/budget/months/{budgetMonthId}/income
+===========================================================*/
+export const createIncome = async (
+  budgetMonthId,
+  incomeData
+) => {
+  if (!budgetMonthId) {
+    throw new Error(
+      'Budget month ID is required.'
+    );
+  }
+
+  const response =
+    await api.post(
+      `budget/months/${budgetMonthId}/income`,
+      incomeData
+    );
+
+  return response.data;
+};
