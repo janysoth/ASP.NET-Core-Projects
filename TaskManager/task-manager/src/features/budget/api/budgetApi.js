@@ -325,3 +325,53 @@ export const createIncome = async (
 
   return response.data;
 };
+
+/*===========================================================
+  updateIncome:
+  => Completely updates an existing income record.
+
+  Backend:
+  PUT /api/budget/income/{incomeId}
+===========================================================*/
+export const updateIncome = async (
+  incomeId,
+  incomeData
+) => {
+  if (!incomeId) {
+    throw new Error(
+      'Income ID is required.'
+    );
+  }
+
+  const response =
+    await api.put(
+      `budget/income/${incomeId}`,
+      incomeData
+    );
+
+  return response.data;
+};
+
+/*===========================================================
+  deleteIncome:
+  => Deletes an income record.
+
+  Backend:
+  DELETE /api/budget/income/{incomeId}
+===========================================================*/
+export const deleteIncome = async (
+  incomeId
+) => {
+  if (!incomeId) {
+    throw new Error(
+      'Income ID is required.'
+    );
+  }
+
+  const response =
+    await api.delete(
+      `budget/income/${incomeId}`
+    );
+
+  return response.data;
+};

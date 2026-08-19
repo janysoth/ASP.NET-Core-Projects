@@ -200,8 +200,18 @@ const BudgetMonthDetailsPage = () => {
         Income records
       =======================================================*/}
       <BudgetIncomeSection
-        incomeRecords={sortedIncomeRecords}
-        monthLabel={monthLabel}
+        budgetMonthId={
+          budgetMonth.id
+        }
+        incomeRecords={
+          sortedIncomeRecords
+        }
+        monthLabel={
+          monthLabel
+        }
+        onBudgetMonthChanged={
+          refreshBudgetMonth
+        }
       />
 
       {/*=======================================================
