@@ -206,6 +206,12 @@ const BudgetMonthDetailsPage = () => {
         incomeRecords={
           sortedIncomeRecords
         }
+        plannedIncome={
+          budgetMonth.plannedIncome
+        }
+        totalIncome={
+          budgetMonth.totalIncome
+        }
         monthLabel={
           monthLabel
         }

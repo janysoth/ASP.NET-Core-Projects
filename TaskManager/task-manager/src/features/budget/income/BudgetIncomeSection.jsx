@@ -24,6 +24,7 @@ import {
 import {
   IncomeEmptyState,
   IncomeRow,
+  IncomeSummary,
 } from './components';
 
 import {
@@ -45,21 +46,25 @@ import {
   => Add income.
   => Edit income.
   => Delete income.
-
-  Uses:
-  => FinancialSection for shared card/header layout.
-  => FinancialRows for shared row rendering.
-  => FinancialTableRow through IncomeRow.
-  => useIncomeAccounts for account loading.
-  => useIncomeForm for create/edit workflow.
-  => useIncomeDelete for delete workflow.
+  => Monthly income summary.
 
   Layout:
   => Income | Amount | Date
+
+  Summary:
+  => Deposits.
+  => Planned.
+  => Total Income.
+  => Difference.
 ===========================================================*/
 const BudgetIncomeSection = ({
   budgetMonthId,
+
   incomeRecords = [],
+
+  plannedIncome = 0,
+  totalIncome = 0,
+
   monthLabel,
   onBudgetMonthChanged,
 }) => {
@@ -204,6 +209,9 @@ const BudgetIncomeSection = ({
             : []
         }
       >
+        {/*=====================================================
+          Income Rows
+        =====================================================*/}
         <FinancialRows
           items={
             incomeRecords
@@ -233,6 +241,23 @@ const BudgetIncomeSection = ({
             />
           )}
         />
+
+        {/*=====================================================
+          Income Summary
+        =====================================================*/}
+        {incomeRecords.length > 0 && (
+          <IncomeSummary
+            depositCount={
+              incomeRecords.length
+            }
+            plannedIncome={
+              plannedIncome
+            }
+            totalIncome={
+              totalIncome
+            }
+          />
+        )}
       </FinancialSection>
 
       {/*=======================================================
