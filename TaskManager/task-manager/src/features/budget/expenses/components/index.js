@@ -5,3 +5,7 @@ export {
 export {
   default as ExpenseRow
 } from './ExpenseRow';
+
+export {
+  default as ExpenseSummary
+} from './ExpenseSummary';

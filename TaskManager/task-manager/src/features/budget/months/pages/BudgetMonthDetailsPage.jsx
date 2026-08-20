@@ -231,8 +231,27 @@ const BudgetMonthDetailsPage = () => {
         Expense records
       =======================================================*/}
       <BudgetExpenseSection
-        expenseRecords={sortedExpenseRecords}
-        monthLabel={monthLabel}
+        budgetMonthId={
+          budgetMonth.id
+        }
+        expenseRecords={
+          sortedExpenseRecords
+        }
+        categories={
+          budgetMonth.budgetCategories ?? []
+        }
+        plannedExpenses={
+          budgetMonth.totalPlannedExpenses
+        }
+        totalExpenses={
+          budgetMonth.totalExpenses
+        }
+        monthLabel={
+          monthLabel
+        }
+        onBudgetMonthChanged={
+          refreshBudgetMonth
+        }
       />
 
     </div>

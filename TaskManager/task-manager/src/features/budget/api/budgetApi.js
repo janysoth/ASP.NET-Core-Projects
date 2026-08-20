@@ -375,3 +375,80 @@ export const deleteIncome = async (
 
   return response.data;
 };
+
+/*===========================================================
+  createExpense:
+  => Creates an expense record inside a selected budget month.
+
+  Backend:
+  POST /api/budget/months/{budgetMonthId}/expenses
+===========================================================*/
+export const createExpense = async (
+  budgetMonthId,
+  expenseData
+) => {
+  if (!budgetMonthId) {
+    throw new Error(
+      'Budget month ID is required.'
+    );
+  }
+
+  const response =
+    await api.post(
+      `budget/months/${budgetMonthId}/expenses`,
+      expenseData
+    );
+
+  return response.data;
+};
+
+/*===========================================================
+  updateExpense:
+  => Completely updates an existing expense record.
+
+  Backend:
+  PUT /api/budget/expenses/{expenseId}
+===========================================================*/
+export const updateExpense = async (
+  expenseId,
+  expenseData
+) => {
+  if (!expenseId) {
+    throw new Error(
+      'Expense ID is required.'
+    );
+  }
+
+  const response =
+    await api.put(
+      `budget/expenses/${expenseId}`,
+      expenseData
+    );
+
+  return response.data;
+};
+
+/*===========================================================
+  deleteExpense:
+  => Deletes an expense record.
+
+  Backend:
+  DELETE /api/budget/expenses/{expenseId}
+===========================================================*/
+export const deleteExpense = async (
+  expenseId
+) => {
+  if (!expenseId) {
+    throw new Error(
+      'Expense ID is required.'
+    );
+  }
+
+  const response =
+    await api.delete(
+      `budget/expenses/${expenseId}`
+    );
+
+  return response.data;
+};
+
