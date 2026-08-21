@@ -2,28 +2,21 @@ import {
   useMemo,
 } from 'react';
 
+import {
+  BUDGET_CATEGORY_TYPES,
+  EXPENSE_TYPES,
+} from '@/features/budget/domain';
+
 /*===========================================================
   useExpenseCategories:
   => Returns categories that may be used for manual expenses.
 
-  Backend Category Model:
-
-  Type:
-  => Expense
-  => Savings
-
-  ExpenseType:
-  => Fixed
-  => Variable
-
-  Allowed for Expense Form:
-  => Type = Expense
-     AND
-     ExpenseType = Fixed or Variable
+  Allowed:
+  => Budget Category Type = Expense
+  => Expense Type = Fixed or Variable
 
   Excluded:
   => Savings
-  => Debt / any other unsupported category type
 ===========================================================*/
 export const useExpenseCategories = (
   categories = []
@@ -41,46 +34,27 @@ export const useExpenseCategories = (
         (
           category
         ) => {
-          /*=================================================
-            Normalize Backend Category Type
-          =================================================*/
           const categoryType =
             String(
               category.type ??
               ''
-            )
-              .trim()
-              .toLowerCase();
+            ).trim();
 
-          /*=================================================
-            Normalize Backend Expense Type
-          =================================================*/
           const expenseType =
             String(
               category.expenseType ??
               ''
-            )
-              .trim()
-              .toLowerCase();
-
-          /*=================================================
-            Valid Expense Category:
-            => Type must be Expense.
-            => ExpenseType must be Fixed or Variable.
-          =================================================*/
-          const isExpense =
-            categoryType ===
-            'expense';
-
-          const isValidExpenseType =
-            expenseType ===
-            'fixed' ||
-            expenseType ===
-            'variable';
+            ).trim();
 
           return (
-            isExpense &&
-            isValidExpenseType
+            categoryType ===
+            BUDGET_CATEGORY_TYPES.EXPENSE &&
+            (
+              expenseType ===
+              EXPENSE_TYPES.FIXED ||
+              expenseType ===
+              EXPENSE_TYPES.VARIABLE
+            )
           );
         }
       );

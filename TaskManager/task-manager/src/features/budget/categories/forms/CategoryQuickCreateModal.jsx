@@ -10,6 +10,11 @@ import {
   ModalHeader,
 } from '@/components/ui';
 
+import {
+  BUDGET_CATEGORY_TYPES,
+  EXPENSE_TYPES,
+} from '@/features/budget/domain';
+
 /*===========================================================
   CategoryQuickCreateModal:
   => Creates an expense category without leaving the current
@@ -46,7 +51,7 @@ const CategoryQuickCreateModal = ({
     expenseType,
     setExpenseType,
   ] = useState(
-    'Variable'
+    EXPENSE_TYPES.VARIABLE
   );
 
   const [
@@ -71,7 +76,7 @@ const CategoryQuickCreateModal = ({
     setName('');
 
     setExpenseType(
-      'Variable'
+      EXPENSE_TYPES.VARIABLE
     );
 
     setPlannedAmount('');
@@ -99,9 +104,9 @@ const CategoryQuickCreateModal = ({
 
     if (
       expenseType !==
-      'Fixed' &&
+      EXPENSE_TYPES.FIXED &&
       expenseType !==
-      'Variable'
+      EXPENSE_TYPES.VARIABLE
     ) {
       errors.expenseType =
         'Select a valid expense type.';
@@ -166,7 +171,7 @@ const CategoryQuickCreateModal = ({
           name.trim(),
 
         type:
-          'Expense',
+          BUDGET_CATEGORY_TYPES.EXPENSE,
 
         expenseType,
 
@@ -309,11 +314,19 @@ const CategoryQuickCreateModal = ({
                 : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
               }`}
           >
-            <option value="Variable">
+            <option
+              value={
+                EXPENSE_TYPES.VARIABLE
+              }
+            >
               Variable Expense
             </option>
 
-            <option value="Fixed">
+            <option
+              value={
+                EXPENSE_TYPES.FIXED
+              }
+            >
               Fixed Expense
             </option>
           </select>
