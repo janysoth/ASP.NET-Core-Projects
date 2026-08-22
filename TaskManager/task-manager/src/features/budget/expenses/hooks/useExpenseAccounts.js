@@ -8,6 +8,10 @@ import {
 } from '@/features/budget/api/budgetApi';
 
 import {
+  isExpenseAccount,
+} from '@/features/budget/domain';
+
+import {
   getApiErrorMessage,
 } from '@/features/budget/utils/budgetErrors';
 
@@ -15,10 +19,13 @@ import {
   useExpenseAccounts:
   => Loads accounts that may be used for expenses.
 
-  Rules:
-  => Checking accounts are allowed.
-  => Savings accounts are allowed.
-  => Credit Card accounts are allowed.
+  Business Rule:
+  => Eligibility is controlled by the Budget domain layer.
+
+  Current Allowed Account Types:
+  => Checking
+  => Savings
+  => Credit Card
 
   Handles:
   => Accounts.
@@ -42,7 +49,9 @@ export const useExpenseAccounts = () => {
   ] = useState('');
 
   /*===========================================================
-    loadAccounts
+    loadAccounts:
+    => Loads all accounts from the API.
+    => Filters them through the shared domain business rule.
   ===========================================================*/
   const loadAccounts =
     useCallback(async () => {
@@ -63,11 +72,16 @@ export const useExpenseAccounts = () => {
             ? response
             : [];
 
+        const expenseAccounts =
+          normalizedAccounts.filter(
+            isExpenseAccount
+          );
+
         setAccounts(
-          normalizedAccounts
+          expenseAccounts
         );
 
-        return normalizedAccounts;
+        return expenseAccounts;
       } catch (
       requestError
       ) {

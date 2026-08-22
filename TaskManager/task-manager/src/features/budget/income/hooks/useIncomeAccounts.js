@@ -8,6 +8,10 @@ import {
 } from '@/features/budget/api/budgetApi';
 
 import {
+  isDepositAccount,
+} from '@/features/budget/domain';
+
+import {
   getApiErrorMessage,
 } from '@/features/budget/utils/budgetErrors';
 
@@ -15,9 +19,15 @@ import {
   useIncomeAccounts:
   => Loads accounts available for income records.
 
-  Rules:
-  => Income may go into Checking or Savings accounts.
-  => Credit Card accounts are excluded.
+  Business Rule:
+  => Eligibility is controlled by the Budget domain layer.
+
+  Allowed:
+  => Checking
+  => Savings
+
+  Excluded:
+  => Credit Card
 
   Handles:
   => Accounts.
@@ -42,8 +52,8 @@ export const useIncomeAccounts = () => {
 
   /*===========================================================
     loadAccounts:
-    => Loads financial accounts.
-    => Removes Credit Card accounts from Income choices.
+    => Loads all accounts from the API.
+    => Filters them using the shared deposit-account rule.
   ===========================================================*/
   const loadAccounts =
     useCallback(async () => {
@@ -66,21 +76,7 @@ export const useIncomeAccounts = () => {
 
         const incomeAccounts =
           normalizedAccounts.filter(
-            (account) => {
-              const accountType =
-                String(
-                  account.type ?? ''
-                )
-                  .trim()
-                  .toLowerCase();
-
-              return (
-                accountType ===
-                'checking' ||
-                accountType ===
-                'savings'
-              );
-            }
+            isDepositAccount
           );
 
         setAccounts(
