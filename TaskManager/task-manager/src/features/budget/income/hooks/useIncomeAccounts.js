@@ -8,7 +8,7 @@ import {
 } from '@/features/budget/api/budgetApi';
 
 import {
-  isDepositAccount,
+  canReceiveIncome,
 } from '@/features/budget/domain';
 
 import {
@@ -76,7 +76,7 @@ export const useIncomeAccounts = () => {
 
         const incomeAccounts =
           normalizedAccounts.filter(
-            isDepositAccount
+            canReceiveIncome
           );
 
         setAccounts(

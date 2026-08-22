@@ -3,90 +3,82 @@ import {
 } from '../constants';
 
 /*===========================================================
-  isCheckingAccount:
-  => Returns true when the account is a Checking account.
+  Account Type Rules
 ===========================================================*/
 export const isCheckingAccount = (
   account
-) => {
-  return (
-    account?.type ===
-    ACCOUNT_TYPES.CHECKING
-  );
-};
+) =>
+  account?.type ===
+  ACCOUNT_TYPES.CHECKING;
 
-/*===========================================================
-  isSavingsAccount:
-  => Returns true when the account is a Savings account.
-===========================================================*/
 export const isSavingsAccount = (
   account
-) => {
-  return (
-    account?.type ===
-    ACCOUNT_TYPES.SAVINGS
-  );
-};
+) =>
+  account?.type ===
+  ACCOUNT_TYPES.SAVINGS;
 
-/*===========================================================
-  isCreditCardAccount:
-  => Returns true when the account is a Credit Card account.
-===========================================================*/
 export const isCreditCardAccount = (
   account
-) => {
-  return (
-    account?.type ===
-    ACCOUNT_TYPES.CREDIT_CARD
-  );
-};
+) =>
+  account?.type ===
+  ACCOUNT_TYPES.CREDIT_CARD;
 
 /*===========================================================
-  isDepositAccount:
-  => Returns true for accounts that may receive income.
-
-  Allowed:
-  => Checking
-  => Savings
-
-  Excluded:
-  => Credit Card
+  Business Rules
 ===========================================================*/
-export const isDepositAccount = (
-  account
-) => {
-  return (
-    isCheckingAccount(
-      account
-    ) ||
-    isSavingsAccount(
-      account
-    )
-  );
-};
 
-/*===========================================================
-  isExpenseAccount:
-  => Returns true for accounts that may be used to record
-     expenses.
-
-  Allowed:
-  => Checking
-  => Savings
-  => Credit Card
-===========================================================*/
-export const isExpenseAccount = (
+/*
+  Income may only be deposited into
+  debit accounts.
+*/
+export const canReceiveIncome = (
   account
-) => {
-  return (
-    isCheckingAccount(
-      account
-    ) ||
-    isSavingsAccount(
-      account
-    ) ||
-    isCreditCardAccount(
-      account
-    )
+) =>
+  isCheckingAccount(
+    account
+  ) ||
+  isSavingsAccount(
+    account
   );
-};
+
+/*
+  Expenses may be recorded against
+  any supported account.
+*/
+export const canRecordExpense = (
+  account
+) =>
+  isCheckingAccount(
+    account
+  ) ||
+  isSavingsAccount(
+    account
+  ) ||
+  isCreditCardAccount(
+    account
+  );
+
+/*
+  Transfers may originate from
+  debit accounts.
+*/
+export const canTransferFrom = (
+  account
+) =>
+  isCheckingAccount(
+    account
+  ) ||
+  isSavingsAccount(
+    account
+  );
+
+/*
+  Transfers may go into
+  any account.
+*/
+export const canTransferTo = (
+  account
+) =>
+  canRecordExpense(
+    account
+  );

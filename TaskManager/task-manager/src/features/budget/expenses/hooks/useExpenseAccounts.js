@@ -8,7 +8,7 @@ import {
 } from '@/features/budget/api/budgetApi';
 
 import {
-  isExpenseAccount,
+  canRecordExpense,
 } from '@/features/budget/domain';
 
 import {
@@ -74,7 +74,7 @@ export const useExpenseAccounts = () => {
 
         const expenseAccounts =
           normalizedAccounts.filter(
-            isExpenseAccount
+            canRecordExpense
           );
 
         setAccounts(
