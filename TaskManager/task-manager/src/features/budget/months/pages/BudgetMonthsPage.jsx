@@ -4,6 +4,10 @@ import React, {
 } from 'react';
 
 import {
+  AppConfirmDialog,
+} from '@/components/ui';
+
+import {
   getBudgetMonths,
 } from '@/features/budget/api/budgetApi';
 
@@ -18,8 +22,13 @@ import {
 } from '@/features/budget/months/forms';
 
 import {
+  useBudgetMonthDelete,
   useBudgetMonthForm,
 } from '@/features/budget/months/hooks';
+
+import {
+  formatBudgetMonth,
+} from '@/features/budget/utils/budgetFormatters';
 
 /*===========================================================
   getErrorMessage:
@@ -37,7 +46,7 @@ const getErrorMessage = (
 
 /*===========================================================
   sortBudgetMonths:
-  => Sorts budget months newest first.
+  => Displays newest month first.
 ===========================================================*/
 const sortBudgetMonths = (
   months = []
@@ -67,17 +76,14 @@ const sortBudgetMonths = (
 
 /*===========================================================
   BudgetMonthsPage:
-  => Displays every budget month owned by the logged-in user.
+  => Displays every Budget Month owned by the logged-in user.
 
   Supports:
-  => Loading budget months.
-  => Empty state.
-  => Create budget month.
-  => Navigation to monthly details.
-
-  Next:
-  => Edit budget month.
-  => Delete budget month.
+  => Load Budget Months.
+  => Create Budget Month.
+  => Edit Budget Month.
+  => Delete Budget Month.
+  => Navigate to Budget Month details.
 ===========================================================*/
 const BudgetMonthsPage = () => {
   /*===========================================================
@@ -101,6 +107,7 @@ const BudgetMonthsPage = () => {
   /*===========================================================
     loadBudgetMonths:
     => Loads all Budget Months.
+    => Normalizes the API response.
     => Sorts newest first.
   ===========================================================*/
   const loadBudgetMonths =
@@ -143,7 +150,7 @@ const BudgetMonthsPage = () => {
     };
 
   /*===========================================================
-    Budget Month Form
+    Budget Month Create / Edit
   ===========================================================*/
   const {
     isBudgetMonthFormOpen,
@@ -152,9 +159,25 @@ const BudgetMonthsPage = () => {
     submittingBudgetMonth,
 
     handleOpenCreateBudgetMonth,
+    handleOpenEditBudgetMonth,
     handleCloseBudgetMonthForm,
     handleBudgetMonthSubmit,
   } = useBudgetMonthForm({
+    onBudgetMonthsChanged:
+      loadBudgetMonths,
+  });
+
+  /*===========================================================
+    Budget Month Delete
+  ===========================================================*/
+  const {
+    deleteBudgetMonthTarget,
+    deletingBudgetMonth,
+
+    handleOpenDeleteBudgetMonth,
+    handleCloseDeleteBudgetMonth,
+    handleDeleteBudgetMonth,
+  } = useBudgetMonthDelete({
     onBudgetMonthsChanged:
       loadBudgetMonths,
   });
@@ -251,6 +274,12 @@ const BudgetMonthsPage = () => {
                   budgetMonth={
                     budgetMonth
                   }
+                  onEdit={
+                    handleOpenEditBudgetMonth
+                  }
+                  onDelete={
+                    handleOpenDeleteBudgetMonth
+                  }
                 />
               )
             )}
@@ -258,7 +287,7 @@ const BudgetMonthsPage = () => {
         )}
 
       {/*=======================================================
-        Budget Month Form Modal
+        Create / Edit Budget Month Modal
       =======================================================*/}
       <BudgetMonthFormModal
         mode={
@@ -282,6 +311,47 @@ const BudgetMonthsPage = () => {
         submitting={
           submittingBudgetMonth
         }
+      />
+
+      {/*=======================================================
+        Delete Budget Month Confirmation
+      =======================================================*/}
+      <AppConfirmDialog
+        isOpen={
+          Boolean(
+            deleteBudgetMonthTarget
+          )
+        }
+        onClose={
+          handleCloseDeleteBudgetMonth
+        }
+        onConfirm={
+          handleDeleteBudgetMonth
+        }
+        eyebrow={
+          deleteBudgetMonthTarget
+            ? formatBudgetMonth(
+              deleteBudgetMonthTarget.month,
+              deleteBudgetMonthTarget.year
+            )
+            : undefined
+        }
+        title="Are you sure?"
+        description={
+          deleteBudgetMonthTarget
+            ? `Delete Budget of ${formatBudgetMonth(
+              deleteBudgetMonthTarget.month,
+              deleteBudgetMonthTarget.year
+            )}? This will remove the budget month and its related budget data. This action cannot be undone.`
+            : ''
+        }
+        confirmText="Delete budget month"
+        cancelText="Cancel"
+        variant="danger"
+        loading={
+          deletingBudgetMonth
+        }
+        loadingText="Deleting..."
       />
     </div>
   );

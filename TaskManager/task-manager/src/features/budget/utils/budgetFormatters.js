@@ -52,34 +52,40 @@ export const formatUtcDate = (
 
 /*===========================================================
   formatBudgetMonth:
-  => Converts numeric month and year values into a readable
-     month label.
+  => Converts numeric month/year values into a readable label.
 
   Example:
-  7, 2026 => July 2026
+  => month = 7
+  => year  = 2026
+
+  Result:
+  => July 2026
 ===========================================================*/
 export const formatBudgetMonth = (
   month,
-  year,
-  fallbackText = 'Unknown month'
+  year
 ) => {
-  if (!month || !year) {
-    return fallbackText;
-  }
+  const normalizedMonth =
+    Number(
+      month
+    );
 
-  const date =
-    new Date(
-      year,
-      month - 1,
-      1
+  const normalizedYear =
+    Number(
+      year
     );
 
   if (
-    Number.isNaN(
-      date.getTime()
+    !Number.isInteger(
+      normalizedMonth
+    ) ||
+    normalizedMonth < 1 ||
+    normalizedMonth > 12 ||
+    !Number.isInteger(
+      normalizedYear
     )
   ) {
-    return fallbackText;
+    return 'Unknown month';
   }
 
   return new Intl.DateTimeFormat(
@@ -88,5 +94,11 @@ export const formatBudgetMonth = (
       month: 'long',
       year: 'numeric',
     }
-  ).format(date);
+  ).format(
+    new Date(
+      normalizedYear,
+      normalizedMonth - 1,
+      1
+    )
+  );
 };

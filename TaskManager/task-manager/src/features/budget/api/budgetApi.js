@@ -471,3 +471,53 @@ export const createBudgetMonth = async (
   return response.data;
 };
 
+/*===========================================================
+  updateBudgetMonth:
+  => Updates an existing budget month.
+
+  Backend:
+  PUT /api/budget/months/{budgetMonthId}
+===========================================================*/
+export const updateBudgetMonth = async (
+  budgetMonthId,
+  budgetMonthData
+) => {
+  if (!budgetMonthId) {
+    throw new Error(
+      'Budget month ID is required.'
+    );
+  }
+
+  const response =
+    await api.put(
+      `budget/months/${budgetMonthId}`,
+      budgetMonthData
+    );
+
+  return response.data;
+};
+
+/*===========================================================
+  deleteBudgetMonth:
+  => Deletes an existing budget month.
+
+  Backend:
+  DELETE /api/budget/months/{budgetMonthId}
+===========================================================*/
+export const deleteBudgetMonth = async (
+  budgetMonthId
+) => {
+  if (!budgetMonthId) {
+    throw new Error(
+      'Budget month ID is required.'
+    );
+  }
+
+  const response =
+    await api.delete(
+      `budget/months/${budgetMonthId}`
+    );
+
+  return response.data;
+};
+

@@ -5,6 +5,7 @@ import {
 
 import {
   createBudgetMonth,
+  updateBudgetMonth,
 } from '@/features/budget/api/budgetApi';
 
 import {
@@ -27,47 +28,32 @@ import {
   => Submission state.
   => API calls.
   => Refreshing the Budget Months list.
-
-  IMPORTANT:
-  => Edit API support will be added next.
 ===========================================================*/
 export const useBudgetMonthForm = ({
   onBudgetMonthsChanged,
 }) => {
-  /*===========================================================
-    Modal State
-  ===========================================================*/
   const [
     isBudgetMonthFormOpen,
     setIsBudgetMonthFormOpen,
   ] = useState(false);
 
-  /*===========================================================
-    Selected Budget Month
-  ===========================================================*/
   const [
     selectedBudgetMonth,
     setSelectedBudgetMonth,
   ] = useState(null);
 
-  /*===========================================================
-    Form Mode
-  ===========================================================*/
   const [
     budgetMonthFormMode,
     setBudgetMonthFormMode,
   ] = useState('create');
 
-  /*===========================================================
-    Submission State
-  ===========================================================*/
   const [
     submittingBudgetMonth,
     setSubmittingBudgetMonth,
   ] = useState(false);
 
   /*===========================================================
-    Open Create Form
+    Open Create
   ===========================================================*/
   const handleOpenCreateBudgetMonth =
     useCallback(() => {
@@ -85,9 +71,7 @@ export const useBudgetMonthForm = ({
     }, []);
 
   /*===========================================================
-    Open Edit Form
-    => Wired now so the modal architecture is ready.
-    => Actual update API call will be added next.
+    Open Edit
   ===========================================================*/
   const handleOpenEditBudgetMonth =
     useCallback(
@@ -140,10 +124,9 @@ export const useBudgetMonthForm = ({
     ]);
 
   /*===========================================================
-    Submit Budget Month:
-    => Create mode works now.
-    => Edit mode will be wired after updateBudgetMonth()
-       is added to budgetApi.js.
+    Submit:
+    => Create mode creates a new month.
+    => Edit mode updates planned income for the selected month.
   ===========================================================*/
   const handleBudgetMonthSubmit =
     useCallback(
@@ -157,22 +140,24 @@ export const useBudgetMonthForm = ({
             selectedBudgetMonth?.id
           );
 
-        if (isEditing) {
-          showError(
-            'Editing budget months is not wired yet.'
-          );
-
-          return false;
-        }
-
         try {
           setSubmittingBudgetMonth(
             true
           );
 
-          await createBudgetMonth(
-            formData
-          );
+          if (isEditing) {
+            await updateBudgetMonth(
+              selectedBudgetMonth.id,
+              {
+                plannedIncome:
+                  formData.plannedIncome,
+              }
+            );
+          } else {
+            await createBudgetMonth(
+              formData
+            );
+          }
 
           if (
             onBudgetMonthsChanged
@@ -193,7 +178,9 @@ export const useBudgetMonthForm = ({
           );
 
           showSuccess(
-            'Budget month created successfully.'
+            isEditing
+              ? 'Budget month updated successfully.'
+              : 'Budget month created successfully.'
           );
 
           return true;
@@ -203,7 +190,9 @@ export const useBudgetMonthForm = ({
           showError(
             getApiErrorMessage(
               requestError,
-              'Unable to create budget month.'
+              isEditing
+                ? 'Unable to update budget month.'
+                : 'Unable to create budget month.'
             )
           );
 
