@@ -25,6 +25,9 @@
   --budget-positive: #059669;
   --budget-warning: #d97706;
   --budget-danger: #dc2626;
+
+  --app-card-hover-border: rgb(129 140 248);
+  --app-card-hover-shadow: 0 20px 35px -12px rgb(99 102 241 / 0.30);
 }
 
 .dark {
@@ -50,6 +53,9 @@
   --budget-positive: #34d399;
   --budget-warning: #fbbf24;
   --budget-danger: #f87171;
+
+  --app-card-hover-border: rgb(99 102 241);
+  --app-card-hover-shadow: 0 20px 35px -12px rgb(49 46 129 / 0.40);
 }
 
 .reduce-motion *,
@@ -74,4 +80,31 @@
 
 .compact-mode .app-section-spacing {
   margin-bottom: 1rem !important;
+}
+
+/*===========================================================
+  app-interactive-card:
+  => Shared hover treatment for interactive application cards.
+
+  Handles:
+  => Larger shadow.
+  => Accent border.
+  => Theme-aware colors.
+  => Smooth transition.
+
+  IMPORTANT:
+  => Does not move the card.
+===========================================================*/
+.app-interactive-card {
+  transition:
+    border-color 300ms ease,
+    box-shadow 300ms ease;
+}
+
+.app-interactive-card:hover {
+  border-color:
+    var(--app-card-hover-border);
+
+  box-shadow:
+    var(--app-card-hover-shadow);
 }

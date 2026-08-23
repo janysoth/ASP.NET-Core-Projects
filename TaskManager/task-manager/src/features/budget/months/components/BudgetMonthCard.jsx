@@ -35,10 +35,10 @@ import {
   => Only the footer navigates to Budget Month details.
 
   Interaction:
-  => Card remains stationary on hover.
-  => Card shadow becomes slightly stronger.
+  => Card remains stationary.
+  => Shared app-interactive-card style provides accent
+     border and shadow on hover.
   => BudgetIcon opens the action menu.
-  => Footer highlights and animates on hover.
 ===========================================================*/
 const BudgetMonthCard = ({
   budgetMonth,
@@ -54,27 +54,22 @@ const BudgetMonthCard = ({
   return (
     <div
       className="
+        app-interactive-card
+
         rounded-2xl
         border
         border-[var(--app-border)]
         bg-[var(--app-surface)]
         shadow-sm
-
-        transition-shadow
-        duration-200
-
-        hover:shadow-md
       "
     >
       {/*=======================================================
         Card Body:
         => Informational only.
-        => Does not navigate.
       =======================================================*/}
       <div className="relative cursor-default p-5">
         {/*=====================================================
-          Action Menu:
-          => BudgetIcon acts as the trigger.
+          Action Menu
         =====================================================*/}
         <div className="absolute right-5 top-5 z-20">
           <AppActionMenu
@@ -97,13 +92,16 @@ const BudgetMonthCard = ({
                   duration-200
 
                   hover:scale-105
-                  hover:bg-indigo-200
+                  hover:bg-indigo-600
+                  hover:text-white
 
                   active:scale-95
 
                   dark:bg-indigo-500/15
                   dark:text-indigo-300
-                  dark:hover:bg-indigo-500/25
+
+                  dark:hover:bg-indigo-500
+                  dark:hover:text-white
                 "
               >
                 <BudgetIcon className="h-5 w-5" />
@@ -226,7 +224,7 @@ const BudgetMonthCard = ({
 
       {/*=======================================================
         Footer:
-        => Only this area navigates to Budget Month details.
+        => Only this area navigates.
       =======================================================*/}
       <Link
         to={`/budget/months/${budgetMonth.id}`}
