@@ -452,3 +452,22 @@ export const deleteExpense = async (
   return response.data;
 };
 
+/*===========================================================
+  createBudgetMonth:
+  => Creates a new budget month.
+
+  Backend:
+  POST /api/budget/months
+===========================================================*/
+export const createBudgetMonth = async (
+  budgetMonthData
+) => {
+  const response =
+    await api.post(
+      'budget/months',
+      budgetMonthData
+    );
+
+  return response.data;
+};
+
