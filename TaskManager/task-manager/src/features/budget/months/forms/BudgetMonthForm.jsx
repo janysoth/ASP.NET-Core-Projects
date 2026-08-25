@@ -9,6 +9,7 @@ import {
   ModalActions,
 } from '@/components/ui';
 
+import { AppInput } from '@/components/form';
 import {
   MONTH_OPTIONS,
   createYearOptions,
@@ -366,8 +367,8 @@ const BudgetMonthForm = ({
             isEditing
           }
           className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.month
-              ? 'border-red-500'
-              : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
+            ? 'border-red-500'
+            : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
             }`}
         >
           {MONTH_OPTIONS.map(
@@ -437,8 +438,8 @@ const BudgetMonthForm = ({
             isEditing
           }
           className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.year
-              ? 'border-red-500'
-              : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
+            ? 'border-red-500'
+            : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
             }`}
         >
           {yearOptions.map(
@@ -473,59 +474,34 @@ const BudgetMonthForm = ({
       {/*=======================================================
         Planned Income
       =======================================================*/}
-      <div>
-        <label
-          htmlFor="budgetPlannedIncome"
-          className="block text-sm font-semibold text-[var(--app-text)]"
-        >
-          Planned income
-        </label>
+      <AppInput
+        label="Planned income"
+        htmlFor="budgetPlannedIncome"
+        name="plannedIncome"
+        type="number"
+        min="0"
+        step="0.01"
+        value={plannedIncome}
+        onChange={(event) => {
+          setPlannedIncome(
+            event.target.value
+          );
 
-        <input
-          id="budgetPlannedIncome"
-          type="number"
-          min="0"
-          step="0.01"
-          value={
-            plannedIncome
-          }
-          onChange={(event) => {
-            setPlannedIncome(
-              event.target.value
-            );
-
-            setValidationErrors(
-              (
-                current
-              ) => ({
-                ...current,
-                plannedIncome:
-                  undefined,
-              })
-            );
-          }}
-          disabled={
-            submitting
-          }
-          placeholder="0.00"
-          className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-text-muted)] focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.plannedIncome
-              ? 'border-red-500'
-              : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
-            }`}
-        />
-
-        <p className="mt-2 text-xs text-[var(--app-text-muted)]">
-          Enter the income you expect to receive during this month.
-        </p>
-
-        {validationErrors.plannedIncome && (
-          <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">
-            {
-              validationErrors.plannedIncome
-            }
-          </p>
-        )}
-      </div>
+          setValidationErrors(
+            (current) => ({
+              ...current,
+              plannedIncome:
+                undefined,
+            })
+          );
+        }}
+        placeholder="0.00"
+        helperText="Enter the income you expect to receive during this month."
+        error={
+          validationErrors.plannedIncome
+        }
+        disabled={submitting}
+      />
 
       {/*=======================================================
         Actions
