@@ -10,7 +10,7 @@ import {
   useNavigate,
 } from 'react-router-dom';
 
-import AuthForm from '../../components/forms/AuthForm';
+import AuthForm from '../../components/form/AuthForm';
 import ImageUploadField from '../../components/input/ImageUploadField';
 
 import { useForm } from '../../hooks/useForm';
