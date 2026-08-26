@@ -1,8 +1,7 @@
 import React from 'react';
 
-import {
-  AppFormField,
-} from './';
+import AppFormField from './AppFormField';
+
 
 /*===========================================================
   AppInput:
@@ -18,7 +17,7 @@ import {
   IMPORTANT:
   => Use for text, email, password, number, etc.
 ===========================================================*/
-const AppInput = ({
+const TextInput = ({
   label,
   htmlFor,
   name,
@@ -43,6 +42,8 @@ const AppInput = ({
   step,
 
   autoComplete,
+
+  leftPadding = false,
 
   className = '',
 }) => {
@@ -72,8 +73,14 @@ const AppInput = ({
           w-full
           rounded-xl
           border
+
           bg-[var(--app-surface)]
-          px-3
+
+          ${leftPadding
+            ? 'pl-9'
+            : 'px-3'
+          }
+
           py-2.5
 
           text-sm
@@ -102,4 +109,4 @@ const AppInput = ({
   );
 };
 
-export default AppInput;
+export default TextInput;

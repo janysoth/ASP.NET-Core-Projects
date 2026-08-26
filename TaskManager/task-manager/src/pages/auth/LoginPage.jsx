@@ -10,7 +10,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 
-import AuthForm from '@/components/form/AuthForm';
+import AuthForm from '@/components/forms/AuthForm';
 
 import {
   useAuth,

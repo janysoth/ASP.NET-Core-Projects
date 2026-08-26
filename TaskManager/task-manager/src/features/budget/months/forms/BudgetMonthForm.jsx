@@ -5,11 +5,15 @@ import React, {
 } from 'react';
 
 import {
+  MoneyInput,
+  SelectInput,
+} from '@/components/forms';
+
+import {
   AppButton,
   ModalActions,
 } from '@/components/ui';
 
-import { AppInput } from '@/components/form';
 import {
   MONTH_OPTIONS,
   createYearOptions,
@@ -17,7 +21,7 @@ import {
 
 /*===========================================================
   BudgetMonthForm:
-  => Collects values for creating or editing a budget month.
+  => Collects values for creating or editing a Budget Month.
 
   Fields:
   => Month.
@@ -28,13 +32,13 @@ import {
   => Create mode.
   => Edit mode.
 
-  IMPORTANT:
-  => Does not call the API directly.
-  => Parent hook controls submission.
-
-  Edit mode:
+  Edit Mode:
   => Month and Year remain locked.
   => Planned Income may be updated.
+
+  IMPORTANT:
+  => Does not call the API directly.
+  => Parent hook owns submission.
 ===========================================================*/
 const BudgetMonthForm = ({
   mode = 'create',
@@ -48,9 +52,7 @@ const BudgetMonthForm = ({
   submitting = false,
 }) => {
   /*===========================================================
-    Current Date:
-    => Used for default month/year.
-    => Memoized so it remains stable for this form instance.
+    Current Date
   ===========================================================*/
   const currentDate =
     useMemo(
@@ -70,10 +72,7 @@ const BudgetMonthForm = ({
     currentDate.getFullYear();
 
   /*===========================================================
-    Year Options:
-    => Uses shared Budget utility.
-    => Defaults to 2 years before and 5 years after
-       the current year.
+    Year Options
   ===========================================================*/
   const yearOptions =
     useMemo(
@@ -118,9 +117,7 @@ const BudgetMonthForm = ({
     mode === 'edit';
 
   /*===========================================================
-    Load / Reset Form:
-    => Edit mode loads existing Budget Month.
-    => Create mode restores current month/year defaults.
+    Load / Reset Form
   ===========================================================*/
   useEffect(() => {
     if (
@@ -169,12 +166,34 @@ const BudgetMonthForm = ({
   ]);
 
   /*===========================================================
-    Validate:
-    => Month must exist in shared MONTH_OPTIONS.
-    => Year must exist in generated year options.
-    => Planned income cannot be negative.
-    => Duplicate month/year combinations are blocked
-       during Create mode.
+    Clear Field Error
+  ===========================================================*/
+  const clearFieldError = (
+    fieldName
+  ) => {
+    setValidationErrors(
+      (
+        current
+      ) => {
+        if (
+          !current[
+          fieldName
+          ]
+        ) {
+          return current;
+        }
+
+        return {
+          ...current,
+          [fieldName]:
+            undefined,
+        };
+      }
+    );
+  };
+
+  /*===========================================================
+    Validate
   ===========================================================*/
   const validate = () => {
     const errors = {};
@@ -197,7 +216,7 @@ const BudgetMonthForm = ({
         );
 
     /*=========================================================
-      Month Validation
+      Month
     =========================================================*/
     const validMonth =
       MONTH_OPTIONS.some(
@@ -214,7 +233,7 @@ const BudgetMonthForm = ({
     }
 
     /*=========================================================
-      Year Validation
+      Year
     =========================================================*/
     const validYear =
       yearOptions.some(
@@ -231,7 +250,7 @@ const BudgetMonthForm = ({
     }
 
     /*=========================================================
-      Planned Income Validation
+      Planned Income
     =========================================================*/
     if (
       Number.isNaN(
@@ -244,8 +263,8 @@ const BudgetMonthForm = ({
     }
 
     /*=========================================================
-      Duplicate Month Check:
-      => Only applies when creating.
+      Duplicate Month:
+      => Create mode only.
     =========================================================*/
     if (
       !isEditing &&
@@ -287,8 +306,7 @@ const BudgetMonthForm = ({
   };
 
   /*===========================================================
-    Submit:
-    => Sends normalized numeric values to the parent.
+    Submit
   ===========================================================*/
   const handleSubmit = (
     event
@@ -332,175 +350,97 @@ const BudgetMonthForm = ({
       {/*=======================================================
         Month
       =======================================================*/}
-      <div>
-        <label
-          htmlFor="budgetMonth"
-          className="block text-sm font-semibold text-[var(--app-text)]"
-        >
-          Month
-        </label>
-
-        <select
-          id="budgetMonth"
-          value={
-            month
-          }
-          onChange={(event) => {
-            setMonth(
-              Number(
-                event.target.value
-              )
-            );
-
-            setValidationErrors(
-              (
-                current
-              ) => ({
-                ...current,
-                month:
-                  undefined,
-              })
-            );
-          }}
-          disabled={
-            submitting ||
-            isEditing
-          }
-          className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.month
-            ? 'border-red-500'
-            : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
-            }`}
-        >
-          {MONTH_OPTIONS.map(
-            (
-              option
-            ) => (
-              <option
-                key={
-                  option.value
-                }
-                value={
-                  option.value
-                }
-              >
-                {
-                  option.label
-                }
-              </option>
+      <SelectInput
+        label="Month"
+        htmlFor="budgetMonth"
+        name="month"
+        value={
+          month
+        }
+        onChange={(event) => {
+          setMonth(
+            Number(
+              event.target.value
             )
-          )}
-        </select>
+          );
 
-        {validationErrors.month && (
-          <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">
-            {
-              validationErrors.month
-            }
-          </p>
-        )}
-      </div>
+          clearFieldError(
+            'month'
+          );
+        }}
+        options={
+          MONTH_OPTIONS
+        }
+        disabled={
+          submitting ||
+          isEditing
+        }
+        error={
+          validationErrors.month
+        }
+      />
 
       {/*=======================================================
         Year
       =======================================================*/}
-      <div>
-        <label
-          htmlFor="budgetYear"
-          className="block text-sm font-semibold text-[var(--app-text)]"
-        >
-          Year
-        </label>
-
-        <select
-          id="budgetYear"
-          value={
-            year
-          }
-          onChange={(event) => {
-            setYear(
-              Number(
-                event.target.value
-              )
-            );
-
-            setValidationErrors(
-              (
-                current
-              ) => ({
-                ...current,
-                year:
-                  undefined,
-              })
-            );
-          }}
-          disabled={
-            submitting ||
-            isEditing
-          }
-          className={`mt-2 w-full rounded-xl border bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--app-text)] outline-none transition focus:ring-2 focus:ring-[var(--app-primary)]/20 disabled:cursor-not-allowed disabled:opacity-70 ${validationErrors.year
-            ? 'border-red-500'
-            : 'border-[var(--app-border)] focus:border-[var(--app-primary)]'
-            }`}
-        >
-          {yearOptions.map(
-            (
-              option
-            ) => (
-              <option
-                key={
-                  option.value
-                }
-                value={
-                  option.value
-                }
-              >
-                {
-                  option.label
-                }
-              </option>
+      <SelectInput
+        label="Year"
+        htmlFor="budgetYear"
+        name="year"
+        value={
+          year
+        }
+        onChange={(event) => {
+          setYear(
+            Number(
+              event.target.value
             )
-          )}
-        </select>
+          );
 
-        {validationErrors.year && (
-          <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">
-            {
-              validationErrors.year
-            }
-          </p>
-        )}
-      </div>
+          clearFieldError(
+            'year'
+          );
+        }}
+        options={
+          yearOptions
+        }
+        disabled={
+          submitting ||
+          isEditing
+        }
+        error={
+          validationErrors.year
+        }
+      />
 
       {/*=======================================================
         Planned Income
       =======================================================*/}
-      <AppInput
+      <MoneyInput
         label="Planned income"
         htmlFor="budgetPlannedIncome"
         name="plannedIncome"
-        type="number"
-        min="0"
-        step="0.01"
-        value={plannedIncome}
-        onChange={(event) => {
+        value={
+          plannedIncome
+        }
+        onValueChange={(
+          nextValue
+        ) => {
           setPlannedIncome(
-            event.target.value
+            nextValue
           );
 
-          setValidationErrors(
-            (current) => ({
-              ...current,
-              plannedIncome:
-                undefined,
-            })
+          clearFieldError(
+            'plannedIncome'
           );
         }}
-        placeholder="0.00"
         helperText="Enter the income you expect to receive during this month."
         error={
           validationErrors.plannedIncome
         }
-        disabled={submitting}
+        disabled={
+          submitting
+        }
       />
 
       {/*=======================================================
