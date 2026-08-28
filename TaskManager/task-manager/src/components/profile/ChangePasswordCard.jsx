@@ -1,7 +1,7 @@
 import React from 'react';
 
 import PasswordStrength from '../common/PasswordStrength';
-import InputField from '../input/InputField';
+import InputField from '../inputs/InputField';
 
 const ChangePasswordCard = ({
   fields,

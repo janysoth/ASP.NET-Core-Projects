@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { EyeIcon, EyeOffIcon } from '../../components/icons/Icons';
-import InputField from '../../components/input/InputField';
+import InputField from '../../components/inputs/InputField';
 import { resetPassword } from '../../services/api';
 
 const ResetPasswordPage = () => {

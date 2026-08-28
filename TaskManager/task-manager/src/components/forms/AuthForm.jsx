@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 
 import FormButton from '../common/FormButton';
 import PasswordStrength from '../common/PasswordStrength';
-import InputField from '../input/InputField';
+import InputField from '../inputs/InputField';
 
 const AuthForm = ({
   title,

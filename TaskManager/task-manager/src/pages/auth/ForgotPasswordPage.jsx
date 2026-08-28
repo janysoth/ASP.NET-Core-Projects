@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { EmailIcon } from '../../components/icons/Icons';
-import InputField from '../../components/input/InputField';
+import InputField from '../../components/inputs/InputField';
 import { forgotPassword } from '../../services/api';
 
 const ForgotPasswordPage = () => {

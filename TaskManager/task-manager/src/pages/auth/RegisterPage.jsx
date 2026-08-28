@@ -11,7 +11,7 @@ import {
 } from 'react-router-dom';
 
 import AuthForm from '../../components/forms/AuthForm';
-import ImageUploadField from '../../components/input/ImageUploadField';
+import ImageUploadField from '../../components/inputs/ImageUploadField';
 
 import { useForm } from '../../hooks/useForm';
 
