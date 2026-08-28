@@ -4,7 +4,7 @@ import {
   NumericFormat,
 } from 'react-number-format';
 
-import AppFormField from './AppFormField';
+import AppFormField from '../field/AppFormField';
 
 /*===========================================================
   MoneyInput:

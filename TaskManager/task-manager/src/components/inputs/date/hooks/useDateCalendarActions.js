@@ -1,7 +1,7 @@
 import {
   formatApiDate,
   formatDisplayDate,
-} from '../dateUtils';
+} from '../utils/dateUtils';
 
 /*===========================================================
   useDateCalendarActions:

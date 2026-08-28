@@ -7,7 +7,7 @@ import React, {
 import {
   MoneyInput,
   SelectInput,
-} from '@/components/forms';
+} from '@/components/inputs';
 
 import {
   AppButton,

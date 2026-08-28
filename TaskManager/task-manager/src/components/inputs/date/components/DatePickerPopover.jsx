@@ -1,9 +1,7 @@
 import React from 'react';
 
-import {
-  DatePickerGrid,
-  DatePickerHeader,
-} from './';
+import DatePickerGrid from './DatePickerGrid';
+import DatePickerHeader from './DatePickerHeader';
 
 /*===========================================================
   DatePickerPopover:

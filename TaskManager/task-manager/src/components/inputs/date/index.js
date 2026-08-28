@@ -16,4 +16,5 @@ export {
 
 export {
   default as DatePickerPopover
-} from './DatePickerPopover';
+} from './components/DatePickerPopover';
+

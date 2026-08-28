@@ -1,5 +1,5 @@
 export {
-  default as useOverlay
+  default as useFloatingOverlay
 } from './useFloatingOverlay';
 
 export {

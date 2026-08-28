@@ -23,7 +23,7 @@ import {
   => Does not render UI.
   => Consumers provide the trigger and floating panel.
 ===========================================================*/
-const useOverlay = ({
+const useFloatingOverlay = ({
   open,
   onOpenChange,
 
@@ -84,4 +84,4 @@ const useOverlay = ({
   };
 };
 
-export default useOverlay;
+export default useFloatingOverlay;

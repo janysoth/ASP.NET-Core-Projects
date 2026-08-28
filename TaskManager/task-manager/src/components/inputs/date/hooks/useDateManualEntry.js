@@ -2,7 +2,7 @@ import {
   formatApiDate,
   formatDisplayDate,
   parseManualDate,
-} from '../dateUtils';
+} from '../utils/dateUtils';
 
 /*===========================================================
   useDateManualEntry:

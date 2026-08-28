@@ -1,10 +1,6 @@
 export {
-  default as AppFormField
-} from './AppFormField';
-
-export {
   default as TextInput
-} from './TextInput';
+} from '../inputs/text-input/TextInput';
 
 export {
   default as SelectInput
@@ -12,4 +8,4 @@ export {
 
 export {
   default as MoneyInput
-} from './MoneyInput';
+} from '../inputs/money-input/MoneyInput';

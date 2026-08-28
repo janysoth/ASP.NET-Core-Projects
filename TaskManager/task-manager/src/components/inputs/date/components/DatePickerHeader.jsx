@@ -5,14 +5,13 @@ import {
   ChevronRightIcon,
 } from '@/components/icons/Icons';
 
-import {
-  DatePickerHeaderNavButton,
-  DatePickerHeaderSelectors,
-} from './components';
+import DatePickerHeaderNavButton from './DatePickerHeaderNavButton';
+
+import DatePickerHeaderSelectors from './DatePickerHeaderSelectors';
 
 import {
   useDatePickerHeader,
-} from './hooks';
+} from '../hooks';
 
 /*===========================================================
   DatePickerHeader:
