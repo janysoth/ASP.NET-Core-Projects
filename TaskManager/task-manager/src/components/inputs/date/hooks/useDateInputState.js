@@ -7,7 +7,7 @@ import {
 import {
   formatDisplayDate,
   parseApiDate,
-} from '../utils/dateUtils';
+} from '../utils';
 
 /*===========================================================
   normalizeDate:

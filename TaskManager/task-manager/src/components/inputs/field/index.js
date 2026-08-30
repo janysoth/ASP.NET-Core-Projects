@@ -1,3 +1,4 @@
 export {
   default as AppFormField
-} from './AppFormField';
+} from './FormField';
+

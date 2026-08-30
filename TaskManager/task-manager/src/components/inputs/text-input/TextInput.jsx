@@ -1,6 +1,6 @@
 import React from 'react';
 
-import AppFormField from '../field/AppFormField';
+import AppFormField from '../field/FormField';
 
 
 /*===========================================================

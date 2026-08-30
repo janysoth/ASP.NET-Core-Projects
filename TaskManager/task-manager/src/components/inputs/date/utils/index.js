@@ -1,3 +1,1 @@
-export {
-  default as dateUtils
-} from './dateUtils';
+export * from './dateUtils';
