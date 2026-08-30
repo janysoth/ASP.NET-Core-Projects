@@ -7,7 +7,9 @@ import {
   useFloatingOverlay,
 } from '@/components/overlays';
 
-import AppFormField from '../field/FormField';
+import {
+  FormField,
+} from '../field';
 
 import DateInputField from './components/DateInputField';
 import DatePickerPopover from './components/DatePickerPopover';
@@ -110,7 +112,7 @@ const DateInput = ({
     });
 
   return (
-    <AppFormField
+    <FormField
       label={
         label
       }
@@ -237,7 +239,7 @@ const DateInput = ({
           }
         />
       </FloatingPanel>
-    </AppFormField>
+    </FormField>
   );
 };
 

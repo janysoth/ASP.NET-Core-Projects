@@ -1,6 +1,8 @@
 import React from 'react';
 
-import AppFormField from '../field/FormField';
+import {
+  FormField,
+} from '../field';
 
 
 /*===========================================================
@@ -48,7 +50,7 @@ const TextInput = ({
   className = '',
 }) => {
   return (
-    <AppFormField
+    <FormField
       label={label}
       htmlFor={htmlFor}
       optional={optional}
@@ -105,7 +107,7 @@ const TextInput = ({
           }
         `}
       />
-    </AppFormField>
+    </FormField>
   );
 };
 

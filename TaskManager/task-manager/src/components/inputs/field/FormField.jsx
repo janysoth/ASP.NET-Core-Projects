@@ -1,7 +1,7 @@
 import React from 'react';
 
 /*===========================================================
-  AppFormField:
+  FormField:
   => Shared wrapper for application form controls.
 
   Handles:
@@ -15,7 +15,7 @@ import React from 'react';
   => Does not render the input itself.
   => Input/select/textarea is passed through children.
 ===========================================================*/
-const AppFormField = ({
+const FormField = ({
   label,
   htmlFor,
 
@@ -30,14 +30,9 @@ const AppFormField = ({
 }) => {
   return (
     <div className={className}>
-      {/*=======================================================
-        Label
-      =======================================================*/}
       {label && (
         <label
-          htmlFor={
-            htmlFor
-          }
+          htmlFor={htmlFor}
           className="block text-sm font-semibold text-[var(--app-text)]"
         >
           {label}
@@ -50,16 +45,10 @@ const AppFormField = ({
         </label>
       )}
 
-      {/*=======================================================
-        Control
-      =======================================================*/}
       <div className={label ? 'mt-2' : ''}>
         {children}
       </div>
 
-      {/*=======================================================
-        Helper Text
-      =======================================================*/}
       {!error &&
         helperText && (
           <p className="mt-2 text-xs text-[var(--app-text-muted)]">
@@ -67,9 +56,6 @@ const AppFormField = ({
           </p>
         )}
 
-      {/*=======================================================
-        Validation Error
-      =======================================================*/}
       {error && (
         <p
           className="mt-2 text-xs font-medium text-red-600 dark:text-red-400"
@@ -82,4 +68,4 @@ const AppFormField = ({
   );
 };
 
-export default AppFormField;
+export default FormField;

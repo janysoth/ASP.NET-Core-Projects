@@ -3,7 +3,9 @@ import React from 'react';
 import {
   ChevronDownIcon,
 } from '@/components/icons/Icons';
-import { AppFormField } from '../field';
+import {
+  FormField,
+} from '../field';
 
 
 
@@ -41,7 +43,7 @@ const SelectInput = ({
   optionLabelKey = 'label',
 }) => {
   return (
-    <AppFormField
+    <FormField
       label={label}
       htmlFor={htmlFor}
       optional={optional}
@@ -146,7 +148,7 @@ const SelectInput = ({
           <ChevronDownIcon className="h-4 w-4" />
         </div>
       </div>
-    </AppFormField>
+    </FormField>
   );
 };
 

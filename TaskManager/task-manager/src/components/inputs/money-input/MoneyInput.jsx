@@ -4,7 +4,9 @@ import {
   NumericFormat,
 } from 'react-number-format';
 
-import AppFormField from '../field/FormField';
+import {
+  FormField,
+} from '../field';
 
 /*===========================================================
   MoneyInput:
@@ -85,7 +87,7 @@ const MoneyInput = ({
   };
 
   return (
-    <AppFormField
+    <FormField
       label={
         label
       }
@@ -236,7 +238,7 @@ const MoneyInput = ({
           "
         />
       </div>
-    </AppFormField>
+    </FormField>
   );
 };
 
