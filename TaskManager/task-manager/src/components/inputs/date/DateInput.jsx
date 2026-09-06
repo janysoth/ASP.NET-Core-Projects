@@ -117,6 +117,14 @@ const DateInput = ({
 
       role:
         'dialog',
+
+      /*
+        DateInputField already has its own calendar button.
+        Prevent a second click handler from toggling the same
+        open state.
+      */
+      enableClick:
+        false,
     });
 
   return (

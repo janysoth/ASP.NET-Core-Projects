@@ -7,22 +7,29 @@ import {
 
 /*===========================================================
   FloatingPanel:
-  => Shared floating container.
+  => Shared floating visual container.
 
   Used by:
   => Dropdown.
   => Date Picker.
   => User Menu.
   => Context Menu.
-  => Future floating UI.
+  => Future floating controls.
 
-  Layering:
-  => Floating panels render above application modals.
-  => FloatingPortal prevents clipping by parent containers.
+  Handles:
+  => Portal rendering.
+  => Focus management.
+  => Layering.
+  => Shared styling.
+  => Entry animation.
 
   IMPORTANT:
-  => Receives the entire overlay object from
-     useFloatingOverlay().
+  => Waits until Floating UI finishes positioning before
+     making the panel visible.
+
+  This prevents:
+  => Popup briefly appearing at the top-left of the screen.
+  => Popup visually traveling into its calculated position.
 ===========================================================*/
 const FloatingPanel = ({
   open,
@@ -61,11 +68,20 @@ const FloatingPanel = ({
             width,
 
             /*
-              IMPORTANT:
-              Keep floating controls above modal content
-              and modal backdrops.
+              Floating controls must sit above modal content.
             */
             zIndex: 1000,
+
+            /*
+              Do not reveal the panel until Floating UI knows
+              its correct position.
+
+              This removes the top-left "fly in" effect.
+            */
+            visibility:
+              overlay.isPositioned
+                ? 'visible'
+                : 'hidden',
           }}
           {...overlay.getFloatingProps()}
           className={`
@@ -83,14 +99,15 @@ const FloatingPanel = ({
             ring-1
             ring-black/5
 
-            transition-all
-            duration-150
-
-            origin-top-left
-
-            animate-in
-            fade-in
-            zoom-in-95
+            ${overlay.isPositioned
+              ? `
+                    animate-in
+                    fade-in
+                    zoom-in-95
+                    duration-150
+                  `
+              : ''
+            }
 
             ${className}
           `}
