@@ -71,7 +71,7 @@ const BillFormModal = ({
     categorySubmitting,
     categoryApiError,
 
-    handleChange,
+    handleFieldChange,
     validate,
     getRequestData,
 
@@ -209,11 +209,13 @@ const BillFormModal = ({
             categorySubmitting={
               categorySubmitting
             }
-            onChange={
-              handleChange
-            }
+
             onOpenCategoryForm={
               openCategoryForm
+            }
+
+            onFieldChange={
+              handleFieldChange
             }
           />
 

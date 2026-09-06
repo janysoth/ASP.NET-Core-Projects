@@ -14,22 +14,9 @@ import {
   => Date Picker.
   => User Menu.
   => Context Menu.
-  => Future floating controls.
-
-  Handles:
-  => Portal rendering.
-  => Focus management.
-  => Layering.
-  => Shared styling.
-  => Entry animation.
 
   IMPORTANT:
-  => Waits until Floating UI finishes positioning before
-     making the panel visible.
-
-  This prevents:
-  => Popup briefly appearing at the top-left of the screen.
-  => Popup visually traveling into its calculated position.
+  => Positioning is controlled completely by Floating UI.
 ===========================================================*/
 const FloatingPanel = ({
   open,
@@ -67,17 +54,9 @@ const FloatingPanel = ({
 
             width,
 
-            /*
-              Floating controls must sit above modal content.
-            */
-            zIndex: 1000,
+            zIndex:
+              1000,
 
-            /*
-              Do not reveal the panel until Floating UI knows
-              its correct position.
-
-              This removes the top-left "fly in" effect.
-            */
             visibility:
               overlay.isPositioned
                 ? 'visible'

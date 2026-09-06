@@ -5,6 +5,8 @@ import {
   useState,
 } from 'react';
 
+import useBillCategoryForm from './useBillCategoryForm';
+
 import {
   buildBillRequest,
   getFixedExpenseCategories,
@@ -15,18 +17,36 @@ import {
 
 /*===========================================================
   useBillForm:
-  => Owns bill form state, validation, and category creation.
-  => Keeps BillFormModal focused on layout and composition.
+  => Owns Bill form state and validation.
+
+  Handles:
+  => Initial values.
+  => Field changes.
+  => Month date boundaries.
+  => Fixed Expense categories.
+  => Validation.
+  => Request payload.
+
+  Nested Category Workflow:
+  => Delegated to useBillCategoryForm.
 ===========================================================*/
 export const useBillForm = ({
   isOpen,
+
   bill,
+
   categories,
+
   month,
   year,
+
   monthLabel,
+
   onCreateCategory,
 }) => {
+  /*===========================================================
+    Month Date Range
+  ===========================================================*/
   const {
     minDate,
     maxDate,
@@ -43,6 +63,9 @@ export const useBillForm = ({
     ]
   );
 
+  /*===========================================================
+    Fixed Expense Categories
+  ===========================================================*/
   const fixedExpenseCategories =
     useMemo(
       () =>
@@ -54,6 +77,9 @@ export const useBillForm = ({
       ]
     );
 
+  /*===========================================================
+    Form Values
+  ===========================================================*/
   const [
     formValues,
     setFormValues,
@@ -64,28 +90,35 @@ export const useBillForm = ({
     )
   );
 
+  /*===========================================================
+    Validation Errors
+  ===========================================================*/
   const [
     validationErrors,
     setValidationErrors,
   ] = useState({});
 
-  const [
-    isCategoryFormOpen,
-    setIsCategoryFormOpen,
-  ] = useState(false);
+  /*===========================================================
+    Category Workflow
+  ===========================================================*/
+  const categoryForm =
+    useBillCategoryForm({
+      onCreateCategory,
+      setFormValues,
+      setValidationErrors,
+    });
 
-  const [
-    categorySubmitting,
-    setCategorySubmitting,
-  ] = useState(false);
+  const {
+    resetCategoryForm,
+  } = categoryForm;
 
-  const [
-    categoryApiError,
-    setCategoryApiError,
-  ] = useState('');
-
+  /*===========================================================
+    Reset / Load Form
+  ===========================================================*/
   useEffect(() => {
-    if (!isOpen) {
+    if (
+      !isOpen
+    ) {
       return;
     }
 
@@ -97,32 +130,32 @@ export const useBillForm = ({
     );
 
     setValidationErrors({});
-    setIsCategoryFormOpen(false);
-    setCategoryApiError('');
+
+    resetCategoryForm();
   }, [
     isOpen,
     bill,
     defaultDate,
+    resetCategoryForm,
   ]);
 
-  const handleChange =
+  /*===========================================================
+    Clear Field Error
+  ===========================================================*/
+  const clearFieldError =
     useCallback(
-      (event) => {
-        const {
-          name,
-          value,
-        } = event.target;
-
-        setFormValues(
-          (currentValues) => ({
-            ...currentValues,
-            [name]: value,
-          })
-        );
-
+      (
+        fieldName
+      ) => {
         setValidationErrors(
-          (currentErrors) => {
-            if (!currentErrors[name]) {
+          (
+            currentErrors
+          ) => {
+            if (
+              !currentErrors[
+              fieldName
+              ]
+            ) {
               return currentErrors;
             }
 
@@ -130,7 +163,9 @@ export const useBillForm = ({
               ...currentErrors,
             };
 
-            delete updatedErrors[name];
+            delete updatedErrors[
+              fieldName
+            ];
 
             return updatedErrors;
           }
@@ -139,6 +174,42 @@ export const useBillForm = ({
       []
     );
 
+  /*===========================================================
+    handleFieldChange:
+    => Shared change method for modern reusable controls.
+
+    Example:
+    => handleFieldChange('dueDate', '2026-09-15')
+  ===========================================================*/
+  const handleFieldChange =
+    useCallback(
+      (
+        fieldName,
+        value
+      ) => {
+        setFormValues(
+          (
+            currentValues
+          ) => ({
+            ...currentValues,
+
+            [fieldName]:
+              value,
+          })
+        );
+
+        clearFieldError(
+          fieldName
+        );
+      },
+      [
+        clearFieldError,
+      ]
+    );
+
+  /*===========================================================
+    Validate
+  ===========================================================*/
   const validate =
     useCallback(() => {
       const errors =
@@ -154,8 +225,9 @@ export const useBillForm = ({
       );
 
       return (
-        Object.keys(errors).length ===
-        0
+        Object.keys(
+          errors
+        ).length === 0
       );
     }, [
       formValues,
@@ -164,100 +236,17 @@ export const useBillForm = ({
       monthLabel,
     ]);
 
+  /*===========================================================
+    Request Data
+  ===========================================================*/
   const getRequestData =
-    useCallback(() => {
-      return buildBillRequest(
-        formValues
-      );
-    }, [
-      formValues,
-    ]);
-
-  const openCategoryForm =
-    useCallback(() => {
-      setCategoryApiError('');
-      setIsCategoryFormOpen(true);
-    }, []);
-
-  const closeCategoryForm =
-    useCallback(() => {
-      if (categorySubmitting) {
-        return;
-      }
-
-      setIsCategoryFormOpen(false);
-      setCategoryApiError('');
-    }, [
-      categorySubmitting,
-    ]);
-
-  const createCategory =
     useCallback(
-      async (
-        categoryData
-      ) => {
-        if (!onCreateCategory) {
-          setCategoryApiError(
-            'Category creation is unavailable.'
-          );
-
-          return null;
-        }
-
-        try {
-          setCategorySubmitting(true);
-          setCategoryApiError('');
-
-          const createdCategory =
-            await onCreateCategory(
-              categoryData
-            );
-
-          if (!createdCategory?.id) {
-            throw new Error(
-              'The category was created, but no category ID was returned.'
-            );
-          }
-
-          setFormValues(
-            (currentValues) => ({
-              ...currentValues,
-
-              budgetCategoryId:
-                createdCategory.id,
-            })
-          );
-
-          setValidationErrors(
-            (currentErrors) => {
-              const updatedErrors = {
-                ...currentErrors,
-              };
-
-              delete updatedErrors
-                .budgetCategoryId;
-
-              return updatedErrors;
-            }
-          );
-
-          setIsCategoryFormOpen(false);
-          setCategoryApiError('');
-
-          return createdCategory;
-        } catch (requestError) {
-          setCategoryApiError(
-            requestError?.message ||
-            'Unable to create category.'
-          );
-
-          return null;
-        } finally {
-          setCategorySubmitting(false);
-        }
-      },
+      () =>
+        buildBillRequest(
+          formValues
+        ),
       [
-        onCreateCategory,
+        formValues,
       ]
     );
 
@@ -269,16 +258,33 @@ export const useBillForm = ({
     minDate,
     maxDate,
 
-    isCategoryFormOpen,
-    categorySubmitting,
-    categoryApiError,
+    isCategoryFormOpen:
+      categoryForm
+        .isCategoryFormOpen,
 
-    handleChange,
+    categorySubmitting:
+      categoryForm
+        .categorySubmitting,
+
+    categoryApiError:
+      categoryForm
+        .categoryApiError,
+
+    handleFieldChange,
+
     validate,
     getRequestData,
 
-    openCategoryForm,
-    closeCategoryForm,
-    createCategory,
+    openCategoryForm:
+      categoryForm
+        .openCategoryForm,
+
+    closeCategoryForm:
+      categoryForm
+        .closeCategoryForm,
+
+    createCategory:
+      categoryForm
+        .createCategory,
   };
 };

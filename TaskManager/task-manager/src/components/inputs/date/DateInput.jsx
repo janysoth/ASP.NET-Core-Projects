@@ -1,4 +1,5 @@
 import React, {
+  useMemo,
   useState,
 } from 'react';
 
@@ -26,22 +27,29 @@ import {
 
   Supports:
   => Calendar selection.
-  => Manual date entry.
+  => Manual entry.
   => MMM DD, YYYY display.
   => YYYY-MM-DD storage.
-  => Current-year fallback.
-  => Minimum / maximum dates.
+  => Min / max dates.
   => Clear.
   => Today.
-  => Enter / Escape keyboard behavior.
+  => Keyboard support.
 
-  Architecture:
-  => useDateInputState owns state and derived values.
-  => useDateInputActions owns user interactions.
-  => DateInput coordinates the UI.
+  Popup Alignment:
+  => field
+     Center beneath the DateInput.
 
-  Popover:
-  => Calendar is centered beneath the input.
+  => start
+     Align to left edge of DateInput.
+
+  => end
+     Align to right edge of DateInput.
+
+  => modal-center
+     Center horizontally inside nearest modal.
+
+  IMPORTANT:
+  => popupOffset controls vertical spacing.
 ===========================================================*/
 const DateInput = ({
   label,
@@ -68,11 +76,14 @@ const DateInput = ({
 
   clearable = true,
 
+  popupAlign = 'field',
+
+  popupOffset = 4,
+
   className = '',
 }) => {
   /*===========================================================
-    Open State:
-    => Owned here because it belongs to the floating UI.
+    Open State
   ===========================================================*/
   const [
     open,
@@ -102,8 +113,33 @@ const DateInput = ({
     });
 
   /*===========================================================
-    Floating Overlay:
-    => "bottom" centers the calendar beneath the input.
+    Floating Placement
+  ===========================================================*/
+  const placement =
+    useMemo(
+      () => {
+        switch (
+        popupAlign
+        ) {
+          case 'start':
+            return 'bottom-start';
+
+          case 'end':
+            return 'bottom-end';
+
+          case 'modal-center':
+          case 'field':
+          default:
+            return 'bottom';
+        }
+      },
+      [
+        popupAlign,
+      ]
+    );
+
+  /*===========================================================
+    Floating Overlay
   ===========================================================*/
   const overlay =
     useFloatingOverlay({
@@ -112,19 +148,26 @@ const DateInput = ({
       onOpenChange:
         setOpen,
 
-      placement:
-        'bottom',
+      placement,
 
       role:
         'dialog',
 
       /*
-        DateInputField already has its own calendar button.
-        Prevent a second click handler from toggling the same
-        open state.
+        Calendar icon already controls opening.
       */
       enableClick:
         false,
+
+      /*
+        Center relative to AppModal instead of viewport.
+      */
+      centerInModal:
+        popupAlign ===
+        'modal-center',
+
+      offsetSize:
+        popupOffset,
     });
 
   return (
@@ -149,7 +192,7 @@ const DateInput = ({
       }
     >
       {/*=======================================================
-        Date Field / Floating Reference
+        Date Field
       =======================================================*/}
       <div
         ref={
@@ -205,7 +248,7 @@ const DateInput = ({
       </div>
 
       {/*=======================================================
-        Calendar Popover
+        Calendar
       =======================================================*/}
       <FloatingPanel
         open={
@@ -215,7 +258,7 @@ const DateInput = ({
           overlay
         }
         width={
-          320
+          312
         }
       >
         <DatePickerPopover

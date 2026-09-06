@@ -14,22 +14,13 @@ import {
   useFloatingOverlay:
   => Shared Floating UI behavior.
 
-  Handles:
-  => Floating positioning.
-  => Viewport collision detection.
+  Supports:
+  => Normal field-relative positioning.
+  => Modal-centered positioning.
   => Automatic repositioning.
-  => Optional trigger-click behavior.
+  => Viewport collision handling.
   => Outside-click dismissal.
-  => Escape-key dismissal.
-  => ARIA role wiring.
-
-  IMPORTANT:
-  => enableClick should be false when the consuming component
-     already controls opening itself.
-
-  Example:
-  => DateInput uses its calendar-icon button to open, so it
-     does NOT need Floating UI's useClick interaction.
+  => Escape dismissal.
 ===========================================================*/
 const useFloatingOverlay = ({
   open,
@@ -40,6 +31,10 @@ const useFloatingOverlay = ({
   role = 'dialog',
 
   enableClick = true,
+
+  centerInModal = false,
+
+  offsetSize = 4,
 }) => {
   /*===========================================================
     Floating UI
@@ -52,32 +47,110 @@ const useFloatingOverlay = ({
   } = useFloating({
     open,
     onOpenChange,
+
     placement,
 
-    /*
-      Keeps the floating element correctly positioned when:
-      => Window resizes.
-      => Page scrolls.
-      => Reference element moves.
-      => Floating element size changes.
-    */
     whileElementsMounted:
       autoUpdate,
 
     middleware: [
-      /*
-        Small visual gap between the input and popup.
-      */
-      offset(2),
+      /*=======================================================
+        Offset / Modal Centering
+      =======================================================*/
+      offset(
+        ({
+          elements,
+          rects,
+        }) => {
+          /*===================================================
+            Normal Field Positioning
+          ===================================================*/
+          if (
+            !centerInModal
+          ) {
+            return {
+              mainAxis:
+                offsetSize,
 
-      /*
-        Flip above the input if there is not enough room below.
-      */
+              crossAxis:
+                0,
+            };
+          }
+
+          /*===================================================
+            Find Nearest Modal
+            => AppModal renders as role="dialog".
+          ===================================================*/
+          const referenceElement =
+            elements.reference;
+
+          const modalElement =
+            referenceElement instanceof Element
+              ? referenceElement.closest(
+                '[role="dialog"]'
+              )
+              : null;
+
+          /*
+            Fall back to normal positioning when DateInput is
+            not inside a modal.
+          */
+          if (
+            !modalElement
+          ) {
+            return {
+              mainAxis:
+                offsetSize,
+
+              crossAxis:
+                0,
+            };
+          }
+
+          /*===================================================
+            Calculate Modal Center
+          ===================================================*/
+          const modalRect =
+            modalElement
+              .getBoundingClientRect();
+
+          const modalCenter =
+            modalRect.left +
+            modalRect.width / 2;
+
+          const referenceCenter =
+            rects.reference.x +
+            rects.reference.width / 2;
+
+          return {
+            /*
+              Keep the calendar close to the DateInput.
+            */
+            mainAxis:
+              offsetSize,
+
+            /*
+              Shift horizontally so popup center aligns with
+              the modal center.
+            */
+            crossAxis:
+              modalCenter -
+              referenceCenter,
+          };
+        }
+      ),
+
+      /*=======================================================
+        Flip:
+        => Moves above input when there is insufficient room
+           below.
+      =======================================================*/
       flip(),
 
-      /*
-        Keep the panel inside the viewport.
-      */
+      /*=======================================================
+        Shift:
+        => Keeps popup inside viewport.
+      =======================================================*/
       shift({
         padding: 12,
       }),
@@ -85,15 +158,7 @@ const useFloatingOverlay = ({
   });
 
   /*===========================================================
-    Trigger Click:
-    => Optional.
-
-    Dropdown:
-    => Usually true.
-
-    DateInput:
-    => false because DateInputField already has its own
-       calendar trigger button.
+    Click Interaction
   ===========================================================*/
   const click =
     useClick(
@@ -105,7 +170,7 @@ const useFloatingOverlay = ({
     );
 
   /*===========================================================
-    Dismiss
+    Dismiss Interaction
   ===========================================================*/
   const dismiss =
     useDismiss(
@@ -113,7 +178,7 @@ const useFloatingOverlay = ({
     );
 
   /*===========================================================
-    Role
+    ARIA Role
   ===========================================================*/
   const roleInteraction =
     useRole(
