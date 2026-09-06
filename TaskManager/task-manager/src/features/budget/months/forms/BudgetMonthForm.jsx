@@ -1,8 +1,4 @@
-import React, {
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React from 'react';
 
 import {
   MoneyInput,
@@ -15,9 +11,8 @@ import {
 } from '@/components/ui';
 
 import {
-  MONTH_OPTIONS,
-  createYearOptions,
-} from '@/features/budget/utils';
+  useBudgetMonthFormState,
+} from '@/features/budget/months/hooks';
 
 /*===========================================================
   BudgetMonthForm:
@@ -26,22 +21,20 @@ import {
   Fields:
   => Month.
   => Year.
-  => Planned income.
+  => Planned Income.
 
   Supports:
   => Create mode.
   => Edit mode.
 
-  Edit Mode:
-  => Month and Year remain locked.
-  => Planned Income may be updated.
-
   IMPORTANT:
   => Does not call the API directly.
-  => Parent hook owns submission.
+  => Parent hook controls submission.
+  => Form state and validation live in useBudgetMonthForm.
 ===========================================================*/
 const BudgetMonthForm = ({
   mode = 'create',
+
   budgetMonth = null,
 
   existingBudgetMonths = [],
@@ -52,258 +45,30 @@ const BudgetMonthForm = ({
   submitting = false,
 }) => {
   /*===========================================================
-    Current Date
+    Form State / Validation
   ===========================================================*/
-  const currentDate =
-    useMemo(
-      () =>
-        new Date(),
-      []
-    );
-
-  /*===========================================================
-    Defaults
-  ===========================================================*/
-  const defaultMonth =
-    currentDate.getMonth() +
-    1;
-
-  const defaultYear =
-    currentDate.getFullYear();
-
-  /*===========================================================
-    Year Options
-  ===========================================================*/
-  const yearOptions =
-    useMemo(
-      () =>
-        createYearOptions({
-          currentYear:
-            defaultYear,
-        }),
-      [
-        defaultYear,
-      ]
-    );
-
-  /*===========================================================
-    Form State
-  ===========================================================*/
-  const [
-    month,
-    setMonth,
-  ] = useState(
-    defaultMonth
-  );
-
-  const [
-    year,
-    setYear,
-  ] = useState(
-    defaultYear
-  );
-
-  const [
-    plannedIncome,
-    setPlannedIncome,
-  ] = useState('');
-
-  const [
-    validationErrors,
-    setValidationErrors,
-  ] = useState({});
-
-  const isEditing =
-    mode === 'edit';
-
-  /*===========================================================
-    Load / Reset Form
-  ===========================================================*/
-  useEffect(() => {
-    if (
-      isEditing &&
-      budgetMonth
-    ) {
-      setMonth(
-        Number(
-          budgetMonth.month
-        )
-      );
-
-      setYear(
-        Number(
-          budgetMonth.year
-        )
-      );
-
-      setPlannedIncome(
-        budgetMonth.plannedIncome
-          ?.toString() ??
-        ''
-      );
-
-      setValidationErrors({});
-
-      return;
-    }
-
-    setMonth(
-      defaultMonth
-    );
-
-    setYear(
-      defaultYear
-    );
-
-    setPlannedIncome('');
-
-    setValidationErrors({});
-  }, [
+  const {
     isEditing,
+
+    monthOptions,
+    yearOptions,
+
+    month,
+    year,
+    plannedIncome,
+
+    validationErrors,
+
+    handleMonthChange,
+    handleYearChange,
+    handlePlannedIncomeChange,
+
+    createPayload,
+  } = useBudgetMonthFormState({
+    mode,
     budgetMonth,
-    defaultMonth,
-    defaultYear,
-  ]);
-
-  /*===========================================================
-    Clear Field Error
-  ===========================================================*/
-  const clearFieldError = (
-    fieldName
-  ) => {
-    setValidationErrors(
-      (
-        current
-      ) => {
-        if (
-          !current[
-          fieldName
-          ]
-        ) {
-          return current;
-        }
-
-        return {
-          ...current,
-          [fieldName]:
-            undefined,
-        };
-      }
-    );
-  };
-
-  /*===========================================================
-    Validate
-  ===========================================================*/
-  const validate = () => {
-    const errors = {};
-
-    const normalizedMonth =
-      Number(
-        month
-      );
-
-    const normalizedYear =
-      Number(
-        year
-      );
-
-    const normalizedPlannedIncome =
-      plannedIncome === ''
-        ? 0
-        : Number(
-          plannedIncome
-        );
-
-    /*=========================================================
-      Month
-    =========================================================*/
-    const validMonth =
-      MONTH_OPTIONS.some(
-        (
-          option
-        ) =>
-          option.value ===
-          normalizedMonth
-      );
-
-    if (!validMonth) {
-      errors.month =
-        'Select a valid month.';
-    }
-
-    /*=========================================================
-      Year
-    =========================================================*/
-    const validYear =
-      yearOptions.some(
-        (
-          option
-        ) =>
-          option.value ===
-          normalizedYear
-      );
-
-    if (!validYear) {
-      errors.year =
-        'Select a valid year.';
-    }
-
-    /*=========================================================
-      Planned Income
-    =========================================================*/
-    if (
-      Number.isNaN(
-        normalizedPlannedIncome
-      ) ||
-      normalizedPlannedIncome < 0
-    ) {
-      errors.plannedIncome =
-        'Planned income cannot be negative.';
-    }
-
-    /*=========================================================
-      Duplicate Month:
-      => Create mode only.
-    =========================================================*/
-    if (
-      !isEditing &&
-      validMonth &&
-      validYear
-    ) {
-      const duplicateExists =
-        existingBudgetMonths.some(
-          (
-            existingMonth
-          ) =>
-            Number(
-              existingMonth.month
-            ) ===
-            normalizedMonth &&
-            Number(
-              existingMonth.year
-            ) ===
-            normalizedYear
-        );
-
-      if (
-        duplicateExists
-      ) {
-        errors.month =
-          'This budget month already exists.';
-      }
-    }
-
-    setValidationErrors(
-      errors
-    );
-
-    return (
-      Object.keys(
-        errors
-      ).length === 0
-    );
-  };
+    existingBudgetMonths,
+  });
 
   /*===========================================================
     Submit
@@ -314,30 +79,21 @@ const BudgetMonthForm = ({
     event.preventDefault();
 
     if (
-      submitting ||
-      !validate()
+      submitting
     ) {
       return;
     }
 
-    onSubmit?.({
-      month:
-        Number(
-          month
-        ),
+    const payload =
+      createPayload();
 
-      year:
-        Number(
-          year
-        ),
+    if (!payload) {
+      return;
+    }
 
-      plannedIncome:
-        plannedIncome === ''
-          ? 0
-          : Number(
-            plannedIncome
-          ),
-    });
+    onSubmit?.(
+      payload
+    );
   };
 
   return (
@@ -357,19 +113,13 @@ const BudgetMonthForm = ({
         value={
           month
         }
-        onChange={(event) => {
-          setMonth(
-            Number(
-              event.target.value
-            )
-          );
-
-          clearFieldError(
-            'month'
-          );
-        }}
         options={
-          MONTH_OPTIONS
+          monthOptions
+        }
+        onChange={(event) =>
+          handleMonthChange(
+            event.target.value
+          )
         }
         disabled={
           submitting ||
@@ -390,19 +140,13 @@ const BudgetMonthForm = ({
         value={
           year
         }
-        onChange={(event) => {
-          setYear(
-            Number(
-              event.target.value
-            )
-          );
-
-          clearFieldError(
-            'year'
-          );
-        }}
         options={
           yearOptions
+        }
+        onChange={(event) =>
+          handleYearChange(
+            event.target.value
+          )
         }
         disabled={
           submitting ||
@@ -423,23 +167,15 @@ const BudgetMonthForm = ({
         value={
           plannedIncome
         }
-        onValueChange={(
-          nextValue
-        ) => {
-          setPlannedIncome(
-            nextValue
-          );
-
-          clearFieldError(
-            'plannedIncome'
-          );
-        }}
-        helperText="Enter the income you expect to receive during this month."
-        error={
-          validationErrors.plannedIncome
+        onValueChange={
+          handlePlannedIncomeChange
         }
         disabled={
           submitting
+        }
+        helperText="Enter the income you expect to receive during this month."
+        error={
+          validationErrors.plannedIncome
         }
       />
 

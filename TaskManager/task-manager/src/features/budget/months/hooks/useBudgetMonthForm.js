@@ -19,41 +19,57 @@ import {
 
 /*===========================================================
   useBudgetMonthForm:
-  => Owns create/edit Budget Month workflow.
+  => Owns the Create / Edit Budget Month workflow.
 
   Handles:
   => Modal state.
-  => Selected budget month.
-  => Create/edit mode.
-  => Submission state.
-  => API calls.
-  => Refreshing the Budget Months list.
+  => Create mode.
+  => Edit mode.
+  => Selected Budget Month.
+  => API submission.
+  => Parent Budget Month list refresh.
+
+  IMPORTANT:
+  => Field state and validation belong to
+     useBudgetMonthFormState.
 ===========================================================*/
-export const useBudgetMonthForm = ({
+const useBudgetMonthForm = ({
   onBudgetMonthsChanged,
 }) => {
+  /*===========================================================
+    Modal State
+  ===========================================================*/
   const [
     isBudgetMonthFormOpen,
     setIsBudgetMonthFormOpen,
   ] = useState(false);
 
+  /*===========================================================
+    Selected Budget Month
+  ===========================================================*/
   const [
     selectedBudgetMonth,
     setSelectedBudgetMonth,
   ] = useState(null);
 
+  /*===========================================================
+    Form Mode
+  ===========================================================*/
   const [
     budgetMonthFormMode,
     setBudgetMonthFormMode,
   ] = useState('create');
 
+  /*===========================================================
+    Submitting State
+  ===========================================================*/
   const [
     submittingBudgetMonth,
     setSubmittingBudgetMonth,
   ] = useState(false);
 
   /*===========================================================
-    Open Create
+    Open Create Form
   ===========================================================*/
   const handleOpenCreateBudgetMonth =
     useCallback(() => {
@@ -71,7 +87,7 @@ export const useBudgetMonthForm = ({
     }, []);
 
   /*===========================================================
-    Open Edit
+    Open Edit Form
   ===========================================================*/
   const handleOpenEditBudgetMonth =
     useCallback(
@@ -124,16 +140,16 @@ export const useBudgetMonthForm = ({
     ]);
 
   /*===========================================================
-    Submit:
-    => Create mode creates a new month.
-    => Edit mode updates planned income for the selected month.
+    Submit Form:
+    => Create when in Create mode.
+    => Update selected month when in Edit mode.
   ===========================================================*/
   const handleBudgetMonthSubmit =
     useCallback(
       async (
         formData
       ) => {
-        const isEditing =
+        const isUpdating =
           budgetMonthFormMode ===
           'edit' &&
           Boolean(
@@ -145,13 +161,10 @@ export const useBudgetMonthForm = ({
             true
           );
 
-          if (isEditing) {
+          if (isUpdating) {
             await updateBudgetMonth(
               selectedBudgetMonth.id,
-              {
-                plannedIncome:
-                  formData.plannedIncome,
-              }
+              formData
             );
           } else {
             await createBudgetMonth(
@@ -178,7 +191,7 @@ export const useBudgetMonthForm = ({
           );
 
           showSuccess(
-            isEditing
+            isUpdating
               ? 'Budget month updated successfully.'
               : 'Budget month created successfully.'
           );
@@ -190,7 +203,7 @@ export const useBudgetMonthForm = ({
           showError(
             getApiErrorMessage(
               requestError,
-              isEditing
+              isUpdating
                 ? 'Unable to update budget month.'
                 : 'Unable to create budget month.'
             )
@@ -222,3 +235,5 @@ export const useBudgetMonthForm = ({
     handleBudgetMonthSubmit,
   };
 };
+
+export default useBudgetMonthForm;
