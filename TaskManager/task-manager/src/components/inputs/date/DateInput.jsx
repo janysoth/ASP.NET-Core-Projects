@@ -9,9 +9,10 @@ import {
 
 import {
   FormField,
-} from '../field';
+} from '@/components/inputs/field';
 
 import DateInputField from './components/DateInputField';
+
 import DatePickerPopover from './components/DatePickerPopover';
 
 import {
@@ -37,7 +38,10 @@ import {
   Architecture:
   => useDateInputState owns state and derived values.
   => useDateInputActions owns user interactions.
-  => DateInput coordinates UI components.
+  => DateInput coordinates the UI.
+
+  Popover:
+  => Calendar is centered beneath the input.
 ===========================================================*/
 const DateInput = ({
   label,
@@ -98,15 +102,19 @@ const DateInput = ({
     });
 
   /*===========================================================
-    Floating Overlay
+    Floating Overlay:
+    => "bottom" centers the calendar beneath the input.
   ===========================================================*/
   const overlay =
     useFloatingOverlay({
       open,
+
       onOpenChange:
         setOpen,
+
       placement:
-        'bottom-start',
+        'bottom',
+
       role:
         'dialog',
     });
@@ -133,7 +141,7 @@ const DateInput = ({
       }
     >
       {/*=======================================================
-        Input / Floating Reference
+        Date Field / Floating Reference
       =======================================================*/}
       <div
         ref={

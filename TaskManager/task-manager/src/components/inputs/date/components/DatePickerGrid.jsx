@@ -6,21 +6,15 @@ import {
 
 /*===========================================================
   DatePickerGrid:
-  => Shared modern calendar grid.
-
-  Handles:
-  => Selected day.
-  => Visible month.
-  => Month navigation.
-  => Disabled dates.
-  => Min / max date restrictions.
-  => Keyboard-accessible calendar behavior.
+  => Calendar day grid used by DateInput.
 
   IMPORTANT:
-  => Does NOT own input state.
-  => Does NOT parse or format dates.
-  => Does NOT clear the selected value.
-     Clear belongs to DatePickerPopover footer.
+  => Navigation and Month/Year controls are handled by
+     DatePickerHeader.
+
+  Therefore:
+  => DayPicker's built-in caption is hidden.
+  => DayPicker's built-in navigation is hidden.
 ===========================================================*/
 const DatePickerGrid = ({
   selectedDate = null,
@@ -36,9 +30,7 @@ const DatePickerGrid = ({
   disabled = false,
 }) => {
   /*===========================================================
-    Disabled Dates:
-    => Restricts dates before minDate.
-    => Restricts dates after maxDate.
+    Disabled Date Rules
   ===========================================================*/
   const disabledDates = [];
 
@@ -57,42 +49,47 @@ const DatePickerGrid = ({
   }
 
   return (
-    <div
-      className="
-        date-picker-grid
-
-        rounded-2xl
-
-        bg-[var(--app-surface)]
-
-        p-3
-      "
-    >
+    <div className="w-full">
       <DayPicker
         mode="single"
+
         selected={
           selectedDate ??
           undefined
         }
+
         month={
           month
         }
+
         onMonthChange={
           onMonthChange
         }
+
         onSelect={
           disabled
             ? undefined
             : onSelect
         }
+
         disabled={
           disabledDates.length > 0
             ? disabledDates
             : undefined
         }
+
+        /*
+          Our DatePickerHeader owns navigation.
+        */
+        hideNavigation
+
         showOutsideDays
         fixedWeeks
+
         classNames={{
+          /*===================================================
+            Root
+          ===================================================*/
           root:
             'w-full',
 
@@ -102,101 +99,24 @@ const DatePickerGrid = ({
           month:
             'w-full',
 
+          /*
+            Hide DayPicker's built-in title.
+
+            Our custom DatePickerHeader already displays:
+            September   2026
+          */
           month_caption:
-            `
-              relative
+            'hidden',
 
-              mb-4
-
-              flex
-              min-h-10
-              items-center
-              justify-center
-            `,
-
-          caption_label:
-            `
-              text-sm
-              font-bold
-              tracking-tight
-              text-[var(--app-text)]
-            `,
-
+          /*
+            Extra safety in case DayPicker renders nav markup.
+          */
           nav:
-            `
-              absolute
-              inset-x-0
-              top-0
+            'hidden',
 
-              flex
-              items-center
-              justify-between
-
-              pointer-events-none
-            `,
-
-          button_previous:
-            `
-              pointer-events-auto
-
-              flex
-              h-9
-              w-9
-              items-center
-              justify-center
-
-              rounded-xl
-
-              border
-              border-[var(--app-border)]
-
-              bg-[var(--app-surface)]
-
-              text-[var(--app-text-muted)]
-
-              transition-all
-              duration-200
-
-              hover:border-[var(--app-primary)]/50
-              hover:bg-[var(--app-primary)]/10
-              hover:text-[var(--app-primary)]
-
-              focus-visible:outline-none
-              focus-visible:ring-2
-              focus-visible:ring-[var(--app-primary)]/20
-            `,
-
-          button_next:
-            `
-              pointer-events-auto
-
-              flex
-              h-9
-              w-9
-              items-center
-              justify-center
-
-              rounded-xl
-
-              border
-              border-[var(--app-border)]
-
-              bg-[var(--app-surface)]
-
-              text-[var(--app-text-muted)]
-
-              transition-all
-              duration-200
-
-              hover:border-[var(--app-primary)]/50
-              hover:bg-[var(--app-primary)]/10
-              hover:text-[var(--app-primary)]
-
-              focus-visible:outline-none
-              focus-visible:ring-2
-              focus-visible:ring-[var(--app-primary)]/20
-            `,
-
+          /*===================================================
+            Grid
+          ===================================================*/
           month_grid:
             'w-full border-collapse',
 
@@ -205,22 +125,26 @@ const DatePickerGrid = ({
 
           weekday:
             `
-              pb-2
-
+              pb-3
               text-center
+
               text-[11px]
               font-bold
               uppercase
-              tracking-wide
+              tracking-wider
+
               text-[var(--app-text-muted)]
             `,
 
           week:
             '',
 
+          /*===================================================
+            Day Cell
+          ===================================================*/
           day:
             `
-              p-0
+              p-0.5
               text-center
             `,
 
@@ -237,7 +161,7 @@ const DatePickerGrid = ({
               rounded-xl
 
               text-sm
-              font-medium
+              font-semibold
               text-[var(--app-text)]
 
               transition-all
@@ -248,9 +172,12 @@ const DatePickerGrid = ({
 
               focus-visible:outline-none
               focus-visible:ring-2
-              focus-visible:ring-[var(--app-primary)]/20
+              focus-visible:ring-[var(--app-primary)]/25
             `,
 
+          /*===================================================
+            Selected
+          ===================================================*/
           selected:
             `
               [&>button]:
@@ -259,28 +186,37 @@ const DatePickerGrid = ({
               [&>button]:
               text-white
 
+              [&>button]:
+              shadow-sm
+
               [&>button:hover]:
-              bg-[var(--app-primary-hover)]
+              bg-[var(--app-primary)]
 
               [&>button:hover]:
               text-white
             `,
 
+          /*===================================================
+            Today
+          ===================================================*/
           today:
             `
               [&>button]:
-              ring-1
+              ring-2
 
               [&>button]:
               ring-inset
 
               [&>button]:
-              ring-[var(--app-primary)]
+              ring-[var(--app-primary)]/60
 
               [&>button]:
               font-bold
             `,
 
+          /*===================================================
+            Outside Month
+          ===================================================*/
           outside:
             `
               [&>button]:
@@ -290,13 +226,16 @@ const DatePickerGrid = ({
               opacity-40
             `,
 
+          /*===================================================
+            Disabled
+          ===================================================*/
           disabled:
             `
               [&>button]:
               cursor-not-allowed
 
               [&>button]:
-              opacity-30
+              opacity-25
 
               [&>button:hover]:
               bg-transparent

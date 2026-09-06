@@ -5,18 +5,12 @@ import DatePickerHeader from './DatePickerHeader';
 
 /*===========================================================
   DatePickerPopover:
-  => Visual calendar panel used by DateInput.
+  => Modern calendar panel used by DateInput.
 
-  Handles:
-  => Date Picker header.
+  Layout:
+  => Custom Month / Year header.
   => Calendar grid.
-  => Footer actions.
-  => Clear action on the left.
-  => Today action on the right.
-
-  IMPORTANT:
-  => Does NOT own floating positioning.
-  => Parent DateInput controls open / close state.
+  => Clear / Today footer.
 ===========================================================*/
 const DatePickerPopover = ({
   selectedDate = null,
@@ -49,7 +43,7 @@ const DatePickerPopover = ({
       {/*=======================================================
         Header
       =======================================================*/}
-      <div className="px-4 pb-2 pt-4">
+      <div className="px-4 pb-3 pt-4">
         <DatePickerHeader
           month={
             month
@@ -67,9 +61,14 @@ const DatePickerPopover = ({
       </div>
 
       {/*=======================================================
+        Divider
+      =======================================================*/}
+      <div className="mx-4 border-t border-[var(--app-border)]" />
+
+      {/*=======================================================
         Calendar
       =======================================================*/}
-      <div className="px-2 pb-3">
+      <div className="px-4 py-4">
         <DatePickerGrid
           selectedDate={
             selectedDate
@@ -112,9 +111,7 @@ const DatePickerPopover = ({
         "
       >
         {/*=====================================================
-          Clear:
-          => Secondary / destructive action.
-          => Positioned on the left.
+          Clear
         =====================================================*/}
         <button
           type="button"
@@ -158,9 +155,7 @@ const DatePickerPopover = ({
         </button>
 
         {/*=====================================================
-          Today:
-          => Primary shortcut.
-          => Positioned on the right.
+          Today
         =====================================================*/}
         <button
           type="button"

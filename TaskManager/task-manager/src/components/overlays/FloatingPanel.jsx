@@ -6,16 +6,19 @@ import {
 } from '@floating-ui/react';
 
 /*===========================================================
-  FloatingPanel
-
+  FloatingPanel:
   => Shared floating container.
 
   Used by:
-  => Dropdown
-  => Date Picker
-  => User Menu
-  => Context Menu
+  => Dropdown.
+  => Date Picker.
+  => User Menu.
+  => Context Menu.
   => Future floating UI.
+
+  Layering:
+  => Floating panels render above application modals.
+  => FloatingPortal prevents clipping by parent containers.
 
   IMPORTANT:
   => Receives the entire overlay object from
@@ -54,12 +57,18 @@ const FloatingPanel = ({
           }
           style={{
             ...overlay.floatingStyles,
+
             width,
+
+            /*
+              IMPORTANT:
+              Keep floating controls above modal content
+              and modal backdrops.
+            */
+            zIndex: 1000,
           }}
           {...overlay.getFloatingProps()}
           className={`
-            z-50
-
             overflow-hidden
 
             rounded-2xl

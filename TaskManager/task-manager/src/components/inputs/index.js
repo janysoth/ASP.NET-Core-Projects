@@ -3,3 +3,4 @@ export * from './field';
 export * from './money-input';
 export * from './select-input';
 export * from './text-input';
+export * from './textarea-input';
