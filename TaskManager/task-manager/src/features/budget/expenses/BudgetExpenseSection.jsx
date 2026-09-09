@@ -47,20 +47,14 @@ import {
 
 /*===========================================================
   BudgetExpenseSection:
-  => Displays and manages expenses for one budget month.
+  => Manages Expenses for one Budget Month.
 
-  Supports:
-  => Add expense.
-  => Edit expense.
-  => Delete expense.
-  => Quick-create expense category.
+  Handles:
+  => Expense list.
+  => Add / edit / delete.
+  => Account loading.
+  => Category quick-create.
   => Expense summary.
-
-  Category workflow:
-  => Maintains local available category state.
-  => Newly-created category appears immediately.
-  => Newly-created category is automatically selected.
-  => Parent budget month refreshes afterward.
 ===========================================================*/
 const BudgetExpenseSection = ({
   budgetMonthId,
@@ -72,12 +66,12 @@ const BudgetExpenseSection = ({
   totalExpenses = 0,
 
   monthLabel,
+
   onBudgetMonthChanged,
 }) => {
   /*===========================================================
-    Available Categories:
-    => Local copy allows newly-created categories to appear
-       immediately without waiting for parent refresh.
+    Local Categories:
+    => Allows newly-created categories to appear immediately.
   ===========================================================*/
   const [
     availableCategories,
@@ -86,9 +80,6 @@ const BudgetExpenseSection = ({
     categories
   );
 
-  /*===========================================================
-    Synchronize Parent Categories
-  ===========================================================*/
   useEffect(() => {
     setAvailableCategories(
       categories
@@ -98,7 +89,51 @@ const BudgetExpenseSection = ({
   ]);
 
   /*===========================================================
-    Columns
+    Budget Month:
+    => Example monthLabel:
+       September 2026
+
+    => Produces:
+       month = 9
+       year = 2026
+  ===========================================================*/
+  const {
+    month,
+    year,
+  } = useMemo(
+    () => {
+      const parsedDate =
+        new Date(
+          `${monthLabel} 1`
+        );
+
+      if (
+        Number.isNaN(
+          parsedDate.getTime()
+        )
+      ) {
+        return {
+          month: null,
+          year: null,
+        };
+      }
+
+      return {
+        month:
+          parsedDate.getMonth() +
+          1,
+
+        year:
+          parsedDate.getFullYear(),
+      };
+    },
+    [
+      monthLabel,
+    ]
+  );
+
+  /*===========================================================
+    Table Columns
   ===========================================================*/
   const tableColumns =
     useMemo(
@@ -131,10 +166,7 @@ const BudgetExpenseSection = ({
   } = useExpenseAccounts();
 
   /*===========================================================
-    Eligible Categories:
-    => Fixed Expense.
-    => Variable Expense.
-    => Savings / Debt excluded.
+    Eligible Expense Categories
   ===========================================================*/
   const {
     expenseCategories,
@@ -143,7 +175,7 @@ const BudgetExpenseSection = ({
   );
 
   /*===========================================================
-    Quick Create Category
+    Category Quick Create
   ===========================================================*/
   const {
     isCategoryFormOpen,
@@ -159,7 +191,7 @@ const BudgetExpenseSection = ({
   });
 
   /*===========================================================
-    Expense Form
+    Expense Form Workflow
   ===========================================================*/
   const {
     isExpenseFormOpen,
@@ -177,7 +209,7 @@ const BudgetExpenseSection = ({
   });
 
   /*===========================================================
-    Delete Expense
+    Delete Workflow
   ===========================================================*/
   const {
     deleteExpenseTarget,
@@ -191,20 +223,19 @@ const BudgetExpenseSection = ({
   });
 
   /*===========================================================
-    Ensure Accounts Loaded
+    Ensure Accounts
   ===========================================================*/
   const ensureAccountsLoaded =
     async () => {
       if (
-        accounts.length ===
-        0
+        accounts.length === 0
       ) {
         await loadAccounts();
       }
     };
 
   /*===========================================================
-    Open Create Expense
+    Open Create
   ===========================================================*/
   const handleOpenAddExpense =
     async () => {
@@ -216,7 +247,7 @@ const BudgetExpenseSection = ({
     };
 
   /*===========================================================
-    Open Edit Expense
+    Open Edit
   ===========================================================*/
   const handleOpenExpenseEdit =
     async (
@@ -232,21 +263,18 @@ const BudgetExpenseSection = ({
     };
 
   /*===========================================================
-    Close Expense
+    Close Expense Form
   ===========================================================*/
-  const handleCloseExpense = () => {
-    handleCloseExpenseForm();
+  const handleCloseExpense =
+    () => {
+      handleCloseExpenseForm();
 
-    clearCreatedCategory();
-  };
+      clearCreatedCategory();
+    };
 
   /*===========================================================
-    Create Expense Category:
-    => Create through hook.
-    => Add to local category list immediately.
-    => Hook stores createdCategoryId.
-    => ExpenseForm automatically selects new category.
-    => Refresh parent afterward.
+    Create Category:
+    => Adds new category locally before parent refresh.
   ===========================================================*/
   const handleCreateCategory =
     async (
@@ -263,9 +291,6 @@ const BudgetExpenseSection = ({
         return null;
       }
 
-      /*=======================================================
-        Add Category Locally
-      =======================================================*/
       setAvailableCategories(
         (
           currentCategories
@@ -279,55 +304,19 @@ const BudgetExpenseSection = ({
                 createdCategory.id
             );
 
-          if (
-            alreadyExists
-          ) {
-            return currentCategories;
-          }
-
-          return [
-            ...currentCategories,
-            createdCategory,
-          ];
+          return alreadyExists
+            ? currentCategories
+            : [
+              ...currentCategories,
+              createdCategory,
+            ];
         }
       );
 
-      /*=======================================================
-        Refresh Parent Budget Month:
-        => Local dropdown is already updated before this runs.
-      =======================================================*/
-      if (
-        onBudgetMonthChanged
-      ) {
-        await onBudgetMonthChanged();
-      }
+      await onBudgetMonthChanged?.();
 
       return createdCategory;
     };
-
-  /*===========================================================
-    Header Actions
-  ===========================================================*/
-  const sectionActions = (
-    <>
-      <AppButton
-        variant="primary"
-        onClick={
-          handleOpenAddExpense
-        }
-      >
-        <PlusIcon className="h-4 w-4" />
-
-        <span>
-          Add expense
-        </span>
-      </AppButton>
-
-      <div className="hidden rounded-xl bg-red-100 p-2.5 text-red-700 dark:bg-red-500/15 dark:text-red-300 sm:block">
-        <ArrowUpIcon className="h-5 w-5" />
-      </div>
-    </>
-  );
 
   return (
     <>
@@ -336,9 +325,28 @@ const BudgetExpenseSection = ({
       =======================================================*/}
       <FinancialSection
         title="Expenses"
-        subtitle={`Expense activity recorded in ${monthLabel}`}
+        subtitle={
+          `Expense activity recorded in ${monthLabel}`
+        }
         actions={
-          sectionActions
+          <>
+            <AppButton
+              variant="primary"
+              onClick={
+                handleOpenAddExpense
+              }
+            >
+              <PlusIcon className="h-4 w-4" />
+
+              <span>
+                Add expense
+              </span>
+            </AppButton>
+
+            <div className="hidden rounded-xl bg-red-100 p-2.5 text-red-700 dark:bg-red-500/15 dark:text-red-300 sm:block">
+              <ArrowUpIcon className="h-5 w-5" />
+            </div>
+          </>
         }
         columns={
           expenseRecords.length > 0
@@ -376,9 +384,6 @@ const BudgetExpenseSection = ({
           )}
         />
 
-        {/*=====================================================
-          Expense Summary
-        =====================================================*/}
         {expenseRecords.length > 0 && (
           <ExpenseSummary
             transactionCount={
@@ -429,6 +434,12 @@ const BudgetExpenseSection = ({
         submitting={
           submittingExpense
         }
+        month={
+          month
+        }
+        year={
+          year
+        }
         monthLabel={
           monthLabel
         }
@@ -441,7 +452,7 @@ const BudgetExpenseSection = ({
       />
 
       {/*=======================================================
-        Quick Create Category Modal
+        Category Quick Create
       =======================================================*/}
       <CategoryQuickCreateModal
         isOpen={

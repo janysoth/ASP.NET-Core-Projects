@@ -1,9 +1,15 @@
-import React from 'react';
+import React, {
+  useMemo,
+} from 'react';
 
 import {
   AppModal,
   ModalHeader,
 } from '@/components/ui';
+
+import {
+  getBudgetMonthDateRange,
+} from '@/features/budget/utils/budgetDateUtils';
 
 import ExpenseForm from './ExpenseForm';
 
@@ -12,15 +18,20 @@ import ExpenseForm from './ExpenseForm';
   => Wraps ExpenseForm inside the shared AppModal.
 
   Supports:
-  => Create expense.
-  => Edit expense.
+  => Create Expense.
+  => Edit Expense.
+  => Budget Month date restrictions.
+
+  Date Range:
+  => Expense dates are limited to the selected Budget Month.
 
   IMPORTANT:
-  => CategoryQuickCreateModal is owned by
-     BudgetExpenseSection, not this modal.
+  => CategoryQuickCreateModal remains owned by
+     BudgetExpenseSection.
 ===========================================================*/
 const ExpenseFormModal = ({
   mode = 'create',
+
   expense = null,
 
   isOpen,
@@ -37,12 +48,35 @@ const ExpenseFormModal = ({
 
   submitting = false,
 
+  month = null,
+  year = null,
   monthLabel,
 
   onCreateCategory,
 }) => {
+  /*===========================================================
+    Edit Mode
+  ===========================================================*/
   const isEditing =
     mode === 'edit';
+
+  /*===========================================================
+    Budget Month Date Range
+  ===========================================================*/
+  const {
+    minDate,
+    maxDate,
+  } = useMemo(
+    () =>
+      getBudgetMonthDateRange(
+        month,
+        year
+      ),
+    [
+      month,
+      year,
+    ]
+  );
 
   return (
     <AppModal
@@ -114,6 +148,12 @@ const ExpenseFormModal = ({
           }
           submitting={
             submitting
+          }
+          minDate={
+            minDate
+          }
+          maxDate={
+            maxDate
           }
           onCreateCategory={
             onCreateCategory
