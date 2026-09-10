@@ -1,4 +1,6 @@
-import React from 'react';
+import React, {
+  useMemo,
+} from 'react';
 
 import {
   DayPicker,
@@ -8,13 +10,16 @@ import {
   DatePickerGrid:
   => Calendar day grid used by DateInput.
 
+  Handles:
+  => Selected date.
+  => Minimum / maximum date restrictions.
+  => Disabled out-of-range days.
+  => Preventing out-of-range selection.
+  => Calendar month boundaries.
+
   IMPORTANT:
   => Navigation and Month/Year controls are handled by
      DatePickerHeader.
-
-  Therefore:
-  => DayPicker's built-in caption is hidden.
-  => DayPicker's built-in navigation is hidden.
 ===========================================================*/
 const DatePickerGrid = ({
   selectedDate = null,
@@ -32,21 +37,135 @@ const DatePickerGrid = ({
   /*===========================================================
     Disabled Date Rules
   ===========================================================*/
-  const disabledDates = [];
+  const disabledDates =
+    useMemo(
+      () => {
+        const rules = [];
 
-  if (minDate) {
-    disabledDates.push({
-      before:
+        if (minDate) {
+          rules.push({
+            before:
+              minDate,
+          });
+        }
+
+        if (maxDate) {
+          rules.push({
+            after:
+              maxDate,
+          });
+        }
+
+        return rules;
+      },
+      [
         minDate,
-    });
-  }
-
-  if (maxDate) {
-    disabledDates.push({
-      after:
         maxDate,
-    });
-  }
+      ]
+    );
+
+  /*===========================================================
+    First Allowed Month
+  ===========================================================*/
+  const startMonth =
+    useMemo(
+      () =>
+        minDate
+          ? new Date(
+            minDate.getFullYear(),
+            minDate.getMonth(),
+            1
+          )
+          : undefined,
+      [
+        minDate,
+      ]
+    );
+
+  /*===========================================================
+    Last Allowed Month
+  ===========================================================*/
+  const endMonth =
+    useMemo(
+      () =>
+        maxDate
+          ? new Date(
+            maxDate.getFullYear(),
+            maxDate.getMonth(),
+            1
+          )
+          : undefined,
+      [
+        maxDate,
+      ]
+    );
+
+  /*===========================================================
+    Is Date Allowed:
+    => Second safety layer independent of DayPicker.
+
+    IMPORTANT:
+    => Prevents an out-of-range date from ever reaching
+       DateInput's parent onChange.
+  ===========================================================*/
+  const isDateAllowed = (
+    date
+  ) => {
+    if (
+      !(date instanceof Date) ||
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+      return false;
+    }
+
+    const normalizedDate =
+      new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate()
+      );
+
+    if (
+      minDate &&
+      normalizedDate <
+      minDate
+    ) {
+      return false;
+    }
+
+    if (
+      maxDate &&
+      normalizedDate >
+      maxDate
+    ) {
+      return false;
+    }
+
+    return true;
+  };
+
+  /*===========================================================
+    Select Date
+  ===========================================================*/
+  const handleSelect = (
+    nextDate
+  ) => {
+    if (
+      disabled ||
+      !nextDate ||
+      !isDateAllowed(
+        nextDate
+      )
+    ) {
+      return;
+    }
+
+    onSelect?.(
+      nextDate
+    );
+  };
 
   return (
     <div className="w-full">
@@ -67,20 +186,32 @@ const DatePickerGrid = ({
         }
 
         onSelect={
-          disabled
-            ? undefined
-            : onSelect
+          handleSelect
         }
 
+        /*=====================================================
+          Allowed Calendar Range
+        =====================================================*/
+        startMonth={
+          startMonth
+        }
+
+        endMonth={
+          endMonth
+        }
+
+        /*=====================================================
+          Disabled Days
+        =====================================================*/
         disabled={
           disabledDates.length > 0
             ? disabledDates
             : undefined
         }
 
-        /*
-          Our DatePickerHeader owns navigation.
-        */
+        /*=====================================================
+          Custom Header Owns Navigation
+        =====================================================*/
         hideNavigation
 
         showOutsideDays
@@ -99,18 +230,12 @@ const DatePickerGrid = ({
           month:
             'w-full',
 
-          /*
-            Hide DayPicker's built-in title.
-
-            Our custom DatePickerHeader already displays:
-            September   2026
-          */
+          /*===================================================
+            Hide Built-In Header / Navigation
+          ===================================================*/
           month_caption:
             'hidden',
 
-          /*
-            Extra safety in case DayPicker renders nav markup.
-          */
           nav:
             'hidden',
 
@@ -126,8 +251,8 @@ const DatePickerGrid = ({
           weekday:
             `
               pb-3
-              text-center
 
+              text-center
               text-[11px]
               font-bold
               uppercase
@@ -235,7 +360,10 @@ const DatePickerGrid = ({
               cursor-not-allowed
 
               [&>button]:
-              opacity-25
+              opacity-20
+
+              [&>button]:
+              text-[var(--app-text-muted)]
 
               [&>button:hover]:
               bg-transparent
