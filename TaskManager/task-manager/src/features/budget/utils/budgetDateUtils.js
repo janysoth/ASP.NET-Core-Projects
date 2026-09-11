@@ -1,10 +1,69 @@
 /*===========================================================
+  MONTH_NAMES:
+  => Used when parsing Budget Month labels.
+
+  Supports:
+  => January 2026
+  => Jan 2026
+===========================================================*/
+const MONTH_NAMES = [
+  {
+    full: 'january',
+    short: 'jan',
+  },
+  {
+    full: 'february',
+    short: 'feb',
+  },
+  {
+    full: 'march',
+    short: 'mar',
+  },
+  {
+    full: 'april',
+    short: 'apr',
+  },
+  {
+    full: 'may',
+    short: 'may',
+  },
+  {
+    full: 'june',
+    short: 'jun',
+  },
+  {
+    full: 'july',
+    short: 'jul',
+  },
+  {
+    full: 'august',
+    short: 'aug',
+  },
+  {
+    full: 'september',
+    short: 'sep',
+  },
+  {
+    full: 'october',
+    short: 'oct',
+  },
+  {
+    full: 'november',
+    short: 'nov',
+  },
+  {
+    full: 'december',
+    short: 'dec',
+  },
+];
+
+/*===========================================================
   formatLocalDateValue:
-  => Converts a local Date into YYYY-MM-DD.
+  => Converts local Date into YYYY-MM-DD.
 
   IMPORTANT:
   => Does not use toISOString().
-  => Avoids UTC timezone date shifting.
+  => Avoids UTC timezone shifting.
 ===========================================================*/
 export const formatLocalDateValue = (
   date
@@ -42,7 +101,7 @@ export const formatLocalDateValue = (
 
 /*===========================================================
   getBudgetMonthDateRange:
-  => Returns the first and last dates for a Budget Month.
+  => Returns date boundaries for numeric Month / Year.
 
   Example:
   => month = 9
@@ -51,11 +110,6 @@ export const formatLocalDateValue = (
   Returns:
   => minDate = 2026-09-01
   => maxDate = 2026-09-30
-  => defaultDate = appropriate date inside September
-
-  Default Date:
-  => Uses today's day number when possible.
-  => Clamps to the final day of the selected month.
 ===========================================================*/
 export const getBudgetMonthDateRange = (
   month,
@@ -88,9 +142,6 @@ export const getBudgetMonthDateRange = (
     };
   }
 
-  /*===========================================================
-    First Day
-  ===========================================================*/
   const firstDate =
     new Date(
       normalizedYear,
@@ -98,10 +149,6 @@ export const getBudgetMonthDateRange = (
       1
     );
 
-  /*===========================================================
-    Last Day:
-    => Day 0 of following month gives final day of target month.
-  ===========================================================*/
   const lastDate =
     new Date(
       normalizedYear,
@@ -109,9 +156,6 @@ export const getBudgetMonthDateRange = (
       0
     );
 
-  /*===========================================================
-    Suggested Default Day
-  ===========================================================*/
   const today =
     new Date();
 
@@ -144,4 +188,108 @@ export const getBudgetMonthDateRange = (
         defaultDate
       ),
   };
+};
+
+/*===========================================================
+  parseBudgetMonthLabel:
+  => Converts a Budget Month label into numeric Month / Year.
+
+  Supports:
+  => September 2026
+  => Sep 2026
+
+  Does NOT depend on:
+  => new Date("September 2026")
+===========================================================*/
+export const parseBudgetMonthLabel = (
+  monthLabel
+) => {
+  if (
+    typeof monthLabel !==
+    'string' ||
+    !monthLabel.trim()
+  ) {
+    return {
+      month: null,
+      year: null,
+    };
+  }
+
+  const normalizedLabel =
+    monthLabel
+      .trim()
+      .toLowerCase();
+
+  const yearMatch =
+    normalizedLabel.match(
+      /\b(\d{4})\b/
+    );
+
+  if (!yearMatch) {
+    return {
+      month: null,
+      year: null,
+    };
+  }
+
+  const monthIndex =
+    MONTH_NAMES.findIndex(
+      (
+        month
+      ) =>
+        normalizedLabel.includes(
+          month.full
+        ) ||
+        normalizedLabel.includes(
+          month.short
+        )
+    );
+
+  if (
+    monthIndex ===
+    -1
+  ) {
+    return {
+      month: null,
+      year: null,
+    };
+  }
+
+  return {
+    month:
+      monthIndex + 1,
+
+    year:
+      Number(
+        yearMatch[1]
+      ),
+  };
+};
+
+/*===========================================================
+  getBudgetMonthDateRangeFromLabel:
+  => Convenience helper when only monthLabel is available.
+
+  Example:
+  => September 2026
+
+  Returns:
+  => 2026-09-01
+  => 2026-09-30
+===========================================================*/
+export const getBudgetMonthDateRangeFromLabel = (
+  monthLabel
+) => {
+  const {
+    month,
+    year,
+  } =
+    parseBudgetMonthLabel(
+      monthLabel
+    );
+
+  return getBudgetMonthDateRange(
+    month,
+    year
+  );
 };

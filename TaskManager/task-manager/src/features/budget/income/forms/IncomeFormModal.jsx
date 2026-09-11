@@ -1,9 +1,15 @@
-import React from 'react';
+import React, {
+  useMemo,
+} from 'react';
 
 import {
   AppModal,
   ModalHeader,
 } from '@/components/ui';
+
+import {
+  getBudgetMonthDateRangeFromLabel,
+} from '@/features/budget/utils/budgetDateUtils';
 
 import IncomeForm from './IncomeForm';
 
@@ -12,8 +18,9 @@ import IncomeForm from './IncomeForm';
   => Wraps IncomeForm inside the shared AppModal.
 
   Supports:
-  => Create income.
-  => Edit income.
+  => Create Income.
+  => Edit Income.
+  => Budget Month date restrictions.
 
   IMPORTANT:
   => Does not call the API directly.
@@ -21,6 +28,7 @@ import IncomeForm from './IncomeForm';
 ===========================================================*/
 const IncomeFormModal = ({
   mode = 'create',
+
   income = null,
 
   isOpen,
@@ -35,8 +43,27 @@ const IncomeFormModal = ({
 
   monthLabel,
 }) => {
+  /*===========================================================
+    Edit Mode
+  ===========================================================*/
   const isEditing =
     mode === 'edit';
+
+  /*===========================================================
+    Budget Month Date Range
+  ===========================================================*/
+  const {
+    minDate,
+    maxDate,
+  } = useMemo(
+    () =>
+      getBudgetMonthDateRangeFromLabel(
+        monthLabel
+      ),
+    [
+      monthLabel,
+    ]
+  );
 
   return (
     <AppModal
@@ -102,6 +129,12 @@ const IncomeFormModal = ({
           }
           submitting={
             submitting
+          }
+          minDate={
+            minDate
+          }
+          maxDate={
+            maxDate
           }
           onSubmit={
             onSubmit

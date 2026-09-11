@@ -8,7 +8,7 @@ import {
 } from '@/components/ui';
 
 import {
-  getBudgetMonthDateRange,
+  getBudgetMonthDateRangeFromLabel,
 } from '@/features/budget/utils/budgetDateUtils';
 
 import ExpenseForm from './ExpenseForm';
@@ -21,9 +21,6 @@ import ExpenseForm from './ExpenseForm';
   => Create Expense.
   => Edit Expense.
   => Budget Month date restrictions.
-
-  Date Range:
-  => Expense dates are limited to the selected Budget Month.
 
   IMPORTANT:
   => CategoryQuickCreateModal remains owned by
@@ -48,8 +45,6 @@ const ExpenseFormModal = ({
 
   submitting = false,
 
-  month = null,
-  year = null,
   monthLabel,
 
   onCreateCategory,
@@ -68,13 +63,11 @@ const ExpenseFormModal = ({
     maxDate,
   } = useMemo(
     () =>
-      getBudgetMonthDateRange(
-        month,
-        year
+      getBudgetMonthDateRangeFromLabel(
+        monthLabel
       ),
     [
-      month,
-      year,
+      monthLabel,
     ]
   );
 
