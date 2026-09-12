@@ -148,6 +148,9 @@ const ExpenseFormModal = ({
           maxDate={
             maxDate
           }
+          monthLabel={
+            monthLabel
+          }
           onCreateCategory={
             onCreateCategory
           }

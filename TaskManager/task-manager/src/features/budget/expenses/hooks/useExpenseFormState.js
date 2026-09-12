@@ -1,30 +1,96 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
+import { buildExpenseRequest, validateExpenseForm } from '../utils/expenseFormUtils';
+
+/*===========================================================
+  getTodayDateValue:
+  => Returns today's local date as YYYY-MM-DD.
+
+  IMPORTANT:
+  => Avoids UTC shifting from toISOString().
+===========================================================*/
+const getTodayDateValue = () => {
+  const today =
+    new Date();
+
+  const year =
+    today.getFullYear();
+
+  const month =
+    String(
+      today.getMonth() + 1
+    ).padStart(
+      2,
+      '0'
+    );
+
+  const day =
+    String(
+      today.getDate()
+    ).padStart(
+      2,
+      '0'
+    );
+
+  return `${year}-${month}-${day}`;
+};
+
+/*===========================================================
+  getInitialValues:
+  => Creates form values for Create or Edit mode.
+===========================================================*/
+const getInitialValues = (
+  expense,
+  defaultExpenseDate
+) => ({
+  accountId:
+    expense?.accountId ??
+    '',
+
+  categoryId:
+    expense?.categoryId ??
+    '',
+
+  name:
+    expense?.name ??
+    '',
+
+  amount:
+    expense?.amount
+      ?.toString() ??
+    '',
+
+  expenseDate:
+    expense?.expenseDate
+      ?.slice(
+        0,
+        10
+      ) ??
+    defaultExpenseDate,
+
+  notes:
+    expense?.notes ??
+    '',
+});
 
 /*===========================================================
   useExpenseFormState:
-  => Owns Expense form field state and validation.
+  => Owns Expense field state and validation.
 
   Handles:
-  => Create mode.
-  => Edit mode.
-  => Account.
-  => Category.
-  => Expense name.
-  => Amount.
-  => Expense date.
-  => Notes.
-  => Newly-created category selection.
+  => Create / Edit values.
+  => Newly-created Category selection.
+  => Field changes.
   => Validation.
-  => API payload creation.
+  => Request payload creation.
 
   IMPORTANT:
-  => Does NOT control modal state.
+  => Does NOT own modal state.
   => Does NOT call the API.
-  => useExpenseForm owns the create/edit API workflow.
 ===========================================================*/
 const useExpenseFormState = ({
   mode = 'create',
@@ -35,148 +101,63 @@ const useExpenseFormState = ({
   categories = [],
 
   createdCategoryId = '',
+
+  minDate = '',
+  maxDate = '',
+
+  monthLabel = '',
 }) => {
   /*===========================================================
-    Edit Mode
+    Mode
   ===========================================================*/
   const isEditing =
     mode === 'edit';
 
   /*===========================================================
-    Default Expense Date:
-    => Uses today's local calendar date.
-    => Stored by the form as YYYY-MM-DD.
+    Default Date
   ===========================================================*/
   const defaultExpenseDate =
     useMemo(
-      () => {
-        const today =
-          new Date();
-
-        const year =
-          today.getFullYear();
-
-        const month =
-          String(
-            today.getMonth() + 1
-          ).padStart(
-            2,
-            '0'
-          );
-
-        const day =
-          String(
-            today.getDate()
-          ).padStart(
-            2,
-            '0'
-          );
-
-        return `${year}-${month}-${day}`;
-      },
+      () =>
+        getTodayDateValue(),
       []
     );
 
   /*===========================================================
-    Form State
+    Form Values
   ===========================================================*/
   const [
-    accountId,
-    setAccountId,
-  ] = useState('');
-
-  const [
-    categoryId,
-    setCategoryId,
-  ] = useState('');
-
-  const [
-    name,
-    setName,
-  ] = useState('');
-
-  const [
-    amount,
-    setAmount,
-  ] = useState('');
-
-  const [
-    expenseDate,
-    setExpenseDate,
+    formValues,
+    setFormValues,
   ] = useState(
-    defaultExpenseDate
+    () =>
+      getInitialValues(
+        expense,
+        defaultExpenseDate
+      )
   );
 
-  const [
-    notes,
-    setNotes,
-  ] = useState('');
-
+  /*===========================================================
+    Validation Errors
+  ===========================================================*/
   const [
     validationErrors,
     setValidationErrors,
   ] = useState({});
 
   /*===========================================================
-    Load / Reset Form:
-    => Edit mode loads selected Expense.
-    => Create mode restores empty/default values.
+    Reset / Load
   ===========================================================*/
   useEffect(() => {
-    if (
-      isEditing &&
-      expense
-    ) {
-      setAccountId(
-        expense.accountId ??
-        ''
-      );
-
-      setCategoryId(
-        expense.categoryId ??
-        ''
-      );
-
-      setName(
-        expense.name ??
-        ''
-      );
-
-      setAmount(
-        expense.amount
-          ?.toString() ??
-        ''
-      );
-
-      setExpenseDate(
-        expense.expenseDate
-          ?.slice(
-            0,
-            10
-          ) ??
+    setFormValues(
+      getInitialValues(
+        isEditing
+          ? expense
+          : null,
         defaultExpenseDate
-      );
-
-      setNotes(
-        expense.notes ??
-        ''
-      );
-
-      setValidationErrors({});
-
-      return;
-    }
-
-    setAccountId('');
-    setCategoryId('');
-    setName('');
-    setAmount('');
-
-    setExpenseDate(
-      defaultExpenseDate
+      )
     );
 
-    setNotes('');
     setValidationErrors({});
   }, [
     isEditing,
@@ -185,9 +166,7 @@ const useExpenseFormState = ({
   ]);
 
   /*===========================================================
-    Newly-Created Category:
-    => Automatically selects the category after the category
-       quick-create workflow finishes.
+    Newly-Created Category
   ===========================================================*/
   useEffect(() => {
     if (
@@ -196,20 +175,21 @@ const useExpenseFormState = ({
       return;
     }
 
-    setCategoryId(
-      createdCategoryId
+    setFormValues(
+      (
+        currentValues
+      ) => ({
+        ...currentValues,
+
+        categoryId:
+          createdCategoryId,
+      })
     );
 
     setValidationErrors(
       (
         currentErrors
       ) => {
-        if (
-          !currentErrors.categoryId
-        ) {
-          return currentErrors;
-        }
-
         const updatedErrors = {
           ...currentErrors,
         };
@@ -225,295 +205,102 @@ const useExpenseFormState = ({
   ]);
 
   /*===========================================================
-    Clear Field Error
+    Change Field
   ===========================================================*/
-  const clearFieldError = (
-    fieldName
-  ) => {
-    setValidationErrors(
+  const handleFieldChange =
+    useCallback(
       (
-        currentErrors
+        fieldName,
+        value
       ) => {
-        if (
-          !currentErrors[
-          fieldName
-          ]
-        ) {
-          return currentErrors;
-        }
-
-        const updatedErrors = {
-          ...currentErrors,
-        };
-
-        delete updatedErrors[
-          fieldName
-        ];
-
-        return updatedErrors;
-      }
-    );
-  };
-
-  /*===========================================================
-    Account Change
-  ===========================================================*/
-  const handleAccountChange = (
-    nextAccountId
-  ) => {
-    setAccountId(
-      nextAccountId
-    );
-
-    clearFieldError(
-      'accountId'
-    );
-  };
-
-  /*===========================================================
-    Category Change
-  ===========================================================*/
-  const handleCategoryChange = (
-    nextCategoryId
-  ) => {
-    setCategoryId(
-      nextCategoryId
-    );
-
-    clearFieldError(
-      'categoryId'
-    );
-  };
-
-  /*===========================================================
-    Name Change
-  ===========================================================*/
-  const handleNameChange = (
-    nextName
-  ) => {
-    setName(
-      nextName
-    );
-
-    clearFieldError(
-      'name'
-    );
-  };
-
-  /*===========================================================
-    Amount Change
-  ===========================================================*/
-  const handleAmountChange = (
-    nextAmount
-  ) => {
-    setAmount(
-      nextAmount
-    );
-
-    clearFieldError(
-      'amount'
-    );
-  };
-
-  /*===========================================================
-    Expense Date Change
-  ===========================================================*/
-  const handleExpenseDateChange = (
-    nextDate
-  ) => {
-    setExpenseDate(
-      nextDate
-    );
-
-    clearFieldError(
-      'expenseDate'
-    );
-  };
-
-  /*===========================================================
-    Notes Change
-  ===========================================================*/
-  const handleNotesChange = (
-    nextNotes
-  ) => {
-    setNotes(
-      nextNotes
-    );
-
-    clearFieldError(
-      'notes'
-    );
-  };
-
-  /*===========================================================
-    Validate
-  ===========================================================*/
-  const validate = () => {
-    const errors = {};
-
-    const normalizedAmount =
-      amount === ''
-        ? 0
-        : Number(
-          amount
-        );
-
-    /*=========================================================
-      Account
-    =========================================================*/
-    if (!accountId) {
-      errors.accountId =
-        'Account is required.';
-    } else {
-      const accountExists =
-        accounts.some(
+        setFormValues(
           (
-            account
-          ) =>
-            account.id ===
-            accountId
+            currentValues
+          ) => ({
+            ...currentValues,
+
+            [fieldName]:
+              value,
+          })
         );
 
-      if (!accountExists) {
-        errors.accountId =
-          'Select a valid account.';
-      }
-    }
-
-    /*=========================================================
-      Category
-    =========================================================*/
-    if (!categoryId) {
-      errors.categoryId =
-        'Category is required.';
-    } else {
-      const categoryExists =
-        categories.some(
+        setValidationErrors(
           (
-            category
-          ) =>
-            category.id ===
-            categoryId
+            currentErrors
+          ) => {
+            if (
+              !currentErrors[
+              fieldName
+              ]
+            ) {
+              return currentErrors;
+            }
+
+            const updatedErrors = {
+              ...currentErrors,
+            };
+
+            delete updatedErrors[
+              fieldName
+            ];
+
+            return updatedErrors;
+          }
         );
-
-      if (!categoryExists) {
-        errors.categoryId =
-          'Select a valid category.';
-      }
-    }
-
-    /*=========================================================
-      Expense Name
-    =========================================================*/
-    if (
-      !name.trim()
-    ) {
-      errors.name =
-        'Expense name is required.';
-    }
-
-    /*=========================================================
-      Amount
-    =========================================================*/
-    if (
-      Number.isNaN(
-        normalizedAmount
-      ) ||
-      normalizedAmount <= 0
-    ) {
-      errors.amount =
-        'Amount must be greater than 0.';
-    }
-
-    /*=========================================================
-      Expense Date
-    =========================================================*/
-    if (!expenseDate) {
-      errors.expenseDate =
-        'Expense date is required.';
-    }
-
-    setValidationErrors(
-      errors
+      },
+      []
     );
-
-    return (
-      Object.keys(
-        errors
-      ).length === 0
-    );
-  };
 
   /*===========================================================
     Create Payload:
-    => Returns null when validation fails.
-
-    Date:
-    => Form stores YYYY-MM-DD.
-    => API receives YYYY-MM-DDT00:00:00Z.
+    => Validates first.
+    => Returns null when invalid.
   ===========================================================*/
-  const createPayload = () => {
-    if (!validate()) {
-      return null;
-    }
+  const createPayload =
+    useCallback(() => {
+      const errors =
+        validateExpenseForm({
+          ...formValues,
 
-    return {
-      accountId,
+          accounts,
+          categories,
 
-      categoryId,
+          minDate,
+          maxDate,
+          monthLabel,
+        });
 
-      name:
-        name.trim(),
+      setValidationErrors(
+        errors
+      );
 
-      amount:
-        Number(
-          amount
-        ),
+      if (
+        Object.keys(
+          errors
+        ).length > 0
+      ) {
+        return null;
+      }
 
-      expenseDate:
-        `${expenseDate}T00:00:00Z`,
-
-      notes:
-        notes.trim()
-          ? notes.trim()
-          : null,
-    };
-  };
+      return buildExpenseRequest(
+        formValues
+      );
+    }, [
+      formValues,
+      accounts,
+      categories,
+      minDate,
+      maxDate,
+      monthLabel,
+    ]);
 
   return {
-    /*=========================================================
-      Mode
-    =========================================================*/
     isEditing,
 
-    /*=========================================================
-      Values
-    =========================================================*/
-    accountId,
-    categoryId,
-    name,
-    amount,
-    expenseDate,
-    notes,
-
-    /*=========================================================
-      Validation
-    =========================================================*/
+    formValues,
     validationErrors,
 
-    /*=========================================================
-      Field Actions
-    =========================================================*/
-    handleAccountChange,
-    handleCategoryChange,
-    handleNameChange,
-    handleAmountChange,
-    handleExpenseDateChange,
-    handleNotesChange,
-
-    /*=========================================================
-      Submission
-    =========================================================*/
+    handleFieldChange,
     createPayload,
   };
 };

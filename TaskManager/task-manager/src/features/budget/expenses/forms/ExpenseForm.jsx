@@ -13,18 +13,13 @@ import useExpenseFormState from '../hooks/useExpenseFormState';
   ExpenseForm:
   => Coordinates the Expense form.
 
-  Supports:
-  => Create mode.
-  => Edit mode.
-
   Architecture:
-  => useExpenseFormState owns field state and validation.
+  => useExpenseFormState owns state / validation.
   => ExpenseFormFields owns field UI.
-  => ExpenseForm owns submit and action buttons.
+  => ExpenseForm owns submission / actions.
 
   IMPORTANT:
   => Does NOT call the API directly.
-  => useExpenseForm owns the API/modal workflow.
 ===========================================================*/
 const ExpenseForm = ({
   mode = 'create',
@@ -45,24 +40,39 @@ const ExpenseForm = ({
 
   submitting = false,
 
-  minDate = null,
-  maxDate = null,
+  minDate = '',
+  maxDate = '',
+
+  monthLabel = '',
 }) => {
   /*===========================================================
     Form State
   ===========================================================*/
-  const form =
-    useExpenseFormState({
-      mode,
-      expense,
-      accounts,
-      categories,
-      createdCategoryId,
-    });
+  const {
+    isEditing,
+
+    formValues,
+    validationErrors,
+
+    handleFieldChange,
+    createPayload,
+  } = useExpenseFormState({
+    mode,
+    expense,
+
+    accounts,
+    categories,
+
+    createdCategoryId,
+
+    minDate,
+    maxDate,
+
+    monthLabel,
+  });
 
   /*===========================================================
-    Submit:
-    => Form hook validates and builds the API payload.
+    Submit
   ===========================================================*/
   const handleSubmit = (
     event
@@ -76,7 +86,7 @@ const ExpenseForm = ({
     }
 
     const payload =
-      form.createPayload();
+      createPayload();
 
     if (!payload) {
       return;
@@ -105,25 +115,25 @@ const ExpenseForm = ({
           categories
         }
         accountId={
-          form.accountId
+          formValues.accountId
         }
         categoryId={
-          form.categoryId
+          formValues.categoryId
         }
         name={
-          form.name
+          formValues.name
         }
         amount={
-          form.amount
+          formValues.amount
         }
         expenseDate={
-          form.expenseDate
+          formValues.expenseDate
         }
         notes={
-          form.notes
+          formValues.notes
         }
         validationErrors={
-          form.validationErrors
+          validationErrors
         }
         accountsLoading={
           accountsLoading
@@ -140,23 +150,41 @@ const ExpenseForm = ({
         maxDate={
           maxDate
         }
-        onAccountChange={
-          form.handleAccountChange
+        onAccountChange={(value) =>
+          handleFieldChange(
+            'accountId',
+            value
+          )
         }
-        onCategoryChange={
-          form.handleCategoryChange
+        onCategoryChange={(value) =>
+          handleFieldChange(
+            'categoryId',
+            value
+          )
         }
-        onNameChange={
-          form.handleNameChange
+        onNameChange={(value) =>
+          handleFieldChange(
+            'name',
+            value
+          )
         }
-        onAmountChange={
-          form.handleAmountChange
+        onAmountChange={(value) =>
+          handleFieldChange(
+            'amount',
+            value
+          )
         }
-        onExpenseDateChange={
-          form.handleExpenseDateChange
+        onExpenseDateChange={(value) =>
+          handleFieldChange(
+            'expenseDate',
+            value
+          )
         }
-        onNotesChange={
-          form.handleNotesChange
+        onNotesChange={(value) =>
+          handleFieldChange(
+            'notes',
+            value
+          )
         }
         onCreateCategory={
           onCreateCategory
@@ -186,12 +214,12 @@ const ExpenseForm = ({
             submitting
           }
           loadingText={
-            form.isEditing
+            isEditing
               ? 'Saving expense...'
               : 'Adding expense...'
           }
         >
-          {form.isEditing
+          {isEditing
             ? 'Save changes'
             : 'Add expense'}
         </AppButton>
