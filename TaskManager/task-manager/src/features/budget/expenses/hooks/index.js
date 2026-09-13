@@ -17,3 +17,7 @@ export {
 export {
   useExpenseForm
 } from './useExpenseForm';
+
+export {
+  default as useExpenseSectionActions
+} from './useExpenseSectionActions';
