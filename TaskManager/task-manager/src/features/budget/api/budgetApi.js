@@ -521,3 +521,61 @@ export const deleteBudgetMonth = async (
   return response.data;
 };
 
+/*===========================================================
+  getTransfers:
+  => Gets all account transfers.
+
+  Backend:
+  => GET /api/budget/transfers
+===========================================================*/
+export const getTransfers = async () => {
+  const response =
+    await api.get(
+      'budget/transfers'
+    );
+
+  return response.data;
+};
+
+/*===========================================================
+  createTransfer:
+  => Creates an account transfer.
+
+  Backend:
+  => POST /api/budget/transfers
+===========================================================*/
+export const createTransfer = async (
+  transferData
+) => {
+  const response =
+    await api.post(
+      'budget/transfers',
+      transferData
+    );
+
+  return response.data;
+};
+
+/*===========================================================
+  deleteTransfer:
+  => Deletes an account transfer.
+
+  Backend:
+  => DELETE /api/budget/transfers/{transferId}
+===========================================================*/
+export const deleteTransfer = async (
+  transferId
+) => {
+  if (!transferId) {
+    throw new Error(
+      'Transfer ID is required.'
+    );
+  }
+
+  const response =
+    await api.delete(
+      `budget/transfers/${transferId}`
+    );
+
+  return response.data;
+};
