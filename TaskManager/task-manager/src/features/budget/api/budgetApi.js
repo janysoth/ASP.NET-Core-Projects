@@ -579,3 +579,29 @@ export const deleteTransfer = async (
 
   return response.data;
 };
+
+/*===========================================================
+  patchTransfer:
+  => Partially updates an existing account transfer.
+
+  Backend:
+  => PATCH /api/budget/transfers/{transferId}
+===========================================================*/
+export const patchTransfer = async (
+  transferId,
+  transferData
+) => {
+  if (!transferId) {
+    throw new Error(
+      'Transfer ID is required.'
+    );
+  }
+
+  const response =
+    await api.patch(
+      `budget/transfers/${transferId}`,
+      transferData
+    );
+
+  return response.data;
+};

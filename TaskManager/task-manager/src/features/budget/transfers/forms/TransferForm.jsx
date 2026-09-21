@@ -13,16 +13,23 @@ import useTransferFormState from '../hooks/useTransferFormState';
   TransferForm:
   => Coordinates the Transfer form.
 
+  Supports:
+  => Create mode.
+  => Edit mode.
+
   Architecture:
-  => useTransferFormState owns state / validation.
+  => useTransferFormState owns field state / validation.
   => TransferFormFields owns field UI.
   => TransferForm owns submit / action buttons.
 
   IMPORTANT:
   => Does NOT call the API directly.
-  => Parent workflow owns API submission.
 ===========================================================*/
 const TransferForm = ({
+  mode = 'create',
+
+  transfer = null,
+
   accounts = [],
 
   monthLabel = '',
@@ -36,6 +43,8 @@ const TransferForm = ({
     Form State
   ===========================================================*/
   const {
+    isEditing,
+
     formValues,
     validationErrors,
 
@@ -45,6 +54,8 @@ const TransferForm = ({
     handleFieldChange,
     createPayload,
   } = useTransferFormState({
+    mode,
+    transfer,
     accounts,
     monthLabel,
   });
@@ -66,9 +77,7 @@ const TransferForm = ({
     const payload =
       createPayload();
 
-    if (
-      !payload
-    ) {
+    if (!payload) {
       return;
     }
 
@@ -133,9 +142,15 @@ const TransferForm = ({
           loading={
             submitting
           }
-          loadingText="Creating transfer..."
+          loadingText={
+            isEditing
+              ? 'Saving transfer...'
+              : 'Creating transfer...'
+          }
         >
-          Create transfer
+          {isEditing
+            ? 'Save changes'
+            : 'Create transfer'}
         </AppButton>
       </ModalActions>
     </form>

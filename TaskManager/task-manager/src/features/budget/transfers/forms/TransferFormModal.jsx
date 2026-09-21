@@ -12,13 +12,18 @@ import TransferForm from './TransferForm';
   => Wraps TransferForm inside the shared AppModal.
 
   Supports:
-  => Creating an account transfer.
+  => Create Transfer.
+  => Edit Transfer.
 
   IMPORTANT:
   => Does NOT call the API directly.
   => Parent workflow owns submission.
 ===========================================================*/
 const TransferFormModal = ({
+  mode = 'create',
+
+  transfer = null,
+
   isOpen,
 
   onClose,
@@ -30,6 +35,12 @@ const TransferFormModal = ({
 
   submitting = false,
 }) => {
+  /*===========================================================
+    Edit Mode
+  ===========================================================*/
+  const isEditing =
+    mode === 'edit';
+
   return (
     <AppModal
       isOpen={
@@ -52,8 +63,16 @@ const TransferFormModal = ({
         eyebrow={
           monthLabel
         }
-        title="Create transfer"
-        description="Move money between your financial accounts."
+        title={
+          isEditing
+            ? 'Edit transfer'
+            : 'Create transfer'
+        }
+        description={
+          isEditing
+            ? 'Update the details for this account transfer.'
+            : 'Move money between your financial accounts.'
+        }
         titleId="transfer-form-title"
         descriptionId="transfer-form-description"
         onClose={
@@ -69,6 +88,12 @@ const TransferFormModal = ({
       =======================================================*/}
       <div className="px-5 py-5">
         <TransferForm
+          mode={
+            mode
+          }
+          transfer={
+            transfer
+          }
           accounts={
             accounts
           }

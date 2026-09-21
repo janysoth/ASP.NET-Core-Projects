@@ -5,6 +5,7 @@ import {
 
 import {
   createTransfer,
+  patchTransfer,
 } from '@/features/budget/api/budgetApi';
 
 import {
@@ -18,13 +19,17 @@ import {
 
 /*===========================================================
   useTransferForm:
-  => Owns the Create Transfer workflow.
+  => Owns the Create / Edit Transfer workflow.
 
   Handles:
   => Modal state.
+  => Create mode.
+  => Edit mode.
+  => Selected Transfer.
   => Submission state.
-  => Create Transfer API call.
-  => Parent Budget Month refresh.
+  => Create API call.
+  => Patch API call.
+  => Parent refresh.
 
   IMPORTANT:
   => Field state and validation live in
@@ -42,6 +47,16 @@ const useTransferForm = ({
   ] = useState(false);
 
   /*===========================================================
+    Selected Transfer:
+    => null means Create mode.
+    => Transfer object means Edit mode.
+  ===========================================================*/
+  const [
+    selectedTransfer,
+    setSelectedTransfer,
+  ] = useState(null);
+
+  /*===========================================================
     Submission State
   ===========================================================*/
   const [
@@ -50,14 +65,49 @@ const useTransferForm = ({
   ] = useState(false);
 
   /*===========================================================
-    Open Transfer Form
+    Form Mode
   ===========================================================*/
-  const handleOpenTransferForm =
+  const transferFormMode =
+    selectedTransfer
+      ? 'edit'
+      : 'create';
+
+  /*===========================================================
+    Open Create Transfer
+  ===========================================================*/
+  const handleOpenCreateTransfer =
     useCallback(() => {
+      setSelectedTransfer(
+        null
+      );
+
       setIsTransferFormOpen(
         true
       );
     }, []);
+
+  /*===========================================================
+    Open Edit Transfer
+  ===========================================================*/
+  const handleOpenEditTransfer =
+    useCallback(
+      (
+        transfer
+      ) => {
+        if (!transfer) {
+          return;
+        }
+
+        setSelectedTransfer(
+          transfer
+        );
+
+        setIsTransferFormOpen(
+          true
+        );
+      },
+      []
+    );
 
   /*===========================================================
     Close Transfer Form
@@ -73,26 +123,46 @@ const useTransferForm = ({
       setIsTransferFormOpen(
         false
       );
+
+      setSelectedTransfer(
+        null
+      );
     }, [
       submittingTransfer,
     ]);
 
   /*===========================================================
-    Submit Transfer
+    Submit Transfer:
+    => Create mode uses POST.
+    => Edit mode uses PATCH.
   ===========================================================*/
   const handleTransferSubmit =
     useCallback(
       async (
         formData
       ) => {
+        const isEditing =
+          Boolean(
+            selectedTransfer?.id
+          );
+
         try {
           setSubmittingTransfer(
             true
           );
 
-          await createTransfer(
-            formData
-          );
+          if (
+            isEditing
+          ) {
+            await patchTransfer(
+              selectedTransfer.id,
+              formData
+            );
+          } else {
+            await createTransfer(
+              formData
+            );
+          }
 
           await onBudgetMonthChanged?.();
 
@@ -100,8 +170,14 @@ const useTransferForm = ({
             false
           );
 
+          setSelectedTransfer(
+            null
+          );
+
           showSuccess(
-            'Transfer created successfully.'
+            isEditing
+              ? 'Transfer updated successfully.'
+              : 'Transfer created successfully.'
           );
 
           return true;
@@ -111,7 +187,9 @@ const useTransferForm = ({
           showError(
             getApiErrorMessage(
               requestError,
-              'Unable to create transfer.'
+              isEditing
+                ? 'Unable to update transfer.'
+                : 'Unable to create transfer.'
             )
           );
 
@@ -123,15 +201,25 @@ const useTransferForm = ({
         }
       },
       [
+        selectedTransfer,
         onBudgetMonthChanged,
       ]
     );
 
   return {
+    /*=========================================================
+      State
+    =========================================================*/
     isTransferFormOpen,
+    selectedTransfer,
+    transferFormMode,
     submittingTransfer,
 
-    handleOpenTransferForm,
+    /*=========================================================
+      Actions
+    =========================================================*/
+    handleOpenCreateTransfer,
+    handleOpenEditTransfer,
     handleCloseTransferForm,
     handleTransferSubmit,
   };
